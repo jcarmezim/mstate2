@@ -1,3 +1,3 @@
-# mstate2 (development version)
+# mstate2 0.1.0
 
 * Initial CRAN submission.
