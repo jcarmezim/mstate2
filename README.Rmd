@@ -1,0 +1,104 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+```
+
+# mstate2
+
+<!-- badges: start -->
+[![R-CMD-check](https://github.com/jcarmezim/mstate2/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/jcarmezim/mstate2/actions/workflows/R-CMD-check.yaml)
+[![Codecov test coverage](https://codecov.io/gh/jcarmezim/mstate2/graph/badge.svg)](https://app.codecov.io/gh/jcarmezim/mstate2)
+<!-- badges: end -->
+
+mstate2 extends the classical first-order multistate framework (as in the
+**mstate** package) with a *second-order*, short-memory layer: the future
+evolution may depend not only on the current state but also on the state
+occupied at the immediately preceding time. It provides nonparametric estimators
+of the 1-step second-order transition probabilities, their variances and
+confidence intervals, an extended Chapman–Kolmogorov relation for n-step
+prediction, and evolution intervals for assessing whether — and for how long —
+the preceding state matters. The methods are those of Najera-Zuloaga, Besalú and
+Gómez Melis (2025), building on Besalú and Gómez Melis (2024).
+
+## Installation
+
+You can install the development version of mstate2 from [GitHub](https://github.com/) with:
+
+```r
+# install.packages("pak")
+pak::pak("jcarmezim/mstate2")
+```
+
+## Example
+
+A second-order model where, from state `B`, the next move depends on whether the
+patient arrived from `A` or from `B`. We simulate from a known model, estimate
+the transition probabilities, and assess how long the preceding state matters:
+
+```{r example, fig.height = 4, fig.width = 7}
+library(mstate2)
+
+## a small second-order model: A -> B -> {B, C}, C absorbing
+st   <- c("A", "B", "C")
+tens <- array(0, c(3, 3, 3), dimnames = list(st, st, st))
+tens["B", "B", "A"] <- 0.6; tens["B", "C", "A"] <- 0.4   # from (A, B)
+tens["B", "B", "B"] <- 0.3; tens["B", "C", "B"] <- 0.7   # from (B, B)
+tens["C", "C", ]    <- 1                                  # C absorbing
+first <- matrix(0, 3, 3, dimnames = list(st, st)); first["A", "B"] <- 1
+
+set.seed(1)
+panel <- mstate2::simulate2(5000, tens, first, init = c(A = 1, B = 0, C = 0))
+```
+
+Estimate the 1-step second-order transition probabilities with the relative
+probability estimator (the recommended default):
+
+```{r estimate}
+d   <- prep2(panel, id = "id", time = "time", state = "state")
+fit <- P2est(d, estimator = "RPE")
+head(fit$estimate)
+```
+
+Predict several steps ahead and compare the trajectories for the two preceding
+states. `summary()` reports the duration of the second-order effect, and the
+plot draws the evolution intervals, marking the first step at which they overlap:
+
+```{r compare, fig.height = 4, fig.width = 7}
+cmp <- compare2(fit, h = c("A", "B"), j = "B", l = "B", nsteps = 9)
+summary(cmp)
+
+plot(cmp, type = "interval")
+```
+
+Non-overlapping evolution intervals imply a statistically significant effect of
+the preceding state, so the overlap step quantifies how long the second-order
+memory persists.
+
+## Why `README.Rmd`?
+
+Using `README.Rmd` rather than a hand-written `README.md` means the examples
+above are executed when the file is knit, so the README cannot drift out of sync
+with the code. Re-render it with:
+
+``` r
+devtools::build_readme()
+```
+
+Remember to commit and push the figure files generated under `man/figures/` so
+they display on GitHub.
+
+## References
+
+- J. Najera-Zuloaga, M. Besalú, G. Gómez Melis. *Second-Order Markov Multistate
+  Models: Nonparametric Estimation and Inference* (2025).
+- M. Besalú, G. Gómez Melis. *Second order Markov multistate models*. SORT (2024).

@@ -7,15 +7,14 @@
 overlap_step(x)
 }
 \arguments{
-\item{x}{A \code{"msm2pred"} object with exactly two preceding states.}
+\item{x}{A two-group "msm2pred" with evolution-interval bounds.}
 }
 \value{
-A list with the first overlapping step \code{n}, the corresponding
-  time index \code{s = n + 1}, and the number of leading separated steps.
+A list: first overlapping step \code{n} and time \code{s = n + 1}; the
+  leading separated-step count \code{separated_steps}; per-step \code{overlap}
+  and signed \code{separation} (= max lower - min upper, > 0 when separated);
+  and the two \code{groups}.
 }
 \description{
-For a two-group \code{"msm2pred"}, returns the smallest step \eqn{n} at which
-the evolution intervals of the two preceding states overlap. Steps before this
-have non-overlapping intervals, i.e. a statistically significant effect of the
-preceding state.
+First step at which two evolution intervals overlap
 }

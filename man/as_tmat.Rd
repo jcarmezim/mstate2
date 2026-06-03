@@ -7,18 +7,13 @@
 as_tmat(object, ...)
 }
 \arguments{
-\item{object}{A \code{"msm2data"} object or a panel data frame.}
+\item{object}{A "msm2data" object or a panel data frame.}
 
 \item{...}{Passed to \code{\link{prep2}} when \code{object} is a data frame.}
 }
 \value{
-A transition matrix as returned by \code{mstate::transMat}, with one
-  row/column per state and integer transition numbers in the allowed cells.
+A transition matrix as returned by \code{mstate::transMat}.
 }
 \description{
-Builds an \pkg{mstate}-style transition matrix (via
-\code{mstate::transMat}) describing which one-step transitions are observed,
-giving interoperability with first-order \pkg{mstate} workflows. The
-second-order model of this package can then be read as a memory-augmented
-layer over that first-order structure.
+Coerce a panel / msm2data object to an mstate transition matrix
 }

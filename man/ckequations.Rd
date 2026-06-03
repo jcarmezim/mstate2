@@ -4,40 +4,34 @@
 \alias{ckequations}
 \title{Extended Chapman-Kolmogorov n-step second-order transition probabilities}
 \usage{
-ckequations(x, h, j, l, nsteps = 9, bounds = FALSE)
+ckequations(x, h, j, l = NULL, nsteps = 9L, bounds = FALSE)
 }
 \arguments{
-\item{x}{Either a \code{"P2est"} object or a numeric \eqn{M\times M\times M}
-tensor in the \code{P[j, l, h]} \eqn{= P_{hj\ell}} layout.}
+\item{x}{A "P2est" object or an \eqn{M \times M \times M} tensor in
+P[j, l, h] layout.}
 
-\item{h, j, l}{Starting states \eqn{h} (at time 0), \eqn{j} (at time 1), and the
-target state \eqn{\ell}. May be given by label or by integer index.}
+\item{h, j}{Starting states: h at time 0, j at time 1 (label or index).}
 
-\item{nsteps}{Number of steps \eqn{n} to compute (default 9, giving
-\eqn{X_2, \dots, X_{n+1}}).}
+\item{l}{Target state(s). If NULL (default), the full distribution over all
+states is returned for each step.}
 
-\item{bounds}{If \code{x} is a \code{"P2est"} object, also propagate the lower
-and upper CI tensors to produce evolution-interval bounds. Ignored for a
-raw tensor.}
+\item{nsteps}{Number of steps n (default 9), giving
+\eqn{X_2, \ldots, X_\{n+1\}}.}
+
+\item{bounds}{If x is a "P2est" object and a single l is given, also propagate
+the CI tensors to return evolution-interval bounds.}
 }
 \value{
-If \code{bounds = FALSE} (or \code{x} is a tensor), a numeric vector of
-  length \code{nsteps} giving \eqn{P_{hj\ell}(1, n)} for \eqn{n = 1, \dots, nsteps}.
-  If \code{bounds = TRUE}, a data frame with columns \code{n}, \code{estimate},
-  \code{lower}, \code{upper}.
+If l is a single state and bounds = FALSE: a numeric vector of length
+  nsteps. If l is a vector: an \eqn{nsteps \times length(l)} matrix. If l is
+  NULL: an \eqn{nsteps \times M} matrix (one column per state). If
+  bounds = TRUE: a data.frame with columns n, estimate, lower, upper.
 }
 \description{
-Computes the n-step second-order homogeneous transition probabilities
-\eqn{P_{hj\ell}(1,n) = P(X_{n+1} = \ell \mid X_1 = j, X_0 = h)} for
-\eqn{n = 1, \dots, nsteps}, by applying the extension of the
-Chapman-Kolmogorov relation (Eq. 6 in the paper).
-}
-\details{
-Rather than expanding the path sum of Eq. (6) directly (which is
-\eqn{O(M^{n})}), the second-order chain is lifted to an equivalent
-first-order Markov chain on ordered pairs of states: the pair
-\eqn{(X_{t-1}, X_t)} evolves with transition
-\eqn{Q_{(a,b)\to(b,c)} = P_{abc}}. The n-step probabilities then follow from
-propagating the initial pair distribution, which is exact, valid for any
-number of states and any horizon, and far cheaper.
+Computes \eqn{P_{hj\ell}(1,n) = P(X_{n+1} = \ell \mid X_1 = j, X_0 = h)} for
+\eqn{n = 1, \dots, nsteps} via the extension of the Chapman-Kolmogorov
+relation (Eq. 6). The second-order chain is lifted to a first-order chain on
+ordered pairs of states, \eqn{Q_{(a,b)\to(b,c)} = P_{abc}}, and the initial
+pair distribution is propagated; this is exact, works for any number of
+states and any horizon, and is far cheaper than expanding the path sum.
 }

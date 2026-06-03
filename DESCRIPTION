@@ -1,25 +1,33 @@
 Package: mstate2
-Title: What the Package Does (One Line, Title Case)
-Version: 0.1.0
-Authors@R: 
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
+Type: Package
+Title: Second-Order Markov Multistate Models
+Version: 0.0.0.9000
+Authors@R: c(
+    person("Josu", "Najera-Zuloaga", role = c("aut", "cre"),
+           email = "josu.najera@ehu.eus"),
+    person("Mireia", "Besalu", role = "aut"),
+    person("Guadalupe", "Gomez Melis", role = "aut"))
+Description: Nonparametric estimation and inference for second-order Markov
+    multistate models in discrete time. Provides the relative probability
+    estimator (RPE) and the conditional probability estimator (CPE) of the
+    1-step second-order homogeneous transition probabilities, together with
+    consistent variance estimators, confidence intervals, an extension of the
+    Chapman-Kolmogorov relation for n-step prediction, and evolution intervals.
+    The package complements 'mstate' by adding a second-order (short-memory)
+    layer to the classical first-order multistate framework. Methods are
+    described in Najera-Zuloaga, Besalu and Gomez Melis (2025) and build on
+    Besalu and Gomez Melis (2024) <SORT>.
 License: GPL (>= 3)
 Encoding: UTF-8
-Roxygen: list(markdown = TRUE)
-RoxygenNote: 8.0.0
-Imports: 
-    data.table,
-    graphics,
-    grDevices,
-    mstate,
-    stats,
-    utils
-URL: https://github.com/jcarmezim/mstate2
-BugReports: https://github.com/jcarmezim/mstate2/issues
-Suggests: 
-    knitr,
-    rmarkdown,
-    testthat (>= 3.0.0)
+Depends: R (>= 4.0)
+Imports: mstate, data.table, stats, graphics, grDevices, utils
+Suggests: testthat (>= 3.0.0), knitr, rmarkdown
 Config/testthat/edition: 3
 VignetteBuilder: knitr
+NeedsCompilation: no
+Packaged: 2026-05-29 09:13:15 UTC; root
+Author: Josu Najera-Zuloaga [aut, cre],
+  Mireia Besalu [aut],
+  Guadalupe Gomez Melis [aut]
+Maintainer: Josu Najera-Zuloaga <josu.najera@ehu.eus>
+Config/roxygen2/version: 8.0.0

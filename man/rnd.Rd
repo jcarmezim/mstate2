@@ -2,7 +2,7 @@
 % Please edit documentation in R/convert.R
 \name{rnd}
 \alias{rnd}
-\title{Round half up (matching the convention used in the DIVINE analysis)}
+\title{Round half up (the convention used in the DIVINE analysis)}
 \usage{
 rnd(x)
 }
@@ -13,5 +13,5 @@ rnd(x)
 \code{trunc(x + sign(x) * 0.5)}.
 }
 \description{
-Round half up (matching the convention used in the DIVINE analysis)
+Round half up (the convention used in the DIVINE analysis)
 }

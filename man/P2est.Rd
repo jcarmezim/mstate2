@@ -4,46 +4,35 @@
 \alias{P2est}
 \title{Estimate 1-step second-order transition probabilities}
 \usage{
-P2est(object, estimator = c("RPE", "CPE"), conf.level = 0.95)
+P2est(
+  object,
+  estimator = c("RPE", "CPE"),
+  conf.level = 0.95,
+  ci = c("wald", "logit"),
+  clip = TRUE
+)
 }
 \arguments{
-\item{object}{An object of class \code{"msm2data"} from \code{\link{prep2}}.}
+\item{object}{An "msm2data" object from \code{\link{prep2}}.}
 
-\item{estimator}{Either \code{"RPE"} (default) or \code{"CPE"}. The RPE is
-recommended: it is at least as efficient as the CPE (Corollary 3).}
+\item{estimator}{"RPE" (default, recommended) or "CPE".}
 
-\item{conf.level}{Confidence level for the intervals. Default \code{0.95}.}
+\item{conf.level}{Confidence level. Default 0.95.}
+
+\item{ci}{Confidence-interval type: "wald" (default) or "logit". The logit
+interval is built on the log-odds scale (delta method) and stays inside
+(0, 1), behaving better for probabilities near 0 or 1.}
+
+\item{clip}{For ci = "wald", clip the interval to [0, 1] (default TRUE).}
 }
 \value{
-An object of class \code{"P2est"}: a list with
-  \item{estimate}{data.frame of \eqn{(h, j, l, p, se, lower, upper)} for every
-    observed triple.}
-  \item{P}{the \eqn{M \times M \times M} point-estimate tensor with layout
-    \code{P[j, l, h]} \eqn{= P_{hj\ell}} (the layout consumed by
-    \code{ckequations}); absorbing states carry \eqn{P_{aaa}=1}.}
-  \item{P.lower, P.upper}{tensors of CI bounds in the same layout, clipped to [0,1].}
-  \item{P.se}{tensor of standard errors.}
-  \item{states, absorbing, estimator, conf.level, n}{metadata.}
+An object of class "P2est": the \code{estimate} data frame, the
+  point/CI/se tensors \code{P}, \code{P.lower}, \code{P.upper}, \code{P.se}
+  (layout \code{P[j, l, h]}), and metadata.
 }
 \description{
-Estimates the 1-step second-order homogeneous transition probabilities
-\eqn{P_{hj\ell}} from an \code{\link{prep2}} object, using either the
-relative probability estimator (RPE) or the conditional probability
-estimator (CPE), and returns standard errors and Wald confidence intervals.
-}
-\details{
-Let \eqn{\tilde N_{hj\ell}(s)} and \eqn{\tilde Y_{hj}(s-1)} be the triple
-counts and at-risk counts (see \code{\link{prep2}}), and let
-\eqn{t_{hj}} be the number of time points at which \eqn{\tilde Y_{hj} > 0}.
-
-\strong{RPE} (Definition 6, Eq. 9), with variance from Theorem 5:
-\deqn{\tilde P_{hj\ell} = \frac{\sum_s \tilde N_{hj\ell}(s)}{\sum_s \tilde Y_{hj}(s-1)},
-  \quad \widehat{\mathrm{se}} = \sqrt{\frac{\tilde P_{hj\ell}(1-\tilde P_{hj\ell})}{\sum_s \tilde Y_{hj}(s-1)}}.}
-
-\strong{CPE} (Definition 5, Eq. 8), with variance from Theorem 3:
-\deqn{\hat P_{hj\ell} = \frac{1}{t_{hj}} \sum_s \frac{\tilde N_{hj\ell}(s)}{\tilde Y_{hj}(s-1)},
-  \quad \widehat{\mathrm{se}} = \sqrt{\hat P_{hj\ell}(1-\hat P_{hj\ell}) \frac{\sum_s 1/\tilde Y_{hj}(s-1)}{t_{hj}^2}}.}
-
-Confidence intervals are Wald intervals (Corollaries 1 and 2) clipped to
-\eqn{[0,1]}.
+Estimates \eqn{P_{hj\ell} = P(X_s = \ell \mid X_{s-1} = j, X_{s-2} = h)} from
+an \code{\link{prep2}} object, using the relative probability estimator (RPE,
+Eq. 9 / Theorem 5) or the conditional probability estimator (CPE, Eq. 8 /
+Theorem 3), with standard errors and confidence intervals (Corollaries 1-2).
 }

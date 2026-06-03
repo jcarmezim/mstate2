@@ -4,37 +4,29 @@
 \alias{compare2}
 \title{Compare n-step transitions across preceding states (evolution intervals)}
 \usage{
-compare2(object, h, j, l, nsteps = 9)
+compare2(object, h, j, l, nsteps = 9L, bounds = TRUE)
 }
 \arguments{
-\item{object}{A \code{"P2est"} object.}
+\item{object}{A "P2est" object.}
 
-\item{h}{Vector of preceding states to compare (labels or integer indices).}
+\item{h}{Vector of preceding states to compare (labels or indices).}
 
-\item{j}{The current state (shared across the compared paths).}
+\item{j}{Current state shared across the compared paths.}
 
-\item{l}{The target state.}
+\item{l}{Target state.}
 
-\item{nsteps}{Number of steps to compute (default 9).}
+\item{nsteps}{Number of steps (default 9).}
+
+\item{bounds}{If TRUE (default) also compute evolution-interval bounds; FALSE
+returns curves only (e.g. Figure-4 overlays) and skips two thirds of the work.}
 }
 \value{
-An object of class \code{"msm2pred"} (a data frame) with columns
-  \code{h}, \code{n}, \code{estimate}, \code{lower}, \code{upper}, and
-  attributes recording \code{j}, \code{l}, \code{estimator} and
-  \code{conf.level}.
+An object of class "msm2pred" (a data frame): columns h, n, estimate
+  and, when bounds = TRUE, lower and upper.
 }
 \description{
-For a fixed current state \eqn{j} and target state \eqn{\ell}, computes the
-n-step second-order transition probabilities \eqn{P_{hj\ell}(1,n)} for several
-preceding states \eqn{h}, together with their evolution intervals. This is the
-construction behind Figures 4 and 5 of the paper: it lets one assess whether,
-and for how long, the state occupied at the \emph{preceding} time affects the
-future trajectory (i.e. whether the first-order Markov assumption holds).
-}
-\details{
-Evolution intervals are obtained by propagating the lower and upper confidence
-bounds of the 1-step estimates through the extended Chapman-Kolmogorov relation
-(\code{\link{ckequations}}). They are not themselves confidence intervals, but
-they encompass them, so \emph{non-overlapping} evolution intervals imply a
-statistically significant difference between the trajectories.
+For a fixed current state \eqn{j} and target \eqn{\ell}, computes the n-step
+transition probabilities for several preceding states \eqn{h}, with their
+evolution intervals. The construction behind Figures 4-5: it assesses whether,
+and for how long, the preceding state affects the future trajectory.
 }

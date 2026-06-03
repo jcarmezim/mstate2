@@ -7,20 +7,18 @@
 \title{mstate2: Second-Order Markov Multistate Models}
 \description{
 Nonparametric estimation and inference for second-order Markov multistate
-models in discrete time. The package provides the relative probability
-estimator (RPE) and conditional probability estimator (CPE) of the 1-step
-second-order homogeneous transition probabilities, consistent variance
-estimators and confidence intervals, a general implementation of the extended
-Chapman-Kolmogorov relation for n-step prediction, evolution intervals for
-comparing trajectories, a panel converter for sojourn-time data, and a
-simulator. It complements \pkg{mstate} by adding a short-memory (second-order)
-layer to the classical first-order multistate framework.
+models in discrete time: the RPE and CPE estimators of the 1-step second-order
+transition probabilities with variances and confidence intervals, an extended
+Chapman-Kolmogorov relation for n-step prediction, evolution intervals, a
+sojourn-time / mstate panel converter, and a simulator. Complements the
+first-order \pkg{mstate} framework.
 }
 \author{
 \strong{Maintainer}: Josu Najera-Zuloaga \email{josu.najera@ehu.eus}
 
 Authors:
 \itemize{
+  \item Josu Najera-Zuloaga \email{josu.najera@ehu.eus}
   \item Mireia Besalu
   \item Guadalupe Gomez Melis
 }

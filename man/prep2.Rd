@@ -10,34 +10,29 @@ prep2(
   time = "time",
   state = "state",
   states = NULL,
-  absorbing = NULL
+  absorbing = NULL,
+  drop.na = FALSE,
+  check.consecutive = TRUE
 )
 }
 \arguments{
-\item{data}{A data frame in long/panel format.}
+\item{data}{A data frame in long/panel format, or an mstate "msdata" object
+(converted automatically via from_msdata()).}
 
-\item{id}{Name of the subject identifier column.}
+\item{id, time, state}{Column names for subject id, discrete time, and state.}
 
-\item{time}{Name of the (discrete) time column.}
+\item{states}{Optional state space / ordering. Defaults to sorted observed states.}
 
-\item{state}{Name of the state column (factor, integer, or character).}
+\item{absorbing}{Optional absorbing states; inferred if NULL.}
 
-\item{states}{Optional vector giving the full state space and its ordering.
-Defaults to the sorted unique observed states. Use this to fix the state
-ordering / include never-occupied states.}
+\item{drop.na}{If TRUE, drop rows with NA in id/time/state (with a warning)
+instead of erroring. Default FALSE.}
 
-\item{absorbing}{Optional vector of absorbing states. If \code{NULL} (default)
-absorbing states are inferred as those with no observed onward transition to
-a different state.}
+\item{check.consecutive}{If TRUE (default), warn when any subject's times are
+not consecutive integers.}
 }
 \value{
-An object of class \code{"msm2data"}: a list with
-  \item{N}{data.table of \eqn{(h, j, l, s, N)} triple counts.}
-  \item{Y}{data.table of \eqn{(h, j, s, Y)} at-risk counts.}
-  \item{states}{the ordered state space.}
-  \item{absorbing}{the absorbing states.}
-  \item{n}{number of subjects.}
-  \item{ntriples}{total number of observed triples.}
+An object of class "msm2data".
 }
 \description{
 \code{prep2} takes discrete-time panel data (one row per subject-time with the

@@ -12,28 +12,17 @@ sojourn_to_panel(data, id, segments, absorbing, round_fun = rnd)
 \item{id}{Name of the subject id column.}
 
 \item{segments}{Named character vector mapping transient state labels to their
-duration columns, in the order states are visited, e.g.
+duration columns, in visiting order, e.g.
 \code{c(NSP = "t.nosp", SP = "t.sp", NIMV = "t.nimv", IMV = "t.mv", Recov = "t.recov")}.}
 
 \item{absorbing}{Named character vector mapping absorbing state labels to their
 0/1 indicator columns, e.g. \code{c(Disch = "disch.s", Death = "death.s")}.}
 
-\item{round_fun}{Function used to discretise durations. Default \code{rnd}.}
+\item{round_fun}{Discretisation function for durations. Default \code{rnd}.}
 }
 \value{
-A \code{data.table} in panel format with columns \code{id}, \code{time}
-  (integer days from 0), and \code{state}.
+A data.table in panel format (id, time, state).
 }
 \description{
-Many multistate datasets (including the DIVINE COVID-19 cohort) store each
-subject's trajectory as the time spent in each state plus indicators for the
-absorbing states reached. \code{sojourn_to_panel} reconstructs the implied
-day-by-day state sequence so it can be passed to \code{\link{prep2}}.
-}
-\details{
-Each transient segment is included for its (rounded) duration, in the
-canonical order given by \code{segments}; the absorbing state whose indicator
-equals 1 is appended once at the end. Durations are discretised with
-\code{round_fun} (default \code{\link{rnd}}, round-half-up), so a segment whose
-rounded duration is 0 is skipped.
+Convert sojourn-time data to discrete-time panel format
 }

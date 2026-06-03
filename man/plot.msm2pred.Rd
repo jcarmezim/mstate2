@@ -6,7 +6,7 @@
 \usage{
 \method{plot}{msm2pred}(
   x,
-  type = c("interval", "curve"),
+  type = NULL,
   col = NULL,
   lty = 1,
   lwd = 2,
@@ -14,6 +14,7 @@
   add = FALSE,
   legend = TRUE,
   dualaxis = TRUE,
+  mark.overlap = TRUE,
   ylim = NULL,
   main = NULL,
   xlab = "",
@@ -22,29 +23,23 @@
 )
 }
 \arguments{
-\item{x}{A \code{"msm2pred"} object.}
+\item{x}{A "msm2pred" object.}
 
-\item{type}{\code{"interval"} (default) draws the estimate with a shaded
-evolution interval per preceding state (Figure 5 style); \code{"curve"}
-draws estimate lines only (Figure 4 style).}
+\item{type}{"interval" (shaded bands) or "curve" (lines only). Defaults to
+"interval" when bounds exist, else "curve".}
 
-\item{col}{Colours, one per preceding state. Defaults to red/blue/...}
+\item{col, lty, lwd, alpha}{Appearance of lines and interval shading.}
 
-\item{lty, lwd}{Line type and width for the estimate lines.}
+\item{add}{Overlay on the current plot (e.g. RPE over CPE). Default FALSE.}
 
-\item{alpha}{Shading transparency for evolution intervals.}
+\item{legend, dualaxis}{Draw the legend / the dual step-and-time axis.}
 
-\item{add}{If \code{TRUE}, overlay on the current plot (e.g. to compare two
-estimators). Default \code{FALSE}.}
+\item{mark.overlap}{For a two-group interval plot, draw a vertical line at the
+first overlap step. Default TRUE.}
 
-\item{legend}{Draw a legend. Default \code{TRUE}.}
+\item{ylim, main, xlab, ylab}{Standard graphical parameters.}
 
-\item{dualaxis}{Draw both the step axis (n) and the time axis (s = n + 1),
-as in the paper. Default \code{TRUE}.}
-
-\item{ylim, main, xlab, ylab}{Standard graphical parameters; sensible defaults.}
-
-\item{...}{Passed to the initial \code{plot}.}
+\item{...}{Passed to the initial plot().}
 }
 \description{
 Plot n-step evolution curves or evolution intervals
