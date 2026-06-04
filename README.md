@@ -1,0 +1,115 @@
+# [mstate2](https://jcarmezim.github.io/mstate2/) <img src="man/figures/logo.png" align="right" width="250"/>
+
+[![CRAN
+status](https://www.r-pkg.org/badges/version/mstate2)](https://cran.r-project.org/package=mstate2)
+  
+[![R-CMD-check](https://github.com/jcarmezim/mstate2/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/jcarmezim/mstate2/actions/workflows/R-CMD-check.yaml)
+   [![Codecov test
+coverage](https://codecov.io/gh/jcarmezim/mstate2/graph/badge.svg)](https://app.codecov.io/gh/jcarmezim/mstate2)
+[![](https://cranlogs.r-pkg.org/badges/mstate2)](https://cran.r-project.org/package=mstate2)
+  
+[![](https://cranlogs.r-pkg.org/badges/grand-total/mstate2)](https://cran.r-project.org/package=mstate2)
+
+The R package [**mstate2**](https://jcarmezim.github.io/mstate2/) has
+been developed to extend multistate modelling beyond the usual
+first-order Markov assumption. It implements **second-order Markov
+multistate models**, in which a subject’s future evolution depends not
+only on the current state but also on the state occupied at the
+immediately preceding time, capturing a form of short-term memory in the
+disease process. The package provides nonparametric estimators of the
+one-step second-order transition probabilities, their variances and
+confidence intervals, an extension of the Chapman-Kolmogorov relation
+for multi-step prediction, and *evolution intervals* for assessing
+whether — and for how long — the preceding state matters.
+
+[**Multistate models**](https://en.wikipedia.org/wiki/Multistate_model)
+describe how individuals move between a finite set of states (health
+conditions) over time, and are widely used to model disease progression.
+The standard first-order Markov assumption — that the future depends
+only on the present state — is often unrealistic in clinical settings.
+mstate2 relaxes it to a second-order dependence while keeping the number
+of parameters and the interpretability of the transition probabilities
+under control, and complements the first-order
+[**mstate**](https://cran.r-project.org/package=mstate) package.
+
+### Installation
+
+The *release* version can be installed from
+[CRAN](https://cran.r-project.org/package=mstate2).
+
+    install.packages("mstate2")
+
+The *development* version can be installed from
+[GitHub](https://github.com/jcarmezim/mstate2) after installing the
+`remotes` package.
+
+    install.packages("remotes") # Run this line if the 'remotes' package isn't installed already.
+    remotes::install_github("jcarmezim/mstate2")
+
+### Getting Started
+
+To learn more about the package’s functionality, visit the [**mstate2
+website**](https://jcarmezim.github.io/mstate2/). The site includes
+detailed descriptions of the package’s functions and vignettes that
+demonstrate how to estimate second-order transition probabilities,
+predict multi-step trajectories, and build evolution intervals to test
+the Markov assumption.
+
+The main functions are:
+
+-   `prep2()` — build the second-order counting processes from panel
+    data (or an `mstate` `msdata` object).
+-   `P2est()` — estimate the one-step second-order transition
+    probabilities (RPE / CPE) with standard errors and confidence
+    intervals.
+-   `ckequations()` — predict multi-step transition probabilities via
+    the extended Chapman-Kolmogorov relation.
+-   `compare2()` / `overlap_step()` — compare trajectories across
+    preceding states using evolution intervals.
+-   `simulate2()`, `sojourn_to_panel()`, `as_tmat()` — simulate
+    processes, convert sojourn-time data, and interoperate with
+    `mstate`.
+
+### Getting help
+
+If you encounter a clear bug, please file an issue with a minimal
+reproducible example on [**GitHub:
+Issues**](https://github.com/jcarmezim/mstate2/issues).
+
+### Published Work
+
+For an in-depth description of the methods implemented in mstate2, refer
+to:
+
+[**Second-Order Markov Multistate Models: Nonparametric Estimation and
+Inference**](https://doi.org/) — Najera-Zuloaga J, Besalú M, Gómez Melis
+G (2025).
+
+The estimators build on the framework introduced in Besalú M, Gómez
+Melis G (2024), *Second order Markov multistate models*, *SORT*.
+
+### Citation
+
+    > citation("mstate2")
+
+    To cite package 'mstate2' in publications use:
+
+      Najera-Zuloaga J, Besalú M, Gómez Melis G (2025). "Second-Order Markov
+      Multistate Models: Nonparametric Estimation and Inference."
+
+    A BibTeX entry for LaTeX users is
+
+      @Article{,
+        title = {Second-Order Markov Multistate Models: Nonparametric Estimation and Inference},
+        author = {Josu Najera-Zuloaga and Mireia Besalú and Guadalupe Gómez Melis},
+        year = {2025},
+      }
+
+### About
+
+Package: mstate2  
+Authors: Josu Najera-Zuloaga, Mireia Besalú, Guadalupe Gómez Melis.  
+Maintainer: Josu Najera-Zuloaga  
+License: GPL (&gt;= 3)  
+Encoding: UTF-8  
+Depends: R (&gt;= 4.0)
