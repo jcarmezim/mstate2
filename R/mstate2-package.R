@@ -20,6 +20,5 @@ utils::globalVariables(c(
   "h", "j", "l", "s", "N", "Y", "state", "time", "id",
   "from", "to", "Tstart", "Tstop", "status",
   "n.trans", "at.risk", "inv", "t.hj", "p", "se", "lower", "upper",
-  "ok", "t_hj", "total_at_risk", "s_min", "s_max",
-  ".", "..cols", "..map"
+  "ok", "t_hj", "total_at_risk", "s_min", "s_max", "..cols", "..map"
 ))
