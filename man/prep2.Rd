@@ -9,6 +9,7 @@ prep2(
   id = "id",
   time = "time",
   state = "state",
+  covariates = NULL,
   states = NULL,
   absorbing = NULL,
   drop.na = FALSE,
@@ -21,6 +22,14 @@ prep2(
 
 \item{id, time, state}{Column names for subject id, discrete time, and state.}
 
+\item{covariates}{Optional character vector of baseline (time-fixed) covariate
+column names in \code{data} to carry through to the individual-level triples
+table (see Value). When \code{data} is an "msdata" object, these are also
+passed as the \code{keep} argument of \code{\link{from_msdata}}. Values are
+carried through as-is (a warning is issued if a covariate is not constant
+within subject); NA covariate values are not flagged here and are left for
+downstream modelling functions to handle.}
+
 \item{states}{Optional state space / ordering. Defaults to sorted observed states.}
 
 \item{absorbing}{Optional absorbing states; inferred if NULL.}
@@ -32,7 +41,12 @@ instead of erroring. Default FALSE.}
 not consecutive integers.}
 }
 \value{
-An object of class "msm2data".
+An object of class "msm2data", with (among other components) a
+\code{triples} data.table: one row per subject per observed second-order
+triple, with columns \code{id, h, j, l, s} and, if requested, the
+\code{covariates} columns. This is the individual-level, "long" analogue of
+\code{mstate::msprep()} for the second-order process, and is the table
+consumed by covariate-based extensions of the model.
 }
 \description{
 \code{prep2} takes discrete-time panel data (one row per subject-time with the

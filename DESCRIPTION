@@ -1,7 +1,7 @@
 Package: mstate2
 Type: Package
 Title: Second-Order Markov Multistate Models
-Version: 0.0.0.9000
+Version: 0.1.0
 Authors@R: c(
     person("Josu", "Najera-Zuloaga", role = c("aut", "cre"),
            email = "josu.najera@ehu.eus"),
@@ -15,13 +15,14 @@ Description: Nonparametric estimation and inference for second-order Markov
     Chapman-Kolmogorov relation for n-step prediction, and evolution intervals.
     The package complements 'mstate' by adding a second-order (short-memory)
     layer to the classical first-order multistate framework. Methods are
-    described in Najera-Zuloaga, Besalu and Gomez Melis (2025) and build on
-    Besalu and Gomez Melis (2024) <SORT>.
+    described in Najera-Zuloaga, Besalu and Gomez Melis (2025, in review) and
+    build on Besalu and Gomez Melis (2024) "Second order Markov multistate
+    models", SORT, 48(2), 209-234.
 License: GPL (>= 3)
 Encoding: UTF-8
 Depends: R (>= 4.0)
-Imports: mstate, data.table, stats, graphics, grDevices, utils
-Suggests: testthat (>= 3.0.0), knitr, rmarkdown
+Imports: data.table, stats, graphics, grDevices, utils
+Suggests: mstate, testthat (>= 3.0.0), knitr, rmarkdown
 Config/testthat/edition: 3
 VignetteBuilder: knitr
 NeedsCompilation: no

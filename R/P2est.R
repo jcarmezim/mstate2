@@ -10,7 +10,10 @@
 #' @param conf.level Confidence level. Default 0.95.
 #' @param ci Confidence-interval type: "wald" (default) or "logit". The logit
 #'   interval is built on the log-odds scale (delta method) and stays inside
-#'   (0, 1), behaving better for probabilities near 0 or 1.
+#'   (0, 1), behaving better for probabilities near 0 or 1. At the boundary
+#'   (p = 0 or p = 1, e.g. an absorbing-state row) the logit transform is
+#'   undefined and the interval degenerates to the point estimate [p, p]
+#'   rather than [0, 1].
 #' @param clip For ci = "wald", clip the interval to [0, 1] (default TRUE).
 #' @return An object of class "P2est": the \code{estimate} data frame, the
 #'   point/CI/se tensors \code{P}, \code{P.lower}, \code{P.upper}, \code{P.se}
