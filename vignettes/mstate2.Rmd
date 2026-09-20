@@ -25,8 +25,10 @@ the 1-step second-order transition probabilities
 $$P_{hj\ell} = P(X_s = \ell \mid X_{s-1} = j,\; X_{s-2} = h),$$
 
 provides confidence intervals, predicts any number of steps ahead via an
-extended Chapman–Kolmogorov relation, and constructs *evolution intervals* to
-test whether — and for how long — the preceding state matters.
+extended Chapman–Kolmogorov relation, constructs *evolution intervals* to test
+whether — and for how long — the preceding state matters, tests the
+first-order assumption formally, and extends the framework with covariates.
+This vignette walks through the whole workflow end to end.
 
 ## A worked example
 
@@ -86,10 +88,133 @@ Non-overlapping evolution intervals imply a statistically significant effect of
 the preceding state. Here the two trajectories are clearly separated in the
 early steps, quantifying how long the second-order memory persists.
 
+## Testing the first-order Markov assumption
+
+`compare2()`'s interval overlap is a visual, pairwise check. `markov_test()`
+turns it into a formal test, per (current, target) transition, of whether the
+preceding state matters at all — an inverse-variance-weighted heterogeneity
+test built directly on the RPE/CPE asymptotics already used above (no extra
+model to fit):
+
+```{r}
+markov_test(fit)
+```
+
+Both transitions out of `B` are highly significant: as simulated, the
+preceding state clearly changes the 1-step probabilities.
+
+## Adding covariates
+
+The estimates above are non-parametric and covariate-free: they cannot tell
+you whether the risk differs for, say, an older patient. `prep2(covariates =
+)` carries baseline covariates through to an individual-level table
+(`$triples`), and `P2reg()` fits a discrete-time cause-specific hazard
+regression on it — the covariate extension of the second-order framework.
+
+We attach a synthetic, subject-level `age` covariate to the same panel (it
+plays no role in how the process was simulated, so this doubles as a sanity
+check: its estimated effect should be negligible):
+
+```{r}
+ids       <- unique(panel$id)
+set.seed(2)
+age_by_id <- stats::setNames(sample(40:80, length(ids), replace = TRUE), ids)
+panel$age <- age_by_id[as.character(panel$id)]
+
+d2  <- prep2(panel, covariates = "age", states = st)
+reg <- P2reg(d2, h = "A", j = "B", formula = ~age)
+summary(reg)
+```
+
+Under the default complementary log-log link, `exp(coef)` is a hazard ratio —
+the discrete-time analogue of a Cox hazard ratio (Prentice & Gloeckler, 1978).
+`predict()` gives the covariate-adjusted 1-step probabilities for any profile:
+
+```{r}
+predict(reg, newdata = data.frame(age = c(40, 60, 80)))
+```
+
+As an internal check, an intercept-only model (`formula = ~1`, no covariates)
+must reduce to the same sample proportion of the risk set as the RPE estimate
+above, whatever link function is used — and it does, up to the GLM's
+convergence tolerance:
+
+```{r}
+reg0 <- P2reg(d2, h = "A", j = "B", formula = ~1)
+predict(reg0, newdata = data.frame(age = NA))
+fit$estimate[fit$estimate$h == "A" & fit$estimate$j == "B", c("l", "p")]
+```
+
+## Comparing against a first-order model
+
+A second-order model needs $M$ matrices of dimension $M \times M$ where a
+first-order model needs only one. Before paying that cost, `compare_order()`
+shows how much (and for how long) knowing the preceding state actually
+changes the forecast, relative to a first-order baseline; `divergence()`
+reports how many steps that difference survives.
+
+`compare_order()` expects an `mstate::probtrans` object, fit with `predt = 1`
+so it starts at the same "time 1" as `ckequations()`. On a real, progressive
+multistate dataset (no self-transitions), that looks like:
+
+```{r, eval = FALSE}
+library(mstate)
+tmat  <- as_tmat(d2)                                    # interoperate with mstate
+msdat <- msprep(time = ..., status = ..., data = ..., trans = tmat, keep = "age")
+cx    <- coxph(Surv(Tstart, Tstop, status) ~ strata(trans), data = msdat, method = "breslow")
+msf   <- msfit(cx, trans = tmat)
+pt    <- probtrans(msf, predt = 1)                       # landmark at time 1
+compare_order(fit, pt, h = c("A", "B"), j = "B", l = "B", nsteps = 6)
+```
+
+Our toy process has a self-transition (`B -> B`), which does not fit
+`msprep()`'s usual "each state entered once" progressive-model assumption, so
+for this self-contained vignette we instead build the first-order baseline by
+*pooling the RPE estimate over the preceding state* — i.e. deliberately
+discarding the history mstate2 otherwise keeps — and propagate it with
+`ckequations()` on an `h`-independent tensor, wrapped into the structure
+`probtrans()` returns. With real data, prefer the `mstate` pipeline above.
+
+```{r, fig.alt = "Second-order curves against a pooled first-order baseline"}
+est   <- fit$estimate
+denom <- sum(unique(est[est$j == "B", c("h", "at.risk")])$at.risk)
+p_BB  <- sum(est$n.trans[est$j == "B" & est$l == "B"]) / denom
+p_BC  <- sum(est$n.trans[est$j == "B" & est$l == "C"]) / denom
+se_BB <- sqrt(p_BB * (1 - p_BB) / denom)
+se_BC <- sqrt(p_BC * (1 - p_BC) / denom)
+
+P1 <- matrix(0, 3, 3, dimnames = list(st, st))
+P1["A", "A"] <- 1                                        # never revisited; unused placeholder
+P1["B", "B"] <- p_BB; P1["B", "C"] <- p_BC
+P1["C", "C"] <- 1
+P1_tensor <- array(rep(as.vector(P1), 3), c(3, 3, 3), dimnames = list(st, st, st))
+
+nsteps <- 6
+curve  <- ckequations(P1_tensor, h = "A", j = "B", l = NULL, nsteps = nsteps)  # h-independent
+
+pt_B <- data.frame(time = c(1, 1 + seq_len(nsteps)))
+mat  <- rbind(c(A = 0, B = 1, C = 0), curve[, st])        # row 1: trivial starting distribution
+pt_B$pstate1 <- mat[, "A"]; pt_B$se1 <- 0
+pt_B$pstate2 <- mat[, "B"]; pt_B$se2 <- se_BB
+pt_B$pstate3 <- mat[, "C"]; pt_B$se3 <- se_BC
+pt <- vector("list", 3); pt[[2]] <- pt_B; class(pt) <- "probtrans"
+
+cmp2 <- compare_order(fit, pt, h = c("A", "B"), j = "B", l = "B", nsteps = nsteps)
+plot(cmp2, type = "interval")
+divergence(cmp2)
+```
+
+Because this pooled baseline mixes together the only two histories that feed
+into it here, it sits between the two second-order curves rather than
+representing an independent, unbiased first-order fit — a limitation of the
+shortcut, not of `compare_order()` itself.
+
 ## Real data and interoperability
 
 For sojourn-time datasets (such as the DIVINE COVID-19 cohort), use
 `sojourn_to_panel()` to obtain panel data, then proceed as above. `as_tmat()`
 returns an `mstate::transMat` transition matrix so the model can be read
-alongside a first-order **mstate** analysis. See the reproduction scripts in the
-package `tests/` directory for an end-to-end analysis of the DIVINE data.
+alongside a first-order **mstate** analysis, and `from_msdata(keep = )` /
+`prep2(covariates = )` carry baseline covariates through from an `mstate`
+`msdata` object. See the reproduction scripts in the package `tests/`
+directory for an end-to-end analysis of the DIVINE data.
