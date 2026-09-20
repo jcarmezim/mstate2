@@ -63,4 +63,4 @@ jobs:
         if: ${{ !cancelled() }}
         uses: codecov/test-results-action@v1
         with:
-          toke: ${{ secrets.CODECOV_TOKEN }}
+          token: ${{ secrets.CODECOV_TOKEN }}
