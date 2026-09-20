@@ -66,6 +66,11 @@ The main functions are:
     the extended Chapman-Kolmogorov relation.
 -   `compare2()` / `overlap_step()` — compare trajectories across
     preceding states using evolution intervals.
+-   `markov_test()` — a formal, per-transition test of whether the
+    preceding state matters (first-order Markov assumption).
+-   `compare_order()` / `divergence()` — compare a second-order
+    prediction against a first-order `mstate` fit and quantify how long
+    the difference persists (the "memory horizon").
 -   `simulate2()`, `sojourn_to_panel()`, `as_tmat()` — simulate
     processes, convert sojourn-time data, and interoperate with
     `mstate`.
