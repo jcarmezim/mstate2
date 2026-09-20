@@ -13,6 +13,10 @@ Description: Nonparametric estimation and inference for second-order Markov
     1-step second-order homogeneous transition probabilities, together with
     consistent variance estimators, confidence intervals, an extension of the
     Chapman-Kolmogorov relation for n-step prediction, and evolution intervals.
+    Also provides a discrete-time complementary log-log cause-specific hazard
+    regression for the covariate-adjusted 1-step transition probabilities, a
+    formal per-transition test of the first-order Markov assumption, and tools
+    to compare second-order predictions against a first-order 'mstate' fit.
     The package complements 'mstate' by adding a second-order (short-memory)
     layer to the classical first-order multistate framework. Methods are
     described in Najera-Zuloaga, Besalu and Gomez Melis (2025, in review) and
@@ -22,7 +26,7 @@ License: GPL (>= 3)
 Encoding: UTF-8
 Depends: R (>= 4.0)
 Imports: data.table, stats, graphics, grDevices, utils
-Suggests: mstate, testthat (>= 3.0.0), knitr, rmarkdown
+Suggests: mstate, sandwich, testthat (>= 3.0.0), knitr, rmarkdown
 Config/testthat/edition: 3
 VignetteBuilder: knitr
 NeedsCompilation: no

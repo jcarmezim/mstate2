@@ -64,6 +64,9 @@ The main functions are:
     intervals.
 -   `ckequations()` — predict multi-step transition probabilities via
     the extended Chapman-Kolmogorov relation.
+-   `P2reg()` — covariate-adjusted 1-step transition probabilities via a
+    discrete-time cause-specific cloglog hazard regression (the
+    discrete-time analogue of Cox); `predict()` on the fitted object.
 -   `compare2()` / `overlap_step()` — compare trajectories across
     preceding states using evolution intervals.
 -   `markov_test()` — a formal, per-transition test of whether the
