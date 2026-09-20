@@ -35,4 +35,4 @@ Author: Josu Najera-Zuloaga [aut, cre],
   Mireia Besalu [aut],
   Guadalupe Gomez Melis [aut]
 Maintainer: Josu Najera-Zuloaga <josu.najera@ehu.eus>
-Config/roxygen2/version: 8.0.0
+RoxygenNote: 7.3.1

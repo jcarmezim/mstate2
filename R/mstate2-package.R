@@ -4,8 +4,13 @@
 #' models in discrete time: the RPE and CPE estimators of the 1-step second-order
 #' transition probabilities with variances and confidence intervals, an extended
 #' Chapman-Kolmogorov relation for n-step prediction, evolution intervals, a
-#' sojourn-time / mstate panel converter, and a simulator. Complements the
-#' first-order \pkg{mstate} framework.
+#' formal per-transition test of the first-order Markov assumption
+#' (\code{\link{markov_test}}), a covariate-adjusted discrete-time cause-specific
+#' hazard regression (\code{\link{P2reg}}), tools to compare second-order
+#' predictions against a first-order \pkg{mstate} fit
+#' (\code{\link{compare_order}}, \code{\link{divergence}}), a sojourn-time /
+#' mstate panel converter, and a simulator. Complements the first-order
+#' \pkg{mstate} framework.
 #'
 #' @keywords internal
 #' @import data.table
@@ -21,5 +26,5 @@ utils::globalVariables(c(
   "from", "to", "Tstart", "Tstop", "status",
   "n.trans", "at.risk", "inv", "t.hj", "p", "se", "lower", "upper",
   "ok", "t_hj", "total_at_risk", "s_min", "s_max", ".", "..cols", "..map",
-  "..keep", "..out_cols"
+  "..out_cols"
 ))

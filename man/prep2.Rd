@@ -42,11 +42,11 @@ not consecutive integers.}
 }
 \value{
 An object of class "msm2data", with (among other components) a
-\code{triples} data.table: one row per subject per observed second-order
-triple, with columns \code{id, h, j, l, s} and, if requested, the
-\code{covariates} columns. This is the individual-level, "long" analogue of
-\code{mstate::msprep()} for the second-order process, and is the table
-consumed by covariate-based extensions of the model.
+  \code{triples} data.table: one row per subject per observed second-order
+  triple, with columns \code{id, h, j, l, s} and, if requested, the
+  \code{covariates} columns. This is the individual-level, "long" analogue of
+  \code{mstate::msprep()} for the second-order process, and is the table
+  consumed by covariate-based extensions of the model.
 }
 \description{
 \code{prep2} takes discrete-time panel data (one row per subject-time with the

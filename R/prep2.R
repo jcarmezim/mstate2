@@ -186,7 +186,7 @@ from_msdata <- function(x, id = "id", from = "from", to = "to",
     grid   <- seq.int(rt[1L], round_fun(max(s$Tstop)))
     out <- data.table::data.table(id = gid, time = grid,
                                   state = states[findInterval(grid, rt)])
-    if (length(keep)) out[, (keep) := as.list(s[1L, ..keep])]   # baseline, replicated
+    if (length(keep)) out[, (keep) := as.list(s[1L, keep, with = FALSE])]  # baseline, replicated
     out
   }
   out_cols <- c("id", "time", "state", keep)

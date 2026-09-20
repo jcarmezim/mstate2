@@ -79,7 +79,7 @@ print.markov_test <- function(x, digits = 4, ...) {
   if (nrow(x)) {
     y <- x
     for (nm in c("statistic", "p.value", "pooled")) y[[nm]] <- round(y[[nm]], digits)
-    print(y, row.names = FALSE)
+    print(as.data.frame(y), row.names = FALSE)
   }
   invisible(x)
 }

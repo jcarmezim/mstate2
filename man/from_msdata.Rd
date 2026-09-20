@@ -31,7 +31,7 @@ there converts directly.}
 }
 \value{
 A data.table in panel format (id, time, state, and, if requested,
-the \code{keep} covariate columns).
+  the \code{keep} covariate columns).
 }
 \description{
 Convert an mstate 'msdata' object to discrete-time panel format

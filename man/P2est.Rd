@@ -21,7 +21,10 @@ P2est(
 
 \item{ci}{Confidence-interval type: "wald" (default) or "logit". The logit
 interval is built on the log-odds scale (delta method) and stays inside
-(0, 1), behaving better for probabilities near 0 or 1.}
+(0, 1), behaving better for probabilities near 0 or 1. At the boundary
+(p = 0 or p = 1, e.g. an absorbing-state row) the logit transform is
+undefined and the interval degenerates to the point estimate [p, p]
+rather than [0, 1].}
 
 \item{clip}{For ci = "wald", clip the interval to [0, 1] (default TRUE).}
 }

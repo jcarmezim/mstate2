@@ -9,10 +9,11 @@ test_that("P2reg(formula = ~1) recovers the RPE point estimate exactly", {
   expect_setequal(names(reg$models), c("B", "C"))
 
   p_hat    <- predict(reg, newdata = data.frame(age = 50))
+  expect_true(is.matrix(p_hat))
   p_true_B <- rpe$p[rpe$h == "A" & rpe$j == "B" & rpe$l == "B"]
   p_true_C <- rpe$p[rpe$h == "A" & rpe$j == "B" & rpe$l == "C"]
-  expect_equal(unname(p_hat["B"]), p_true_B, tolerance = 1e-6)
-  expect_equal(unname(p_hat["C"]), p_true_C, tolerance = 1e-6)
+  expect_equal(unname(p_hat[1, "B"]), p_true_B, tolerance = 1e-6)
+  expect_equal(unname(p_hat[1, "C"]), p_true_C, tolerance = 1e-6)
 })
 
 test_that("P2reg errors when the object carries no covariates", {

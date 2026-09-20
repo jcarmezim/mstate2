@@ -109,7 +109,14 @@ P2reg <- function(object, h, j, l = NULL, formula = ~1,
 #'   per destination state (named), giving \eqn{P_{hj\ell}(Z)} for each l.
 #' @export
 predict.P2reg <- function(object, newdata, type = "response", ...) {
-  sapply(object$models, function(fit) stats::predict(fit, newdata = newdata, type = type, ...))
+  ## vapply + explicit matrix(): sapply() would, for a single-row newdata,
+  ## concatenate predict.glm()'s own (newdata row) names onto the destination
+  ## labels (e.g. "B.1" instead of "B"); stripping inner names avoids that.
+  out <- vapply(object$models, function(fit)
+    unname(stats::predict(fit, newdata = newdata, type = type, ...)),
+    numeric(nrow(newdata)))
+  matrix(out, nrow = nrow(newdata),
+         dimnames = list(rownames(newdata), names(object$models)))
 }
 
 #' @export
@@ -161,6 +168,6 @@ print.summary.P2reg <- function(x, digits = 4, ...) {
   for (nm in intersect(names(y), c("estimate", "se", "HR", "HR.lower", "HR.upper",
                                    "exp.coef", "exp.lower", "exp.upper", "p.value")))
     y[[nm]] <- round(y[[nm]], digits)
-  print(y, row.names = FALSE)
+  print(as.data.frame(y), row.names = FALSE)
   invisible(x)
 }
