@@ -121,7 +121,14 @@ simulate2 <- function(n, tensor, first, init = NULL, entry = NULL,
       absorbed[ak[ns %in% absorbing]] <- TRUE
     }
     done <- all(absorbed) && (is.null(entry) || all(entered))
-    if (done || s >= maxT) break
+    if (done) break
+    if (s >= maxT) {
+      warning(sprintf(
+        paste("simulate2() stopped at maxT = %d with %d/%d individual(s) not yet absorbed",
+              "(check for a zero-probability row in `tensor` for an observed (h, j) pair)."),
+        maxT, sum(!absorbed), n), call. = FALSE)
+      break
+    }
   }
 
   data.table::data.table(id = rec_id, time = rec_t,

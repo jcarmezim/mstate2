@@ -12,6 +12,7 @@ from_msdata(
   Tstart = "Tstart",
   Tstop = "Tstop",
   status = "status",
+  keep = NULL,
   round_fun = rnd
 )
 }
@@ -20,10 +21,17 @@ from_msdata(
 
 \item{id, from, to, Tstart, Tstop, status}{Column names.}
 
+\item{keep}{Optional character vector of baseline (time-fixed) covariate
+column names in \code{x} to carry through to the output panel, replicated
+on every row of a subject. Mirrors the \code{keep} argument of
+\code{mstate::msprep()}, so an msdata object built with covariates kept
+there converts directly.}
+
 \item{round_fun}{Discretisation function for transition times. Default rnd().}
 }
 \value{
-A data.table in panel format (id, time, state).
+A data.table in panel format (id, time, state, and, if requested,
+  the \code{keep} covariate columns).
 }
 \description{
 Convert an mstate 'msdata' object to discrete-time panel format
