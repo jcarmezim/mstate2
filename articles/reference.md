@@ -57,6 +57,7 @@ invasive ventilation (`NIMV`, `IMV`), recovery (`Recov`), discharge
 ``` r
 
 library(mstate2)
+library(dplyr)
 load("MSM_Data.RData")
 ```
 
@@ -111,7 +112,7 @@ rnd(c(-2.5, -0.5, 0.4, 0.5, 1.5, 2.5))
 #> [1] -3 -1  0  1  2  3
 round(c(-2.5, -0.5, 0.4, 0.5, 1.5, 2.5))
 #> [1] -2  0  0  0  2  2
-sum(MSM$t.sp %% 1 == 0.5)      # half-day stays in severe pneumonia in DIVINE
+MSM |> filter(t.sp %% 1 == 0.5) |> nrow()   # half-day stays in severe pneumonia
 #> [1] 146
 ```
 
@@ -172,10 +173,15 @@ visited at most once.
 panel <- sojourn_to_panel(MSM, id = "id", segments = segs, absorbing = absb)
 dim(panel)
 #> [1] 27736     3
-table(panel$state)          # patient-days in each state
-#> 
-#> Death Disch   IMV  NIMV   NSP Recov    SP 
-#>   218  1858  4681  1019 12432  4228  3300
+count(panel, state)         # patient-days in each state
+#>    state     n
+#> 1: Death   218
+#> 2: Disch  1858
+#> 3:   IMV  4681
+#> 4:  NIMV  1019
+#> 5:   NSP 12432
+#> 6: Recov  4228
+#> 7:    SP  3300
 ```
 
 Every DIVINE patient ends in `Disch` or `Death`, so no follow-up is
@@ -404,18 +410,18 @@ fit
 #>   states: NSP, SP, Recov, NIMV, IMV, Disch, Death
 #>   95% wald confidence intervals; 2076 subjects
 #>   39 estimated transition probabilities (h -> j -> l)
-subset(fit$estimate, j == "SP")                # Table 2 of the paper
+fit$estimate |> filter(j == "SP")             # Table 2 of the paper
 #>      h  j     l        p       se    lower    upper n.trans at.risk
-#> 5  NSP SP    SP 0.615572 0.023995 0.568542 0.662602     253     411
-#> 6  NSP SP Recov 0.007299 0.004199 0.000000 0.015529       3     411
-#> 7  NSP SP  NIMV 0.223844 0.020560 0.183547 0.264141      92     411
-#> 8  NSP SP   IMV 0.150852 0.017654 0.116250 0.185453      62     411
-#> 9  NSP SP Death 0.002433 0.002430 0.000000 0.007196       1     411
-#> 10  SP SP    SP 0.864693 0.006622 0.851713 0.877672    2307    2668
-#> 11  SP SP Recov 0.082459 0.005325 0.072022 0.092896     220    2668
-#> 12  SP SP  NIMV 0.025487 0.003051 0.019507 0.031467      68    2668
-#> 13  SP SP   IMV 0.018366 0.002599 0.013271 0.023461      49    2668
-#> 14  SP SP Death 0.008996 0.001828 0.005413 0.012578      24    2668
+#> 1  NSP SP    SP 0.615572 0.023995 0.568542 0.662602     253     411
+#> 2  NSP SP Recov 0.007299 0.004199 0.000000 0.015529       3     411
+#> 3  NSP SP  NIMV 0.223844 0.020560 0.183547 0.264141      92     411
+#> 4  NSP SP   IMV 0.150852 0.017654 0.116250 0.185453      62     411
+#> 5  NSP SP Death 0.002433 0.002430 0.000000 0.007196       1     411
+#> 6   SP SP    SP 0.864693 0.006622 0.851713 0.877672    2307    2668
+#> 7   SP SP Recov 0.082459 0.005325 0.072022 0.092896     220    2668
+#> 8   SP SP  NIMV 0.025487 0.003051 0.019507 0.031467      68    2668
+#> 9   SP SP   IMV 0.018366 0.002599 0.013271 0.023461      49    2668
+#> 10  SP SP Death 0.008996 0.001828 0.005413 0.012578      24    2668
 round(fit$P[, , "NSP"], 3)     # transition matrix for patients in NSP at the previous time
 #>         NSP    SP Recov  NIMV   IMV Disch Death
 #> NSP   0.843 0.024 0.000 0.000 0.000 0.129 0.003
@@ -508,18 +514,18 @@ bt
 #>   states: NSP, SP, Recov, NIMV, IMV, Disch, Death
 #>   95% percentile intervals for n-step predictions; 2076 subjects
 #>   39 estimated transition probabilities (h -> j -> l)
-subset(bt$estimate, j == "SP")[, c("h", "l", "p", "se", "se.boot")]
+bt$estimate |> filter(j == "SP") |> select(h, l, p, se, se.boot)
 #>      h     l        p       se  se.boot
-#> 5  NSP    SP 0.615572 0.023995 0.024436
-#> 6  NSP Recov 0.007299 0.004199 0.004189
-#> 7  NSP  NIMV 0.223844 0.020560 0.019790
-#> 8  NSP   IMV 0.150852 0.017654 0.017963
-#> 9  NSP Death 0.002433 0.002430 0.002376
-#> 10  SP    SP 0.864693 0.006622 0.007362
-#> 11  SP Recov 0.082459 0.005325 0.004295
-#> 12  SP  NIMV 0.025487 0.003051 0.003471
-#> 13  SP   IMV 0.018366 0.002599 0.002752
-#> 14  SP Death 0.008996 0.001828 0.001995
+#> 1  NSP    SP 0.615572 0.023995 0.024436
+#> 2  NSP Recov 0.007299 0.004199 0.004189
+#> 3  NSP  NIMV 0.223844 0.020560 0.019790
+#> 4  NSP   IMV 0.150852 0.017654 0.017963
+#> 5  NSP Death 0.002433 0.002430 0.002376
+#> 6   SP    SP 0.864693 0.006622 0.007362
+#> 7   SP Recov 0.082459 0.005325 0.004295
+#> 8   SP  NIMV 0.025487 0.003051 0.003471
+#> 9   SP   IMV 0.018366 0.002599 0.002752
+#> 10  SP Death 0.008996 0.001828 0.001995
 ckequations(bt, h = "NSP", j = "SP", l = "NIMV", nsteps = 5, bounds = TRUE)
 #>   n estimate   lower  upper
 #> 1 1   0.2238 0.18338 0.2608
@@ -882,18 +888,32 @@ in `states`. Warning if `maxT` is reached with individuals still active
 
 ## simulate from the model fitted to DIVINE; the first move (no previous
 ## time) uses the empirical matrix of day 0 -> day 1
-x0  <- panel[time == 0, .(id, from = state)]
-x1  <- panel[time == 1, .(id, to = state)]
-m01 <- merge(x0, x1, by = "id")
-first_mat <- unclass(prop.table(table(factor(m01$from, estados), factor(m01$to, estados)), 1))
-first_mat[is.nan(first_mat)] <- 0
-adm <- prop.table(table(factor(x0$from, levels = estados)))
+first_moves <- inner_join(
+  panel |> filter(time == 0) |> select(id, from = state),     # state at admission
+  panel |> filter(time == 1) |> select(id, to = state),       # state on day 1
+  by = "id")
+first_mat <- first_moves |>                                    # first move (no previous time)
+  count(from = factor(from, estados), to = factor(to, estados), .drop = FALSE) |>
+  group_by(from) |>
+  mutate(p = n / pmax(sum(n), 1)) |>
+  ungroup() |>
+  xtabs(formula = p ~ from + to) |>
+  unclass()
+init <- first_moves |>                                         # distribution at admission
+  count(state = factor(from, estados), .drop = FALSE) |>
+  mutate(p = n / sum(n)) |>
+  pull(p, name = state)
 set.seed(2)
-sim <- simulate2(2000, fit$P, first = first_mat, init = adm)
-table(sim$state)
-#> 
-#>   NSP    SP Recov  NIMV   IMV Disch Death 
-#> 11601  3303  4409  1023  5382  1780   220
+sim <- simulate2(2000, fit$P, first = first_mat, init = init)
+count(sim, state)
+#>    state     n
+#> 1:   NSP 11601
+#> 2:    SP  3303
+#> 3: Recov  4409
+#> 4:  NIMV  1023
+#> 5:   IMV  5382
+#> 6: Disch  1780
+#> 7: Death   220
 set.seed(2)
 head(simulate2(3, fit$P, first = first_mat, entry = c(NSP = 0.3)), 8)   # staggered entry
 #>    id time state

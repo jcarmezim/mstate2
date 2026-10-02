@@ -36,16 +36,15 @@ and is not included in `mstate2`: download it and load it.
 ``` r
 
 library(mstate2)
+library(dplyr)
 load("MSM_Data.RData")          # data frame MSM, one row per patient
 ```
 
 ``` r
 
-nrow(MSM)
-#> [1] 2076
-c(discharged = sum(MSM$disch.s), died = sum(MSM$death.s))
-#> discharged       died 
-#>       1858        218
+MSM |> summarise(patients = n(), discharged = sum(disch.s), died = sum(death.s))
+#>   patients discharged died
+#> 1     2076       1858  218
 ```
 
 The states are non-severe and severe pneumonia (`NSP`, `SP`),
@@ -82,7 +81,7 @@ not reproduce Table 2:
 
 ``` r
 
-sum(MSM$t.sp %% 1 == 0.5)       # half-day stays in SP
+MSM |> filter(t.sp %% 1 == 0.5) |> nrow()    # half-day stays in SP
 #> [1] 146
 rnd(0.5); round(0.5)
 #> [1] 1
@@ -131,14 +130,15 @@ with Wald 95% confidence intervals (Corollaries 1–2).
 ``` r
 
 fit <- P2est(d)
-table2 <- subset(fit$estimate, j == "SP" & l %in% c("NIMV", "IMV"),
-                 select = c(h, j, l, p, se, lower, upper, n.trans, at.risk))
+table2 <- fit$estimate |>
+  filter(j == "SP", l %in% c("NIMV", "IMV")) |>
+  select(h, j, l, p, se, lower, upper, n.trans, at.risk)
 table2
-#>      h  j    l       p       se   lower   upper n.trans at.risk
-#> 7  NSP SP NIMV 0.22384 0.020560 0.18355 0.26414      92     411
-#> 8  NSP SP  IMV 0.15085 0.017654 0.11625 0.18545      62     411
-#> 12  SP SP NIMV 0.02549 0.003051 0.01951 0.03147      68    2668
-#> 13  SP SP  IMV 0.01837 0.002599 0.01327 0.02346      49    2668
+#>     h  j    l       p       se   lower   upper n.trans at.risk
+#> 1 NSP SP NIMV 0.22384 0.020560 0.18355 0.26414      92     411
+#> 2 NSP SP  IMV 0.15085 0.017654 0.11625 0.18545      62     411
+#> 3  SP SP NIMV 0.02549 0.003051 0.01951 0.03147      68    2668
+#> 4  SP SP  IMV 0.01837 0.002599 0.01327 0.02346      49    2668
 ```
 
 **Comparison with Table 2 of the paper:**
@@ -146,12 +146,10 @@ table2
 ``` r
 
 published <- c(0.224, 0.151, 0.025, 0.018)        # NSP->NIMV, NSP->IMV, SP->NIMV, SP->IMV
-cmp_t2 <- data.frame(history  = paste(table2$h, table2$j, sep = " -> "),
-                     to       = table2$l,
-                     paper    = published,
-                     mstate2  = round(table2$p, 3))
-cmp_t2$match <- cmp_t2$paper == cmp_t2$mstate2
-cmp_t2
+table2 |>
+  transmute(history = paste(h, j, sep = " -> "), to = l,
+            paper = published, mstate2 = round(p, 3)) |>
+  mutate(match = paper == mstate2)
 #>     history   to paper mstate2 match
 #> 1 NSP -> SP NIMV 0.224   0.224  TRUE
 #> 2 NSP -> SP  IMV 0.151   0.151  TRUE
@@ -168,11 +166,14 @@ overlap, for NIMV or for IMV:
 
 ``` r
 
-ci <- function(hh, ll) unlist(table2[table2$h == hh & table2$l == ll, c("lower", "upper")])
-c(NIMV = ci("NSP", "NIMV")[["lower"]] > ci("SP", "NIMV")[["upper"]],
-  IMV  = ci("NSP", "IMV")[["lower"]]  > ci("SP", "IMV")[["upper"]])
-#> NIMV  IMV 
-#> TRUE TRUE
+table2 |>
+  group_by(to = l) |>
+  summarise(separated = lower[h == "NSP"] > upper[h == "SP"])
+#> # A tibble: 2 × 2
+#>   to    separated
+#>   <fct> <lgl>    
+#> 1 NIMV  TRUE     
+#> 2 IMV   TRUE
 ```
 
 A first-order model, which ignores the state at the previous time, would
@@ -274,13 +275,15 @@ par(op)
 
 ``` r
 
-data.frame(target          = c("NIMV", "IMV"),
-           first_overlap   = c(overlap_step(cmp_nimv)$n, overlap_step(cmp_imv)$n),
-           separated_days  = c(overlap_step(cmp_nimv)$separated_steps,
-                               overlap_step(cmp_imv)$separated_steps))
+tibble(target         = c("NIMV", "IMV"),
+       first_overlap  = c(overlap_step(cmp_nimv)$n, overlap_step(cmp_imv)$n),
+       separated_days = c(overlap_step(cmp_nimv)$separated_steps,
+                          overlap_step(cmp_imv)$separated_steps))
+#> # A tibble: 2 × 3
 #>   target first_overlap separated_days
-#> 1   NIMV             5              4
-#> 2    IMV             7              6
+#>   <chr>          <int>          <int>
+#> 1 NIMV               5              4
+#> 2 IMV                7              6
 ```
 
 The state at the previous time changes the prediction of non-invasive
@@ -342,24 +345,38 @@ transitions:
 
 ``` r
 
-x0  <- panel[time == 0, .(id, from = state)]
-x1  <- panel[time == 1, .(id, to = state)]
-m01 <- merge(x0, x1, by = "id")
-first_mat <- unclass(prop.table(table(factor(m01$from, estados), factor(m01$to, estados)), 1))
-first_mat[is.nan(first_mat)] <- 0
-init <- prop.table(table(factor(x0$from, levels = estados)))
+first_moves <- inner_join(
+  panel |> filter(time == 0) |> select(id, from = state),     # state at admission
+  panel |> filter(time == 1) |> select(id, to = state),       # state on day 1
+  by = "id")
+first_mat <- first_moves |>                                    # first move (no previous time)
+  count(from = factor(from, estados), to = factor(to, estados), .drop = FALSE) |>
+  group_by(from) |>
+  mutate(p = n / pmax(sum(n), 1)) |>
+  ungroup() |>
+  xtabs(formula = p ~ from + to) |>
+  unclass()
+init <- first_moves |>                                         # distribution at admission
+  count(state = factor(from, estados), .drop = FALSE) |>
+  mutate(p = n / sum(n)) |>
+  pull(p, name = state)
 
 set.seed(2025)
 sim <- simulate2(20000, fit$P, first = first_mat, init = init)
 fit_sim <- P2est(prep2(sim, states = estados))
-res <- rbind(DIVINE    = table2$p,
-             simulated = c(fit_sim$P["SP", "NIMV", "NSP"], fit_sim$P["SP", "IMV", "NSP"],
-                           fit_sim$P["SP", "NIMV", "SP"],  fit_sim$P["SP", "IMV", "SP"]))
-colnames(res) <- c("NSP>SP>NIMV", "NSP>SP>IMV", "SP>SP>NIMV", "SP>SP>IMV")
-round(res, 3)
-#>           NSP>SP>NIMV NSP>SP>IMV SP>SP>NIMV SP>SP>IMV
-#> DIVINE          0.224      0.151      0.025     0.018
-#> simulated       0.227      0.154      0.027     0.019
+bind_rows(DIVINE = fit$estimate, simulated = fit_sim$estimate, .id = "data") |>
+  filter(j == "SP", l %in% c("NIMV", "IMV")) |>
+  select(data, h, j, l, p) |>
+  arrange(h, l, data)
+#>        data   h  j    l       p
+#> 1    DIVINE NSP SP NIMV 0.22384
+#> 2 simulated NSP SP NIMV 0.22748
+#> 3    DIVINE NSP SP  IMV 0.15085
+#> 4 simulated NSP SP  IMV 0.15420
+#> 5    DIVINE  SP SP NIMV 0.02549
+#> 6 simulated  SP SP NIMV 0.02712
+#> 7    DIVINE  SP SP  IMV 0.01837
+#> 8 simulated  SP SP  IMV 0.01943
 ```
 
 With a large simulated cohort, the RPE recovers the probabilities of the

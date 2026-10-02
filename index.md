@@ -96,6 +96,7 @@ death (`Death`).
 ``` r
 
 library(mstate2)
+library(dplyr)
 load("MSM_Data.RData")
 ```
 
@@ -103,13 +104,13 @@ load("MSM_Data.RData")
 
 dim(MSM)
 #> [1] 2076    9
-table(admission = MSM$inistat)
-#> admission
-#>    1    2 
-#> 1855  221
-c(discharged = sum(MSM$disch.s), died = sum(MSM$death.s))
-#> discharged       died 
-#>       1858        218
+count(MSM, inistat)                                   # state at admission
+#>    inistat    n
+#> 1:       1 1855
+#> 2:       2  221
+summarise(MSM, discharged = sum(disch.s), died = sum(death.s))
+#>   discharged died
+#> 1       1858  218
 ```
 
 # 3. Preparing the data
@@ -151,15 +152,20 @@ absb  <- c(Disch = "disch.s", Death = "death.s")
 panel <- sojourn_to_panel(MSM, id = "id", segments = segs, absorbing = absb)
 dim(panel)
 #> [1] 27736     3
-table(panel$state)
-#> 
-#> Death Disch   IMV  NIMV   NSP Recov    SP 
-#>   218  1858  4681  1019 12432  4228  3300
+count(panel, state)
+#>    state     n
+#> 1: Death   218
+#> 2: Disch  1858
+#> 3:   IMV  4681
+#> 4:  NIMV  1019
+#> 5:   NSP 12432
+#> 6: Recov  4228
+#> 7:    SP  3300
 ```
 
-[`table()`](https://rdrr.io/r/base/table.html) counts patient-days in
-each state: the panel has one row per patient and day of follow-up,
-ending in `Disch` or `Death`.
+[`count()`](https://dplyr.tidyverse.org/reference/count.html) gives the
+patient-days in each state: the panel has one row per patient and day of
+follow-up, ending in `Disch` or `Death`.
 
 ## `rnd()`: rounding half away from zero
 
@@ -174,9 +180,9 @@ round(c(0.5, 1.5, 2.5))
 [`round()`](https://rdrr.io/r/base/Round.html) sends halves to the
 nearest even integer, so a stay of half a day would vanish.
 [`rnd()`](https://jcarmezim.github.io/mstate2/reference/rnd.md) sends
-them away from zero, as in the DIVINE analysis.
-`sum(MSM$t.sp != round(MSM$t.sp))` = 146 severe-pneumonia stays in
-DIVINE are not whole days. If a positive stay rounds to 0 days,
+them away from zero, as in the DIVINE analysis. In DIVINE, 146
+severe-pneumonia stays last a whole number of days plus one half. If a
+positive stay rounds to 0 days,
 [`sojourn_to_panel()`](https://jcarmezim.github.io/mstate2/reference/sojourn_to_panel.md)
 drops it and warns, because the transitions into and out of that state
 would be lost; this never happens in DIVINE.
@@ -321,18 +327,19 @@ part for patients in severe pneumonia at the current time:
 
 ``` r
 
-subset(fit$estimate, j == "SP")
+fit$estimate |>
+  filter(j == "SP")
 #>      h  j     l        p       se    lower    upper n.trans at.risk
-#> 5  NSP SP    SP 0.615572 0.023995 0.568542 0.662602     253     411
-#> 6  NSP SP Recov 0.007299 0.004199 0.000000 0.015529       3     411
-#> 7  NSP SP  NIMV 0.223844 0.020560 0.183547 0.264141      92     411
-#> 8  NSP SP   IMV 0.150852 0.017654 0.116250 0.185453      62     411
-#> 9  NSP SP Death 0.002433 0.002430 0.000000 0.007196       1     411
-#> 10  SP SP    SP 0.864693 0.006622 0.851713 0.877672    2307    2668
-#> 11  SP SP Recov 0.082459 0.005325 0.072022 0.092896     220    2668
-#> 12  SP SP  NIMV 0.025487 0.003051 0.019507 0.031467      68    2668
-#> 13  SP SP   IMV 0.018366 0.002599 0.013271 0.023461      49    2668
-#> 14  SP SP Death 0.008996 0.001828 0.005413 0.012578      24    2668
+#> 1  NSP SP    SP 0.615572 0.023995 0.568542 0.662602     253     411
+#> 2  NSP SP Recov 0.007299 0.004199 0.000000 0.015529       3     411
+#> 3  NSP SP  NIMV 0.223844 0.020560 0.183547 0.264141      92     411
+#> 4  NSP SP   IMV 0.150852 0.017654 0.116250 0.185453      62     411
+#> 5  NSP SP Death 0.002433 0.002430 0.000000 0.007196       1     411
+#> 6   SP SP    SP 0.864693 0.006622 0.851713 0.877672    2307    2668
+#> 7   SP SP Recov 0.082459 0.005325 0.072022 0.092896     220    2668
+#> 8   SP SP  NIMV 0.025487 0.003051 0.019507 0.031467      68    2668
+#> 9   SP SP   IMV 0.018366 0.002599 0.013271 0.023461      49    2668
+#> 10  SP SP Death 0.008996 0.001828 0.005413 0.012578      24    2668
 ```
 
 A patient in `SP` who was in `NSP` at the previous time (who has just
@@ -363,10 +370,12 @@ probabilities:
 ``` r
 
 fit_lg <- P2est(d, ci = "logit")
-subset(fit_lg$estimate, j == "SP" & l == "Death")[, c("h", "l", "p", "lower", "upper")]
-#>      h     l        p     lower   upper
-#> 9  NSP Death 0.002433 0.0003426 0.01706
-#> 14  SP Death 0.008996 0.0060365 0.01339
+fit_lg$estimate |>
+  filter(j == "SP", l == "Death") |>
+  select(h, l, p, lower, upper)
+#>     h     l        p     lower   upper
+#> 1 NSP Death 0.002433 0.0003426 0.01706
+#> 2  SP Death 0.008996 0.0060365 0.01339
 ```
 
 ## `P2boot()`: bootstrap of patients
@@ -391,19 +400,21 @@ once, so replicates are cheap:
 
 system.time(bt <- P2boot(d, B = 500, seed = 1))
 #>    user  system elapsed 
-#>   0.167   0.004   0.161
-subset(bt$estimate, j == "SP")[, c("h", "l", "p", "se", "se.boot")]
+#>   0.168   0.004   0.165
+bt$estimate |>
+  filter(j == "SP") |>
+  select(h, l, p, se, se.boot)
 #>      h     l        p       se  se.boot
-#> 5  NSP    SP 0.615572 0.023995 0.024436
-#> 6  NSP Recov 0.007299 0.004199 0.004189
-#> 7  NSP  NIMV 0.223844 0.020560 0.019790
-#> 8  NSP   IMV 0.150852 0.017654 0.017963
-#> 9  NSP Death 0.002433 0.002430 0.002376
-#> 10  SP    SP 0.864693 0.006622 0.007362
-#> 11  SP Recov 0.082459 0.005325 0.004295
-#> 12  SP  NIMV 0.025487 0.003051 0.003471
-#> 13  SP   IMV 0.018366 0.002599 0.002752
-#> 14  SP Death 0.008996 0.001828 0.001995
+#> 1  NSP    SP 0.615572 0.023995 0.024436
+#> 2  NSP Recov 0.007299 0.004199 0.004189
+#> 3  NSP  NIMV 0.223844 0.020560 0.019790
+#> 4  NSP   IMV 0.150852 0.017654 0.017963
+#> 5  NSP Death 0.002433 0.002430 0.002376
+#> 6   SP    SP 0.864693 0.006622 0.007362
+#> 7   SP Recov 0.082459 0.005325 0.004295
+#> 8   SP  NIMV 0.025487 0.003051 0.003471
+#> 9   SP   IMV 0.018366 0.002599 0.002752
+#> 10  SP Death 0.008996 0.001828 0.001995
 ```
 
 **Why.** Patients are the independent units and their days are not, so
@@ -585,14 +596,23 @@ model fitted to DIVINE:
 
 ``` r
 
-x0  <- panel[time == 0, .(id, from = state)]                  # state at admission
-x1  <- panel[time == 1, .(id, to = state)]                    # state on day 1
-m01 <- merge(x0, x1, by = "id")
-first_mat <- unclass(prop.table(table(factor(m01$from, estados), factor(m01$to, estados)), 1))
-first_mat[is.nan(first_mat)] <- 0                             # first move (no previous time)
-adm <- prop.table(table(factor(x0$from, levels = estados)))
+first_moves <- inner_join(
+  panel |> filter(time == 0) |> select(id, from = state),     # state at admission
+  panel |> filter(time == 1) |> select(id, to = state),       # state on day 1
+  by = "id")
+first_mat <- first_moves |>                                    # first move (no previous time)
+  count(from = factor(from, estados), to = factor(to, estados), .drop = FALSE) |>
+  group_by(from) |>
+  mutate(p = n / pmax(sum(n), 1)) |>
+  ungroup() |>
+  xtabs(formula = p ~ from + to) |>
+  unclass()
+init <- first_moves |>                                         # distribution at admission
+  count(state = factor(from, estados), .drop = FALSE) |>
+  mutate(p = n / sum(n)) |>
+  pull(p, name = state)
 set.seed(1)
-sim <- simulate2(2000, fit$P, first = first_mat, init = adm)
+sim <- simulate2(2000, fit$P, first = first_mat, init = init)
 fit_sim <- P2est(prep2(sim, states = estados))
 round(c(DIVINE = fit$P["SP", "NIMV", "NSP"], simulated = fit_sim$P["SP", "NIMV", "NSP"]), 3)
 #>    DIVINE simulated 

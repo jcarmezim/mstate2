@@ -296,17 +296,18 @@ respiratory support (<code>Recov</code>), discharge (<code>Disch</code>)
 and death (<code>Death</code>).</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://jcarmezim.github.io/mstate2/">mstate2</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/load.html" class="external-link">load</a></span><span class="op">(</span><span class="st">"MSM_Data.RData"</span><span class="op">)</span></span></code></pre></div>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">MSM</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 2076    9</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span>admission <span class="op">=</span> <span class="va">MSM</span><span class="op">$</span><span class="va">inistat</span><span class="op">)</span></span>
-<span><span class="co">#&gt; admission</span></span>
-<span><span class="co">#&gt;    1    2 </span></span>
-<span><span class="co">#&gt; 1855  221</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>discharged <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">MSM</span><span class="op">$</span><span class="va">disch.s</span><span class="op">)</span>, died <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">MSM</span><span class="op">$</span><span class="va">death.s</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; discharged       died </span></span>
-<span><span class="co">#&gt;       1858        218</span></span></code></pre></div>
+<span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">MSM</span>, <span class="va">inistat</span><span class="op">)</span>                                   <span class="co"># state at admission</span></span>
+<span><span class="co">#&gt;    inistat    n</span></span>
+<span><span class="co">#&gt; 1:       1 1855</span></span>
+<span><span class="co">#&gt; 2:       2  221</span></span>
+<span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html" class="external-link">summarise</a></span><span class="op">(</span><span class="va">MSM</span>, discharged <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">disch.s</span><span class="op">)</span>, died <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">death.s</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   discharged died</span></span>
+<span><span class="co">#&gt; 1       1858  218</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="preparing-the-data">3. Preparing the data<a class="anchor" aria-label="anchor" href="#preparing-the-data"></a>
@@ -370,13 +371,18 @@ durations are available, the order of the visits is the one given by
 <span><span class="va">panel</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/sojourn_to_panel.html">sojourn_to_panel</a></span><span class="op">(</span><span class="va">MSM</span>, id <span class="op">=</span> <span class="st">"id"</span>, segments <span class="op">=</span> <span class="va">segs</span>, absorbing <span class="op">=</span> <span class="va">absb</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">panel</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 27736     3</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">panel</span><span class="op">$</span><span class="va">state</span><span class="op">)</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Death Disch   IMV  NIMV   NSP Recov    SP </span></span>
-<span><span class="co">#&gt;   218  1858  4681  1019 12432  4228  3300</span></span></code></pre></div>
-<p><code><a href="https://rdrr.io/r/base/table.html" class="external-link">table()</a></code> counts patient-days in each state: the panel has
-one row per patient and day of follow-up, ending in <code>Disch</code>
-or <code>Death</code>.</p>
+<span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">panel</span>, <span class="va">state</span><span class="op">)</span></span>
+<span><span class="co">#&gt;    state     n</span></span>
+<span><span class="co">#&gt; 1: Death   218</span></span>
+<span><span class="co">#&gt; 2: Disch  1858</span></span>
+<span><span class="co">#&gt; 3:   IMV  4681</span></span>
+<span><span class="co">#&gt; 4:  NIMV  1019</span></span>
+<span><span class="co">#&gt; 5:   NSP 12432</span></span>
+<span><span class="co">#&gt; 6: Recov  4228</span></span>
+<span><span class="co">#&gt; 7:    SP  3300</span></span></code></pre></div>
+<p><code><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count()</a></code> gives the patient-days in each state: the panel
+has one row per patient and day of follow-up, ending in
+<code>Disch</code> or <code>Death</code>.</p>
 </div>
 <div class="section level3">
 <h3 id="rnd-rounding-half-away-from-zero">
@@ -389,10 +395,9 @@ or <code>Death</code>.</p>
 <span><span class="co">#&gt; [1] 0 2 2</span></span></code></pre></div>
 <p><code><a href="https://rdrr.io/r/base/Round.html" class="external-link">round()</a></code> sends halves to the nearest even integer, so a
 stay of half a day would vanish. <code><a href="../reference/rnd.html">rnd()</a></code> sends them away from
-zero, as in the DIVINE analysis.
-<code>sum(MSM$t.sp != round(MSM$t.sp))</code> = 146 severe-pneumonia
-stays in DIVINE are not whole days. If a positive stay rounds to 0 days,
-<code><a href="../reference/sojourn_to_panel.html">sojourn_to_panel()</a></code> drops it and warns, because the
+zero, as in the DIVINE analysis. In DIVINE, 146 severe-pneumonia stays
+last a whole number of days plus one half. If a positive stay rounds to
+0 days, <code><a href="../reference/sojourn_to_panel.html">sojourn_to_panel()</a></code> drops it and warns, because the
 transitions into and out of that state would be lost; this never happens
 in DIVINE.</p>
 </div>
@@ -589,18 +594,19 @@ with the estimate, standard error, interval, number of transitions
 <strong>Table 2 of the paper</strong> is the part for patients in severe
 pneumonia at the current time:</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">estimate</span>, <span class="va">j</span> <span class="op">==</span> <span class="st">"SP"</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">fit</span><span class="op">$</span><span class="va">estimate</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">j</span> <span class="op">==</span> <span class="st">"SP"</span><span class="op">)</span></span>
 <span><span class="co">#&gt;      h  j     l        p       se    lower    upper n.trans at.risk</span></span>
-<span><span class="co">#&gt; 5  NSP SP    SP 0.615572 0.023995 0.568542 0.662602     253     411</span></span>
-<span><span class="co">#&gt; 6  NSP SP Recov 0.007299 0.004199 0.000000 0.015529       3     411</span></span>
-<span><span class="co">#&gt; 7  NSP SP  NIMV 0.223844 0.020560 0.183547 0.264141      92     411</span></span>
-<span><span class="co">#&gt; 8  NSP SP   IMV 0.150852 0.017654 0.116250 0.185453      62     411</span></span>
-<span><span class="co">#&gt; 9  NSP SP Death 0.002433 0.002430 0.000000 0.007196       1     411</span></span>
-<span><span class="co">#&gt; 10  SP SP    SP 0.864693 0.006622 0.851713 0.877672    2307    2668</span></span>
-<span><span class="co">#&gt; 11  SP SP Recov 0.082459 0.005325 0.072022 0.092896     220    2668</span></span>
-<span><span class="co">#&gt; 12  SP SP  NIMV 0.025487 0.003051 0.019507 0.031467      68    2668</span></span>
-<span><span class="co">#&gt; 13  SP SP   IMV 0.018366 0.002599 0.013271 0.023461      49    2668</span></span>
-<span><span class="co">#&gt; 14  SP SP Death 0.008996 0.001828 0.005413 0.012578      24    2668</span></span></code></pre></div>
+<span><span class="co">#&gt; 1  NSP SP    SP 0.615572 0.023995 0.568542 0.662602     253     411</span></span>
+<span><span class="co">#&gt; 2  NSP SP Recov 0.007299 0.004199 0.000000 0.015529       3     411</span></span>
+<span><span class="co">#&gt; 3  NSP SP  NIMV 0.223844 0.020560 0.183547 0.264141      92     411</span></span>
+<span><span class="co">#&gt; 4  NSP SP   IMV 0.150852 0.017654 0.116250 0.185453      62     411</span></span>
+<span><span class="co">#&gt; 5  NSP SP Death 0.002433 0.002430 0.000000 0.007196       1     411</span></span>
+<span><span class="co">#&gt; 6   SP SP    SP 0.864693 0.006622 0.851713 0.877672    2307    2668</span></span>
+<span><span class="co">#&gt; 7   SP SP Recov 0.082459 0.005325 0.072022 0.092896     220    2668</span></span>
+<span><span class="co">#&gt; 8   SP SP  NIMV 0.025487 0.003051 0.019507 0.031467      68    2668</span></span>
+<span><span class="co">#&gt; 9   SP SP   IMV 0.018366 0.002599 0.013271 0.023461      49    2668</span></span>
+<span><span class="co">#&gt; 10  SP SP Death 0.008996 0.001828 0.005413 0.012578      24    2668</span></span></code></pre></div>
 <p>A patient in <code>SP</code> who was in <code>NSP</code> at the
 previous time (who has just worsened) has a probability of 0.224 of
 non-invasive ventilation the next day; one who was already in
@@ -624,10 +630,12 @@ next state (rows):</p>
 and are preferable for small probabilities:</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_lg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/P2est.html">P2est</a></span><span class="op">(</span><span class="va">d</span>, ci <span class="op">=</span> <span class="st">"logit"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">fit_lg</span><span class="op">$</span><span class="va">estimate</span>, <span class="va">j</span> <span class="op">==</span> <span class="st">"SP"</span> <span class="op">&amp;</span> <span class="va">l</span> <span class="op">==</span> <span class="st">"Death"</span><span class="op">)</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"h"</span>, <span class="st">"l"</span>, <span class="st">"p"</span>, <span class="st">"lower"</span>, <span class="st">"upper"</span><span class="op">)</span><span class="op">]</span></span>
-<span><span class="co">#&gt;      h     l        p     lower   upper</span></span>
-<span><span class="co">#&gt; 9  NSP Death 0.002433 0.0003426 0.01706</span></span>
-<span><span class="co">#&gt; 14  SP Death 0.008996 0.0060365 0.01339</span></span></code></pre></div>
+<span><span class="va">fit_lg</span><span class="op">$</span><span class="va">estimate</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">j</span> <span class="op">==</span> <span class="st">"SP"</span>, <span class="va">l</span> <span class="op">==</span> <span class="st">"Death"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">h</span>, <span class="va">l</span>, <span class="va">p</span>, <span class="va">lower</span>, <span class="va">upper</span><span class="op">)</span></span>
+<span><span class="co">#&gt;     h     l        p     lower   upper</span></span>
+<span><span class="co">#&gt; 1 NSP Death 0.002433 0.0003426 0.01706</span></span>
+<span><span class="co">#&gt; 2  SP Death 0.008996 0.0060365 0.01339</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="p2boot-bootstrap-of-patients">
@@ -649,19 +657,21 @@ are computed once, so replicates are cheap:</p>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="va">bt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/P2boot.html">P2boot</a></span><span class="op">(</span><span class="va">d</span>, B <span class="op">=</span> <span class="fl">500</span>, seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    user  system elapsed </span></span>
-<span><span class="co">#&gt;   0.167   0.004   0.161</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">bt</span><span class="op">$</span><span class="va">estimate</span>, <span class="va">j</span> <span class="op">==</span> <span class="st">"SP"</span><span class="op">)</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"h"</span>, <span class="st">"l"</span>, <span class="st">"p"</span>, <span class="st">"se"</span>, <span class="st">"se.boot"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="co">#&gt;   0.168   0.004   0.165</span></span>
+<span><span class="va">bt</span><span class="op">$</span><span class="va">estimate</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">j</span> <span class="op">==</span> <span class="st">"SP"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">h</span>, <span class="va">l</span>, <span class="va">p</span>, <span class="va">se</span>, <span class="va">se.boot</span><span class="op">)</span></span>
 <span><span class="co">#&gt;      h     l        p       se  se.boot</span></span>
-<span><span class="co">#&gt; 5  NSP    SP 0.615572 0.023995 0.024436</span></span>
-<span><span class="co">#&gt; 6  NSP Recov 0.007299 0.004199 0.004189</span></span>
-<span><span class="co">#&gt; 7  NSP  NIMV 0.223844 0.020560 0.019790</span></span>
-<span><span class="co">#&gt; 8  NSP   IMV 0.150852 0.017654 0.017963</span></span>
-<span><span class="co">#&gt; 9  NSP Death 0.002433 0.002430 0.002376</span></span>
-<span><span class="co">#&gt; 10  SP    SP 0.864693 0.006622 0.007362</span></span>
-<span><span class="co">#&gt; 11  SP Recov 0.082459 0.005325 0.004295</span></span>
-<span><span class="co">#&gt; 12  SP  NIMV 0.025487 0.003051 0.003471</span></span>
-<span><span class="co">#&gt; 13  SP   IMV 0.018366 0.002599 0.002752</span></span>
-<span><span class="co">#&gt; 14  SP Death 0.008996 0.001828 0.001995</span></span></code></pre></div>
+<span><span class="co">#&gt; 1  NSP    SP 0.615572 0.023995 0.024436</span></span>
+<span><span class="co">#&gt; 2  NSP Recov 0.007299 0.004199 0.004189</span></span>
+<span><span class="co">#&gt; 3  NSP  NIMV 0.223844 0.020560 0.019790</span></span>
+<span><span class="co">#&gt; 4  NSP   IMV 0.150852 0.017654 0.017963</span></span>
+<span><span class="co">#&gt; 5  NSP Death 0.002433 0.002430 0.002376</span></span>
+<span><span class="co">#&gt; 6   SP    SP 0.864693 0.006622 0.007362</span></span>
+<span><span class="co">#&gt; 7   SP Recov 0.082459 0.005325 0.004295</span></span>
+<span><span class="co">#&gt; 8   SP  NIMV 0.025487 0.003051 0.003471</span></span>
+<span><span class="co">#&gt; 9   SP   IMV 0.018366 0.002599 0.002752</span></span>
+<span><span class="co">#&gt; 10  SP Death 0.008996 0.001828 0.001995</span></span></code></pre></div>
 <p><strong>Why.</strong> Patients are the independent units and their
 days are not, so whole patients are resampled, the standard bootstrap
 for clustered data (Davison and Hinkley, 1997; Field and Welsh, 2007).
@@ -864,14 +874,23 @@ the distribution <code>init</code> of the state at time 0; with
 of the paper). It is useful to study the methods under a known model.
 For instance, from the model fitted to DIVINE:</p>
 <div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">x0</span>  <span class="op">&lt;-</span> <span class="va">panel</span><span class="op">[</span><span class="va">time</span> <span class="op">==</span> <span class="fl">0</span>, <span class="fu">.</span><span class="op">(</span><span class="va">id</span>, from <span class="op">=</span> <span class="va">state</span><span class="op">)</span><span class="op">]</span>                  <span class="co"># state at admission</span></span>
-<span><span class="va">x1</span>  <span class="op">&lt;-</span> <span class="va">panel</span><span class="op">[</span><span class="va">time</span> <span class="op">==</span> <span class="fl">1</span>, <span class="fu">.</span><span class="op">(</span><span class="va">id</span>, to <span class="op">=</span> <span class="va">state</span><span class="op">)</span><span class="op">]</span>                    <span class="co"># state on day 1</span></span>
-<span><span class="va">m01</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/merge.html" class="external-link">merge</a></span><span class="op">(</span><span class="va">x0</span>, <span class="va">x1</span>, by <span class="op">=</span> <span class="st">"id"</span><span class="op">)</span></span>
-<span><span class="va">first_mat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">unclass</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/proportions.html" class="external-link">prop.table</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">m01</span><span class="op">$</span><span class="va">from</span>, <span class="va">estados</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">m01</span><span class="op">$</span><span class="va">to</span>, <span class="va">estados</span><span class="op">)</span><span class="op">)</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">first_mat</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/is.finite.html" class="external-link">is.nan</a></span><span class="op">(</span><span class="va">first_mat</span><span class="op">)</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">0</span>                             <span class="co"># first move (no previous time)</span></span>
-<span><span class="va">adm</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/proportions.html" class="external-link">prop.table</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">x0</span><span class="op">$</span><span class="va">from</span>, levels <span class="op">=</span> <span class="va">estados</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">first_moves</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">inner_join</a></span><span class="op">(</span></span>
+<span>  <span class="va">panel</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">time</span> <span class="op">==</span> <span class="fl">0</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">id</span>, from <span class="op">=</span> <span class="va">state</span><span class="op">)</span>,     <span class="co"># state at admission</span></span>
+<span>  <span class="va">panel</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">time</span> <span class="op">==</span> <span class="fl">1</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">id</span>, to <span class="op">=</span> <span class="va">state</span><span class="op">)</span>,       <span class="co"># state on day 1</span></span>
+<span>  by <span class="op">=</span> <span class="st">"id"</span><span class="op">)</span></span>
+<span><span class="va">first_mat</span> <span class="op">&lt;-</span> <span class="va">first_moves</span> <span class="op">|&gt;</span>                                    <span class="co"># first move (no previous time)</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span>from <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">from</span>, <span class="va">estados</span><span class="op">)</span>, to <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">to</span>, <span class="va">estados</span><span class="op">)</span>, .drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">from</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>p <span class="op">=</span> <span class="va">n</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">pmax</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">n</span><span class="op">)</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">ungroup</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/stats/xtabs.html" class="external-link">xtabs</a></span><span class="op">(</span>formula <span class="op">=</span> <span class="va">p</span> <span class="op">~</span> <span class="va">from</span> <span class="op">+</span> <span class="va">to</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">unclass</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">init</span> <span class="op">&lt;-</span> <span class="va">first_moves</span> <span class="op">|&gt;</span>                                         <span class="co"># distribution at admission</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span>state <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">from</span>, <span class="va">estados</span><span class="op">)</span>, .drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>p <span class="op">=</span> <span class="va">n</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">n</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/pull.html" class="external-link">pull</a></span><span class="op">(</span><span class="va">p</span>, name <span class="op">=</span> <span class="va">state</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
-<span><span class="va">sim</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simulate2.html">simulate2</a></span><span class="op">(</span><span class="fl">2000</span>, <span class="va">fit</span><span class="op">$</span><span class="va">P</span>, first <span class="op">=</span> <span class="va">first_mat</span>, init <span class="op">=</span> <span class="va">adm</span><span class="op">)</span></span>
+<span><span class="va">sim</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simulate2.html">simulate2</a></span><span class="op">(</span><span class="fl">2000</span>, <span class="va">fit</span><span class="op">$</span><span class="va">P</span>, first <span class="op">=</span> <span class="va">first_mat</span>, init <span class="op">=</span> <span class="va">init</span><span class="op">)</span></span>
 <span><span class="va">fit_sim</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/P2est.html">P2est</a></span><span class="op">(</span><span class="fu"><a href="../reference/prep2.html">prep2</a></span><span class="op">(</span><span class="va">sim</span>, states <span class="op">=</span> <span class="va">estados</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>DIVINE <span class="op">=</span> <span class="va">fit</span><span class="op">$</span><span class="va">P</span><span class="op">[</span><span class="st">"SP"</span>, <span class="st">"NIMV"</span>, <span class="st">"NSP"</span><span class="op">]</span>, simulated <span class="op">=</span> <span class="va">fit_sim</span><span class="op">$</span><span class="va">P</span><span class="op">[</span><span class="st">"SP"</span>, <span class="st">"NIMV"</span>, <span class="st">"NSP"</span><span class="op">]</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    DIVINE simulated </span></span>
