@@ -1,0 +1,41 @@
+Package: mstate2
+Type: Package
+Title: Second-Order Markov Multistate Models
+Version: 0.2.0
+Authors@R: c(
+    person("João", "Carmezim", role = c("aut", "cre"),
+           email = "joaocarmezimcorreia@gmail.com"),
+    person("Josu", "Najera-Zuloaga", role = "aut",
+           email = "josu.najera@ehu.eus"),
+    person("Mireia", "Besalú", role = "aut"),
+    person("Cristian", "Tebé", role = "aut"),
+    person("Guadalupe", "Gómez Melis", role = "aut"))
+Description: Nonparametric estimation and inference for second-order Markov
+    multistate models in discrete time. Provides the relative probability
+    estimator (RPE) of the 1-step second-order homogeneous transition
+    probabilities, together with consistent variance estimators, confidence
+    intervals, an extension of the Chapman-Kolmogorov relation for n-step
+    prediction, and evolution intervals.
+    Also provides a discrete-time complementary log-log cause-specific hazard
+    regression for the covariate-adjusted transition probabilities (with
+    time-varying and duration-dependent baselines and covariate-adjusted
+    multi-step prediction), Wald and likelihood-ratio tests of the first-order
+    Markov assumption, subject-level bootstrap intervals for multi-step
+    predictions, a first-order discrete baseline and tools to compare first-
+    and second-order predictions across all transitions, data preparation
+    from 'mstate'-style wide data, and 'probtrans'-compatible output.
+    The package complements 'mstate' by adding a second-order (short-memory)
+    layer to the classical first-order multistate framework. Methods are
+    described in Najera-Zuloaga, Besalu and Gomez Melis (2025, in review) and
+    build on Besalu and Gomez Melis (2024) "Second order Markov multistate
+    models", SORT, 48(2), 209-234.
+License: GPL (>= 3)
+Encoding: UTF-8
+Depends: R (>= 4.0)
+Imports: data.table, stats, graphics, grDevices, utils
+Suggests: mstate, sandwich, splines, testthat (>= 3.0.0), knitr, rmarkdown
+Config/testthat/edition: 3
+VignetteBuilder: knitr
+URL: https://jcarmezim.github.io/mstate2/, https://github.com/jcarmezim/mstate2
+BugReports: https://github.com/jcarmezim/mstate2/issues
+RoxygenNote: 7.3.1

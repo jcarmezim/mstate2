@@ -1,0 +1,1581 @@
+---
+title: "mstate2 function reference"
+author: "João Carmezim"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{mstate2 function reference}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+<!-- This vignette is precomputed: edit reference.Rmd.orig and run
+     vignettes/precompile.R with the DIVINE data available. -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 6.5, fig.height = 4,
+                      fig.align = "center", fig.path = "figures/ref-", dpi = 96)
+options(width = 90, digits = 4)
+divine_path <- Sys.getenv("MSTATE2_DIVINE_DATA", "MSM_Data.RData")
+```
+
+This document is the complete reference for `mstate2`. It lists every
+exported function, every S3 method, every object class and the internal
+helpers, each with the same structure:
+
+* **Definition**: the exact signature, with default values.
+* **What it does**: its purpose in one paragraph.
+* **Arguments**: every argument, its default and its meaning.
+* **Value**: what is returned, including every component of the object.
+* **How it works**: the algorithm and formulas.
+* **Errors and warnings**: every condition the function checks.
+* **Example**: an example on the DIVINE cohort.
+
+For a guided analysis that uses all these functions together, see
+`vignette("mstate2")`.
+
+# Notation and conventions
+
+| Symbol | Meaning |
+|---|---|
+| $X_s$ | state occupied at discrete time $s$ |
+| $h, j, \ell$ | state at the previous time ($X_{s-2}$), at the current time ($X_{s-1}$) and at the next time ($X_s$) |
+| $P_{hj\ell}$ | $P(X_s = \ell \mid X_{s-1} = j, X_{s-2} = h)$, the 1-step second-order transition probability |
+| $\tilde N_{hj\ell}(s)$ | number of subjects observed going $h \to j \to \ell$, arriving in $\ell$ at $s$ |
+| $\tilde Y_{hj}(s-1)$ | number of subjects at risk: in $h$ at $s-2$ and in $j$ at $s-1$; equals $\sum_\ell \tilde N_{hj\ell}(s)$ |
+| $P_{hj\ell}(1, n)$ | $P(X_{n+1} = \ell \mid X_1 = j, X_0 = h)$, the $n$-step probability |
+
+Conventions used throughout the package:
+
+* **Tensor layout.** Second-order probabilities are stored in an
+  $M \times M \times M$ array indexed `P[j, l, h]` = $P_{hj\ell}$: rows =
+  state at the current time, columns = state at the next time, slices = state
+  at the previous time. Each slice
+  `P[, , h]` is an ordinary transition matrix.
+* **States by label or index.** Arguments `h`, `j`, `l` accept either state
+  labels or integer positions in the state space.
+* **Steps and time.** A prediction of $n$ steps starts from $X_0 = h$,
+  $X_1 = j$ and refers to time $s = n + 1$.
+* **Absorbing states** satisfy `P[a, a, h] = 1` for every `h`.
+
+## Example data used in this document
+
+All the examples use the DIVINE cohort of 2076 patients hospitalised with
+COVID-19 (Najera-Zuloaga, Besalú and Gómez Melis, 2025). The data are
+distributed by the DIVINE project
+([`msm_data/MSM_Data.RData`](https://github.com/bruigtp/DIVINE/tree/main/msm_data))
+and are not included in `mstate2`. `MSM` has one row per patient with the
+state at admission (`inistat`: 1 = `NSP`, 2 = `SP`), the days spent in each
+state and the 0/1 indicators of discharge and death. The states are
+non-severe and severe pneumonia (`NSP`, `SP`), non-invasive and invasive
+ventilation (`NIMV`, `IMV`), recovery (`Recov`), discharge (`Disch`) and death
+(`Death`).
+
+```{r load-shown, eval = FALSE}
+library(mstate2)
+load("MSM_Data.RData")
+```
+
+```{r load-run, include = FALSE}
+library(mstate2)
+library(data.table)
+load(divine_path)
+```
+
+```{r setup}
+estados <- c("NSP", "SP", "Recov", "NIMV", "IMV", "Disch", "Death")
+segs    <- c(NSP = "t.nosp", SP = "t.sp", NIMV = "t.nimv", IMV = "t.mv", Recov = "t.recov")
+absb    <- c(Disch = "disch.s", Death = "death.s")
+MSM$ingreso_SP <- as.integer(MSM$inistat == 2)   # admitted in severe pneumonia
+dim(MSM)
+```
+
+# Data preparation
+
+## `rnd()`
+
+**Definition**
+
+```r
+rnd(x)
+```
+
+**What it does.** Rounds numbers to the nearest integer, sending halves
+**away from zero** (0.5 → 1, 2.5 → 3, −0.5 → −1). It is the default
+discretisation of `sojourn_to_panel()` and `from_msdata()`, and the convention
+of the DIVINE analysis.
+
+**Arguments**
+
+| Argument | Default | Meaning |
+|---|---|---|
+| `x` | — | numeric vector |
+
+**Value.** A numeric vector of the same length: `trunc(x + sign(x) * 0.5)`.
+
+**How it works.** Adding $\pm 0.5$ in the direction of the sign and
+truncating towards zero. Base R's `round()` instead sends halves to the
+nearest *even* integer (IEC 60559), so `round(0.5) = 0` would make a half-day
+stay vanish.
+
+**Errors and warnings.** None.
+
+**Example**
+
+```{r rnd}
+rnd(c(-2.5, -0.5, 0.4, 0.5, 1.5, 2.5))
+round(c(-2.5, -0.5, 0.4, 0.5, 1.5, 2.5))
+sum(MSM$t.sp %% 1 == 0.5)      # half-day stays in severe pneumonia in DIVINE
+```
+
+## `sojourn_to_panel()`
+
+**Definition**
+
+```r
+sojourn_to_panel(data, id, segments, absorbing, round_fun = rnd)
+```
+
+**What it does.** Converts **sojourn-time data** (one row per subject, with
+the total time spent in each state and indicators of how follow-up ended)
+into a discrete-time **panel** (one row per subject and time unit, with the
+state occupied).
+
+**Arguments**
+
+| Argument | Default | Meaning |
+|---|---|---|
+| `data` | — | data frame, one row per subject |
+| `id` | — | name of the subject id column |
+| `segments` | — | named character vector, `c(state = "duration column", ...)`, **in visiting order** |
+| `absorbing` | — | named character vector, `c(state = "0/1 indicator column", ...)` |
+| `round_fun` | `rnd` | function used to discretise durations |
+
+**Value.** A `data.table` with columns `id`, `time` (0, 1, 2, …) and
+`state` (character).
+
+**How it works.** For each subject:
+
+1. Durations are discretised with `round_fun`; negative or `NA` durations
+   become 0 ("not visited").
+2. Each state label is repeated as many times as its duration, in the order
+   of `segments`.
+3. The first absorbing state whose indicator equals 1 is appended. If none
+   equals 1, the subject is right-censored and has no final absorbing row.
+4. Times are numbered from 0. Subjects with no duration and no event
+   contribute no rows.
+
+**Errors and warnings.** Error if `data` is not a data frame, or if any
+column named in `id`, `segments` or `absorbing` is missing.
+
+**Caveat.** The order of visits and repeated visits cannot be recovered from
+sojourn times: the order is imposed by `segments` and each state is visited at
+most once.
+
+**Example**
+
+```{r s2p}
+panel <- sojourn_to_panel(MSM, id = "id", segments = segs, absorbing = absb)
+dim(panel)
+table(panel$state)          # patient-days in each state
+```
+
+Every DIVINE patient ends in `Disch` or `Death`, so no follow-up is censored.
+
+## `msprep2()`
+
+**Definition**
+
+```r
+msprep2(time, status, data, states = NULL, trans = NULL, start = NULL,
+        id = NULL, keep = NULL, absorbing = NULL, round_fun = rnd)
+```
+
+**What it does.** The second-order counterpart of `mstate::msprep()`: turns
+data in the same **wide** format (one row per subject, one entry-time and one
+status column per state) into the discrete-time panel that `prep2()` needs.
+`time`, `status`, `data`, `start`, `id` and `keep` have the same meaning as in
+`msprep()`.
+
+**Arguments**
+
+| Argument | Default | Meaning |
+|---|---|---|
+| `time` | — | column names of the entry (or censoring) times, one per state; `NA` for the initial state |
+| `status` | — | column names of the 0/1 status indicators, one per state; `NA` for the initial state |
+| `data` | — | data frame in wide format |
+| `states` | `NULL` | state labels (default: row names of `trans`, names of `time`, or `1, 2, ...`) |
+| `trans` | `NULL` | optional `mstate` transition matrix: state names, absorbing states, and a check of the observed transitions |
+| `start` | `NULL` | list with `state` and `time` (length 1 or `nrow(data)`); default: first state at time 0 |
+| `id` | `NULL` | id column; default `1, ..., n` |
+| `keep` | `NULL` | baseline covariates to carry along |
+| `absorbing` | `NULL` | absorbing states (default: states with no outgoing transition in `trans`) |
+| `round_fun` | `rnd` | discretisation of the times |
+
+**Value.** A `data.table` with columns `id`, `time`, `state` (character) and
+the `keep` columns.
+
+**How it works.** For each subject, the visited states (`status == 1`) are
+ordered by entry time (ties by state order) after the starting state; the
+path stops at the first absorbing state entered (later times are ignored, as
+in `msprep()`). Times are discretised, a grid runs from the start to the end
+of follow-up (the absorption time, or the largest recorded time), and each
+grid time gets the most recently entered state. On `mstate`'s `ebmt3` data
+the result is identical to `msprep()` followed by `from_msdata()`.
+
+**Errors and warnings.** Error if `time` and `status` differ in length, if
+`states` has the wrong length, if a column is missing, or if a start or
+absorbing state is unknown. Warning if neither `trans` nor `absorbing` is given
+(no truncation at absorption), and if an observed transition is not allowed by
+`trans`.
+
+**Example**
+
+```{r msprep2}
+## DIVINE in mstate's wide format: entry time = days spent in the states visited before
+D     <- sapply(segs, function(cl) rnd(MSM[[cl]]))
+entry <- t(apply(D, 1, function(x) cumsum(c(0, x))[seq_along(x)]))
+colnames(entry) <- names(segs)
+end   <- rowSums(D)
+first <- names(segs)[apply(D > 0, 1, function(v) which(v)[1])]      # state at admission
+wide  <- data.frame(id = MSM$id, ingreso_SP = MSM$ingreso_SP)
+for (k in names(segs)) {
+  wide[[paste0(k, ".t")]] <- ifelse(D[, k] > 0, entry[, k], end)
+  wide[[paste0(k, ".s")]] <- as.integer(D[, k] > 0 & first != k)
+}
+wide$Disch.t <- end; wide$Disch.s <- MSM$disch.s
+wide$Death.t <- end; wide$Death.s <- MSM$death.s
+tmat <- as_tmat(prep2(panel, states = estados))
+
+panel_w <- msprep2(time = paste0(estados, ".t"), status = paste0(estados, ".s"), data = wide,
+                   trans = tmat, start = list(state = first, time = 0), id = "id",
+                   keep = "ingreso_SP")
+all.equal(as.data.frame(panel), as.data.frame(panel_w[, c("id", "time", "state")]))
+```
+
+## `from_msdata()`
+
+**Definition**
+
+```r
+from_msdata(x, id = "id", from = "from", to = "to", Tstart = "Tstart",
+            Tstop = "Tstop", status = "status", keep = NULL, round_fun = rnd)
+```
+
+**What it does.** Converts an `mstate` long-format object (`msdata`, as
+produced by `mstate::msprep()`) into a discrete-time panel.
+
+**Arguments**
+
+| Argument | Default | Meaning |
+|---|---|---|
+| `x` | — | `msdata` object, or data frame with the columns below |
+| `id`, `from`, `to`, `Tstart`, `Tstop`, `status` | as named | names of the corresponding columns |
+| `keep` | `NULL` | baseline covariate columns to carry along, replicated on every row of a subject |
+| `round_fun` | `rnd` | function used to discretise transition times |
+
+**Value.** A `data.table` with columns `id`, `time`, `state` and the `keep`
+columns.
+
+**How it works.** For each subject:
+
+1. Rows are sorted by `Tstart`, `Tstop`. The realised transitions are the
+   rows with `status == 1`, ordered by `Tstop`.
+2. The state sequence is the `from` of the first row followed by the `to` of
+   each realised transition. The entry times are the first `Tstart` and each
+   realised `Tstop`, discretised with `round_fun`.
+3. A grid of integer times runs from the first entry time to the largest
+   `Tstop` (possibly a censoring time).
+4. Each grid time gets the most recently entered state
+   (`findInterval()`, i.e. last observation carried forward).
+5. `keep` covariates are taken from the subject's first row.
+
+**Errors and warnings.** Error if any of the six required columns or a
+`keep` column is missing.
+
+**Caveat.** Two transitions that round to the same time collapse: the later
+one wins and the intermediate state never occupies a time unit.
+
+**Example**
+
+```{r fm}
+## msdata object from the wide format built in the msprep2() example
+ms <- mstate::msprep(time = paste0(estados, ".t"), status = paste0(estados, ".s"),
+                     data = wide, trans = tmat, id = "id", keep = "ingreso_SP",
+                     start = list(state = match(first, estados), time = rep(0, nrow(wide))))
+mstate::events(ms)$Frequencies
+panel_m <- from_msdata(ms, keep = "ingreso_SP")
+panel_m[, `:=`(id = as.numeric(as.character(id)), state = estados[state])]
+all.equal(as.data.frame(panel), as.data.frame(panel_m[, .(id, time, state)]))
+```
+
+## `prep2()`
+
+**Definition**
+
+```r
+prep2(data, id = "id", time = "time", state = "state", covariates = NULL,
+      states = NULL, absorbing = NULL, drop.na = FALSE, check.consecutive = TRUE)
+```
+
+**What it does.** Builds the **second-order counting processes**
+$\tilde N_{hj\ell}(s)$ and $\tilde Y_{hj}(s-1)$ from panel data, plus the
+individual-level table of second-order triples. Its output is the input of
+`P2est()`, `P2reg()` and `as_tmat()`.
+
+**Arguments**
+
+| Argument | Default | Meaning |
+|---|---|---|
+| `data` | — | panel data frame, or an `msdata` object (converted with `from_msdata(keep = covariates)`) |
+| `id`, `time`, `state` | `"id"`, `"time"`, `"state"` | column names |
+| `covariates` | `NULL` | baseline covariate columns to carry into `triples` |
+| `states` | `NULL` | state space **and order**; default: observed states (factor levels, or sorted values) |
+| `absorbing` | `NULL` | absorbing states; default: inferred |
+| `drop.na` | `FALSE` | if `TRUE`, drop rows with `NA` in id/time/state with a warning instead of an error |
+| `check.consecutive` | `TRUE` | warn when some subject's times are not consecutive integers |
+
+**Value.** An object of class **`msm2data`**, a list with:
+
+| Component | Content |
+|---|---|
+| `N` | `data.table` `(h, j, l, s, N)`: $\tilde N_{hj\ell}(s)$, $s$ = time of the destination |
+| `Y` | `data.table` `(h, j, s, Y)`: $\tilde Y_{hj}(s-1)$, indexed by the same $s$ |
+| `triples` | `data.table` `(id, h, j, l, s, d, covariates…)`: one row per subject per at-risk instant; `d` is the time already spent in the current state $j$ at $s-1$ (1 = first time point in $j$), used for semi-Markov baselines in `P2reg()` |
+| `pairs` | `data.table` `(from, to, N)`: every observed one-step move, including each subject's first move (no triple); used by `as_tmat()` |
+| `covariates` | names of the carried covariates |
+| `states` | the state space, in order |
+| `absorbing` | absorbing states (character) |
+| `n` | number of subjects |
+| `ntriples` | number of triples (rows of `triples`) |
+| `time.range` | range of observed times |
+
+**How it works.**
+
+1. Validates the columns and `NA`s and renames them to `id`, `time`,
+   `state`. Converts `state` to a factor with levels `states`.
+2. Sorts by `(id, time)` and, if requested, checks that times within each
+   subject increase by exactly 1.
+3. Within each subject, `h = shift(state, 2)` and `j = shift(state, 1)`. The
+   first two rows of each subject (incomplete history) are dropped; the
+   remaining rows are the triples, with the current row's state as `l`.
+4. `N` counts triples by `(h, j, l, s)`; `Y` sums `N` over `l`.
+5. If `absorbing` is `NULL`, a state is absorbing when it is occupied but
+   never left ($j \to \ell$ with $\ell \ne j$ never observed).
+
+**Errors and warnings.**
+
+* Error: a column in `id`/`time`/`state` or in `covariates` is missing.
+* Error: a covariate is named like an internal column (`id`, `time`, `state`, `h`, `j`, `l`, `s`, `d`).
+* Error: `NA` in id/time/state with `drop.na = FALSE` (warning and drop with
+  `drop.na = TRUE`).
+* Error: an observed state is not in `states`.
+* Error: no triples at all (every subject has fewer than 3 observations).
+* Warning: non-consecutive times (triples are still formed from consecutive
+  **rows**).
+* Warning: a covariate is not constant within subject (carried row by row).
+
+**Example**
+
+```{r prep2}
+d <- prep2(panel_w, states = estados, covariates = "ingreso_SP")
+d
+head(d$N)
+head(d$Y)
+names(d$triples)      # one row per patient-day at risk (not printed)
+d$pairs
+```
+
+## `print.msm2data()` and `summary.msm2data()`
+
+**Definition**
+
+```r
+## S3 method for class 'msm2data'
+print(x, ...)
+## S3 method for class 'msm2data'
+summary(object, ...)
+```
+
+**What they do.** `print()` shows the number of subjects and triples, time
+range, states, absorbing states, number of distinct $(h, j)$ pairs and
+covariates. `summary()` prints and invisibly returns the **exposure per
+$(h, j)$ pair**.
+
+**Value.** `print()` returns `x` invisibly. `summary()` returns invisibly a
+`data.table` with one row per $(h, j)$ and columns `total_at_risk`
+($\sum_s \tilde Y_{hj}(s-1)$, the RPE denominator, in subject-instants),
+`s_min` and `s_max`.
+
+**Example**
+
+```{r prep2-summary}
+expo <- summary(d)
+```
+
+# Estimation
+
+## `P2est()`
+
+**Definition**
+
+```r
+P2est(object, conf.level = 0.95, ci = c("wald", "logit"), clip = TRUE)
+```
+
+**What it does.** Estimates every observed 1-step second-order transition
+probability $P_{hj\ell}$ nonparametrically, with standard errors and
+confidence intervals, with the relative probability estimator (RPE), and
+arranges them as tensors.
+
+**Arguments**
+
+| Argument | Default | Meaning |
+|---|---|---|
+| `object` | — | an `msm2data` object |
+| `conf.level` | `0.95` | confidence level, strictly in (0, 1) |
+| `ci` | `"wald"` | `"wald"` or `"logit"` interval |
+| `clip` | `TRUE` | truncate Wald intervals to [0, 1] |
+
+**Value.** An object of class **`P2est`**, a list with:
+
+| Component | Content |
+|---|---|
+| `estimate` | data frame, one row per observed $(h, j, \ell)$: `h, j, l, p, se, lower, upper, n.trans, at.risk` |
+| `P` | $M \times M \times M$ tensor of estimates, layout `[j, l, h]` |
+| `P.lower`, `P.upper` | tensors of the confidence limits |
+| `P.se` | tensor of standard errors |
+| `states`, `absorbing` | state space and absorbing states |
+| `estimator` (always `"RPE"`), `conf.level`, `ci` | settings used |
+| `n` | number of subjects |
+
+with `n.trans` $= \sum_s \tilde N_{hj\ell}(s)$ and `at.risk`
+$= \sum_s \tilde Y_{hj}(s-1)$.
+
+**How it works.**
+
+$$
+\hat P_{hj\ell} = \frac{\sum_s \tilde N_{hj\ell}(s)}{\sum_s \tilde Y_{hj}(s-1)},
+\qquad
+\mathrm{se} = \sqrt{\frac{\hat p(1-\hat p)}{\sum_s \tilde Y_{hj}(s-1)}}.
+$$
+
+The RPE pools all exposure and weighs every subject-instant equally (the
+paper shows it is more efficient than the conditional probability
+estimator, which is therefore not implemented). Intervals:
+Wald $\hat p \pm z\,\mathrm{se}$ (clipped if `clip`), or logit
+$\mathrm{expit}(\mathrm{logit}\,\hat p \pm z\,\mathrm{se}/(\hat p(1-\hat p)))$,
+which degenerates to $[\hat p, \hat p]$ when $\hat p \in \{0, 1\}$. Finally,
+for every absorbing state $a$ and every $h$, `P[a, a, h]`, `P.lower[a, a, h]`
+and `P.upper[a, a, h]` are set to 1, so that absorbing states keep their
+probability mass during propagation. Unobserved $(h, j)$ pairs are left at 0.
+
+**Errors and warnings.** Error if `object` is not an `msm2data` or if
+`conf.level` is not a single number strictly between 0 and 1.
+
+**Example**
+
+```{r p2est}
+fit <- P2est(d)
+fit
+subset(fit$estimate, j == "SP")                # Table 2 of the paper
+round(fit$P[, , "NSP"], 3)     # transition matrix for patients in NSP at the previous time
+```
+
+## `print.P2est()`
+
+**Definition**
+
+```r
+## S3 method for class 'P2est'
+print(x, ...)
+```
+
+**What it does.** Prints the estimator, states, interval type and level,
+number of subjects and number of estimated probabilities. Returns `x`
+invisibly. The estimates themselves are in `x$estimate`.
+
+## `P2boot()`
+
+**Definition**
+
+```r
+P2boot(object, B = 200, conf.level = 0.95, seed = NULL)
+```
+
+**What it does.** Subject-level bootstrap of the RPE: resamples subjects with
+replacement and recomputes every $\hat P_{hj\ell}$ (and the first-order,
+history-pooled matrix) in each replicate. The result behaves like a `P2est`
+fit; `ckequations()`, `compare2()`, `probtrans2()` and `compare_order()` then
+use **percentile bootstrap intervals** for the $n$-step probabilities instead
+of the evolution intervals.
+
+**Arguments**
+
+| Argument | Default | Meaning |
+|---|---|---|
+| `object` | — | an `msm2data` object |
+| `B` | `200` | number of replicates (at least 2) |
+| `conf.level` | `0.95` | confidence level of the intervals |
+| `seed` | `NULL` | optional seed for reproducible replicates |
+
+**Value.** An object of class **`c("P2boot", "P2est")`**: every component of
+`P2est(object, "RPE")`, plus `boot` ($M \times M \times M \times B$ array of
+replicate tensors, layout `[j, l, h, b]`), `boot1` ($M \times M \times B$
+replicate first-order matrices), `B`, and a column `se.boot` (bootstrap SD)
+in `estimate`.
+
+**How it works.** The per-subject counts of every observed $(h, j, \ell)$
+triple are tabulated once (an $n \times K$ matrix). A replicate draws subject
+multiplicities $w$ and computes the totals $w^\top C$, from which the RPE
+tensor and the first-order matrix follow by grouped sums; pairs with nobody
+at risk in a replicate keep the point-estimate row, and absorbing states keep
+probability 1. For an $n$-step band, each replicate tensor is propagated with
+the pair-chain machinery and the $\alpha/2$ and $1-\alpha/2$ quantiles are
+taken step by step. Resampling subjects keeps their within-subject dependence.
+
+**Why it is done this way.** Patients are the independent units and their days are not,
+so whole patients are resampled: the standard non-parametric bootstrap for
+clustered data (Davison and Hinkley, 1997; Field and Welsh, 2007). The $n$-step
+predictions are non-linear functions of all the estimated probabilities, so
+propagating each replicate and taking percentiles (Efron and Tibshirani, 1993)
+is simpler and more reliable than a delta-method variance. In the package's
+simulation study, 95% percentile intervals of $n$-step predictions had
+coverage 0.91 to 0.94, while the evolution intervals had coverage 1 and were up
+to five times wider.
+
+**Errors and warnings.** Error if `object` is not an `msm2data`, if `B < 2`
+or if `conf.level` is not in (0, 1).
+
+**Example**
+
+```{r p2boot}
+bt <- P2boot(d, B = 500, seed = 1)
+bt
+subset(bt$estimate, j == "SP")[, c("h", "l", "p", "se", "se.boot")]
+ckequations(bt, h = "NSP", j = "SP", l = "NIMV", nsteps = 5, bounds = TRUE)
+```
+
+## `P1est()`
+
+**Definition**
+
+```r
+P1est(object, B = 200, conf.level = 0.95, seed = NULL)
+```
+
+**What it does.** Estimates the **first-order** transition probabilities
+$P(X_s = \ell \mid X_{s-1} = j)$ from the same counting processes, by pooling
+the second-order counts over the previous state:
+$\hat P^{(1)}_{j\ell} = \sum_h \sum_s \tilde N_{hj\ell}(s) / \sum_h \sum_s \tilde Y_{hj}(s-1)$.
+It is the estimate a second-order analysis reduces to when the first-order
+property holds, and the natural first-order baseline for `compare_order()`
+and `divergence_table()` (same subjects, instants and time grid).
+
+**Why it is done this way.** Pooling the counts over the state at the previous time is
+the maximum likelihood estimator under the first-order hypothesis (Anderson
+and Goodman, 1957), i.e. the null model of `markov_test()`. Because it uses the
+same patients, days and time scale, a difference with the second-order model
+can only be due to the order, not to a different time scale or estimator.
+
+**Arguments**
+
+| Argument | Default | Meaning |
+|---|---|---|
+| `object` | — | an `msm2data` object, or a `P2boot` (its first-order replicates are reused) |
+| `B` | `200` | bootstrap replicates (0 = none; ignored for a `P2boot`) |
+| `conf.level` | `0.95` | confidence level |
+| `seed` | `NULL` | optional seed |
+
+**Value.** An object of class **`P1est`**: `estimate` (data frame
+`j, l, p, se, lower, upper, n.trans, at.risk`), $M \times M$ matrices `P`,
+`P.lower`, `P.upper`, `P.se`, `boot` ($M \times M \times B$ or `NULL`),
+`states`, `absorbing`, `conf.level`, `n`.
+
+**How it works.** Sums `N` over $h$ and $s$ for each $(j, \ell)$ and `Y` over
+$h$ and $s$ for each $j$; binomial standard error
+$\sqrt{\hat p(1-\hat p)/Y_j}$ and Wald interval clipped to [0, 1]; absorbing
+rows set to the identity. It equals the `pooled` column of
+`markov_test(method = "lrt")`.
+
+**Errors and warnings.** Error if `object` is neither an `msm2data` nor a
+`P2boot`, or if `conf.level` is not in (0, 1).
+
+**Example**
+
+```{r p1est}
+p1 <- P1est(bt)                # reuses the replicates of P2boot()
+round(p1$P, 3)
+```
+
+# Prediction
+
+## `ckequations()`
+
+**Definition**
+
+```r
+ckequations(x, h, j, l = NULL, nsteps = 9L, bounds = FALSE)
+```
+
+**What it does.** Computes the $n$-step second-order transition
+probabilities $P_{hj\ell}(1, n) = P(X_{n+1} = \ell \mid X_1 = j, X_0 = h)$,
+$n = 1, \dots,$ `nsteps`, with the extended Chapman–Kolmogorov relation.
+Optionally adds evolution-interval bounds.
+
+**Arguments**
+
+| Argument | Default | Meaning |
+|---|---|---|
+| `x` | — | a `P2est` object, or an $M \times M \times M$ tensor in `[j, l, h]` layout |
+| `h` | — | state at time 0 (label or index) |
+| `j` | — | state at time 1 (label or index) |
+| `l` | `NULL` | target state(s); `NULL` = all states |
+| `nsteps` | `9L` | number of steps |
+| `bounds` | `FALSE` | with a `P2est` and a single `l`, also propagate the confidence-limit tensors |
+
+**Value.** Depends on the arguments:
+
+| `l` | `bounds` | Returned value |
+|---|---|---|
+| one state | `FALSE` | numeric vector of length `nsteps` |
+| several states | `FALSE` | matrix `nsteps × length(l)` |
+| `NULL` | ignored | matrix `nsteps × M` (each row sums to 1) |
+| one state | `TRUE` | data frame with columns `n, estimate, lower, upper` |
+
+**How it works.** The second-order chain $X$ is lifted to the first-order
+chain of pairs $Z_s = (X_{s-1}, X_s)$, with $M^2 \times M^2$ transition matrix
+$Q_{(a,b) \to (b,c)} = P_{abc}$ (and 0 for pairs not sharing $b$). Starting
+from a point mass on $(h, j)$, the pair distribution is multiplied by $Q$ once
+per step. After each step it is summed over the first element of the pair,
+which gives the distribution of $X_{m+1}$. This is exact, and costs one
+matrix–vector product per step. Writing a second-order chain as a first-order
+chain on pairs of consecutive states is the standard representation of
+higher-order Markov chains (e.g. Benson, Gleich and Lim, 2017). With `bounds = TRUE`, the same propagation is
+applied to `P.lower` and `P.upper`, and the results are clipped to [0, 1]; if
+`x` is a `P2boot` fit, the bounds are instead percentile bootstrap intervals
+(every replicate tensor is propagated), with close to nominal coverage.
+These bounds are heuristic sensitivity bands, not confidence intervals with
+nominal coverage: the rows of the limit tensors do not sum to 1, so without
+clipping an upper bound could even exceed 1.
+
+**Errors and warnings.**
+
+* Error: `x` is neither a `P2est` nor a 3-dimensional array.
+* Error: `nsteps < 1`.
+* Error: `h`, `j` or `l` not found in the state space.
+* Warning: `bounds = TRUE` with `l = NULL` (estimates only are returned).
+* Error: `bounds = TRUE` with more than one `l`.
+* With a bare tensor, `bounds` is silently ignored (there are no limits to
+  propagate).
+
+**Example**
+
+```{r ck}
+ckequations(fit, h = "NSP", j = "SP", l = "NIMV", nsteps = 5)
+round(ckequations(fit, h = "NSP", j = "SP", nsteps = 5), 3)            # full distribution
+ckequations(fit, h = "NSP", j = "SP", l = "NIMV", nsteps = 5, bounds = TRUE)
+ckequations(fit$P, h = "NSP", j = "SP", l = "NIMV", nsteps = 5)        # a bare tensor
+```
+
+## `probtrans2()` and `plot.probtrans2()`
+
+**Definition**
+
+```r
+probtrans2(x, h = NULL, j = NULL, nsteps = 9L)
+## S3 method for class 'probtrans2'
+plot(x, from = NULL, type = c("filled", "stacked", "single", "separate"),
+     ord = NULL, cols = NULL, xlab = "Time (s)", ylab = "Probability", xlim = NULL,
+     ylim = NULL, lwd = 1, lty = 1, cex = 0.9, legend = NULL,
+     legend.pos = "topright", bty = "n", ...)
+```
+
+**What it does.** The second-order analogue of `mstate::probtrans()`: the
+probability of occupying every state at times $s = 1, \dots, n + 1$ from a
+history $(X_0, X_1) = (h, j)$, in exactly the structure of an `mstate`
+`probtrans` object. Given a `P1est` fit it returns first-order predictions
+from every transient state. The `plot()` method uses `mstate`'s plot types.
+
+**Arguments of `probtrans2()`**
+
+| Argument | Default | Meaning |
+|---|---|---|
+| `x` | — | `P2est`, `P2boot` or `P1est` object |
+| `h` | `NULL` | previous state (required for a second-order fit) |
+| `j` | `NULL` | current state (required for a second-order fit; for a `P1est`, `NULL` fills every transient state) |
+| `nsteps` | `9L` | number of steps |
+
+**Value.** An object of class **`c("probtrans2", "probtrans")`**: a list with
+one data frame per starting state (`time`, `pstate1`, ..., `pstateM`, `se1`,
+..., `seM`; `NULL` for states without predictions), followed by `trans`
+(transition matrix in `transMat()` format), `method`, `predt = 1`,
+`direction = "forward"` and `h`. The `se` columns are bootstrap standard
+deviations for `P2boot` fits and `P1est` fits with replicates, `NA` otherwise.
+It can be used as `pt` in `compare_order()`.
+
+**Errors and warnings.** Error if `nsteps < 1`, if `x` has the wrong class, if
+`h` or `j` is missing for a second-order fit, or if a state is unknown.
+`plot()` errors if the requested starting state has no predictions.
+
+**Example**
+
+```{r probtrans2}
+pt2 <- probtrans2(bt, h = "NSP", j = "SP", nsteps = 20)
+round(head(pt2[[2]][, c("time", paste0("pstate", 1:7))], 4), 3)   # SP is state 2
+plot(pt2, type = "filled", xlab = "day")
+```
+
+# Comparing histories and testing the Markov assumption
+
+## `compare2()`
+
+**Definition**
+
+```r
+compare2(object, h, j, l, nsteps = 9L, bounds = TRUE)
+```
+
+**What it does.** For a common current state $j$ and target $\ell$, computes
+the $n$-step curves $P_{hj\ell}(1, n)$ for **several previous states** $h$,
+with their evolution intervals. It shows whether, and for how long, the
+previous state changes the forecast.
+
+**Arguments**
+
+| Argument | Default | Meaning |
+|---|---|---|
+| `object` | — | a `P2est` object |
+| `h` | — | vector of previous states to compare |
+| `j` | — | common current state |
+| `l` | — | target state |
+| `nsteps` | `9L` | horizon |
+| `bounds` | `TRUE` | compute evolution intervals; `FALSE` returns curves only |
+
+**Value.** An object of class **`msm2pred`** (also a data frame), with
+columns `h`, `n`, `estimate` and, if `bounds = TRUE`, `lower`, `upper`; and
+attributes `j`, `l`, `bounds`, `estimator`, `conf.level`.
+
+**How it works.** Builds $Q$ (and, with bounds, $Q_{\text{lower}}$ and
+$Q_{\text{upper}}$) once, and propagates it from each $(h, j)$ as in
+`ckequations()`, with the bounds clipped to [0, 1]. With a `P2boot` fit the
+bounds are percentile bootstrap intervals, and the attribute `bands` records
+which kind was used (`"evolution"` or `"bootstrap"`). The curves are stacked in
+long format.
+
+**Errors and warnings.** Error if `object` is not a `P2est`, or if `j`, `l`
+or any `h` is not in the state space.
+
+**Example**
+
+```{r compare2}
+cmp <- compare2(fit, h = c("NSP", "SP"), j = "SP", l = "NIMV")
+cmp
+```
+
+## `overlap_step()`
+
+**Definition**
+
+```r
+overlap_step(x)
+```
+
+**What it does.** For a two-group comparison with bounds, finds the **first
+step at which the two evolution intervals overlap**, i.e. after how many
+steps the previous state no longer changes the forecast significantly.
+
+**Arguments**
+
+| Argument | Default | Meaning |
+|---|---|---|
+| `x` | — | an `msm2pred` with exactly two groups and evolution-interval bounds |
+
+**Value.** A list with:
+
+| Element | Content |
+|---|---|
+| `n` | first overlapping step (`NA` if the intervals never overlap) |
+| `s` | the corresponding time, `n + 1` |
+| `separated_steps` | number of leading steps with separated intervals (the whole horizon if they never overlap) |
+| `overlap` | logical vector, one value per step |
+| `separation` | numeric vector, one value per step: $\max(L_1, L_2) - \min(U_1, U_2)$, positive when separated |
+| `groups` | the two previous states compared |
+| `diff_steps` | leading steps whose percentile bootstrap interval of the **paired difference** excludes 0 (`NA` without bootstrap replicates) |
+| `diff` | per-step interval of the paired difference (`NULL` without replicates) |
+
+**How it works.** For each step, two intervals $[L_1, U_1]$ and $[L_2, U_2]$
+are separated exactly when $\max(L_1, L_2) > \min(U_1, U_2)$. The first step
+where this fails is the first overlap. When both curves come from the same
+bootstrap replicates (`compare2()` on a `P2boot` fit), the difference between
+them is computed in every replicate and its percentile interval is checked
+step by step.
+
+**Why it is done this way.** Non-overlap of the two intervals is the criterion of the
+methods paper (Section 6.3). It is conservative: two estimates whose 95%
+intervals overlap can still differ significantly (Schenker and Gentleman,
+2001). The paired bootstrap interval of the difference is the direct test of
+"the two predictions differ", and it uses the fact that both curves are
+computed on the same resamples.
+
+**Errors and warnings.** Error if `x` has no bounds, or does not have exactly
+two groups.
+
+**Example**
+
+```{r overlap}
+overlap_step(cmp)
+```
+
+## `print.msm2pred()`, `summary.msm2pred()` and `plot.msm2pred()`
+
+**Definition**
+
+```r
+## S3 method for class 'msm2pred'
+print(x, ...)
+## S3 method for class 'msm2pred'
+summary(object, ...)
+## S3 method for class 'msm2pred'
+plot(x, type = NULL, col = NULL, lty = 1, lwd = 2, alpha = 0.2, add = FALSE,
+     legend = TRUE, dualaxis = TRUE, mark.overlap = TRUE, ylim = NULL,
+     main = NULL, xlab = "", ylab = "probability", ...)
+```
+
+**What they do.**
+
+* `print()`: a header (estimator, target, current state, groups) and the full
+  table. Returns `x` invisibly.
+* `summary()`: states the estimator and interval level and, for two groups
+  with bounds, the first overlap in words. Returns invisibly the
+  `overlap_step()` list (or `object` when no overlap analysis applies).
+* `plot()`: draws the curves, and shaded evolution intervals when available.
+  Returns `x` invisibly.
+
+**Arguments of `plot()`**
+
+| Argument | Default | Meaning |
+|---|---|---|
+| `type` | `NULL` | `"interval"` (shaded bands) or `"curve"` (lines); default `"interval"` if bounds exist |
+| `col` | `NULL` | colours, one per group (default red, blue, dark green, purple, orange) |
+| `lty`, `lwd` | `1`, `2` | line type and width |
+| `alpha` | `0.2` | transparency of the bands |
+| `add` | `FALSE` | overlay on the current plot |
+| `legend` | `TRUE` | draw a legend (top right) |
+| `dualaxis` | `TRUE` | show both the step $n$ and the time $s = n + 1$ |
+| `mark.overlap` | `TRUE` | for two groups with bands, a dotted line at the first overlap |
+| `ylim`, `main`, `xlab`, `ylab` | — | usual graphical parameters |
+| `...` | — | passed to the initial `plot()` |
+
+A warning is issued if `type = "interval"` is requested without bounds (lines
+are drawn instead).
+
+**Example**
+
+```{r plot}
+summary(cmp)
+plot(cmp, type = "interval", dualaxis = FALSE, xlab = "steps (n)")
+```
+
+## `markov_test()`
+
+**Definition**
+
+```r
+markov_test(object, min.h = 2, method = c("wald", "lrt"), by = c("transition", "state"),
+            p.adjust = "holm")
+```
+
+**What it does.** Tests the null hypothesis that the next state does not
+depend on the previous state $h$ (first-order Markov), either **for each
+transition** $j \to \ell$ or **jointly for each current state** $j$.
+
+**Arguments**
+
+| Argument | Default | Meaning |
+|---|---|---|
+| `object` | — | a `P2est` object |
+| `min.h` | `2` | minimum number of previous states needed to test a $(j, \ell)$ pair or state $j$ |
+| `method` | `"wald"` | `"wald"` (Cochran-type, on the estimates and SEs) or `"lrt"` (likelihood ratio, on the counts) |
+| `p.adjust` | `"holm"` | multiplicity adjustment of the column `p.adj` (any method of `stats::p.adjust()`; `"none"` = unadjusted) |
+| `by` | `"transition"` | `"transition"`: one test per $(j, \ell)$; `"state"`: one joint test per $j$ (only with `"lrt"`) |
+
+**Value.** A data frame of class **`markov_test`**, sorted by increasing
+p-value. Per transition: columns `j, l, K, df, statistic, p.value, pooled, p.adj`
+($K$ previous states, $K-1$ degrees of freedom, `pooled` = history-blind
+estimate under $H_0$). Per state: `j, K, L, df, statistic, p.value, p.adj`, with
+$L$ destinations and $(K-1)(L-1)$ degrees of freedom. Attributes `method`,
+`by`, `estimator`, `conf.level`.
+
+**How it works.** *Wald:* for each $(j, \ell)$, keep the histories with
+$\mathrm{se}_{hj\ell} > 0$, $w_h = 1/\mathrm{se}_{hj\ell}^2$,
+
+$$
+\bar P_{j\ell} = \frac{\sum_h w_h \hat P_{hj\ell}}{\sum_h w_h},
+\qquad
+Q_{j\ell} = \sum_h w_h \big(\hat P_{hj\ell} - \bar P_{j\ell}\big)^2 \;\overset{H_0}{\sim}\; \chi^2_{K-1}.
+$$
+
+*LRT* (Anderson and Goodman, 1957): with $N_h$ events and $Y_h$
+subject-instants at risk for each history and $\bar P = \sum_h N_h / \sum_h Y_h$,
+
+$$
+G^2_{j\ell} = 2\sum_h \Big[N_h \log\frac{N_h}{Y_h\bar P} + (Y_h - N_h)\log\frac{Y_h - N_h}{Y_h(1-\bar P)}\Big] \;\overset{H_0}{\sim}\; \chi^2_{K-1},
+$$
+
+keeping histories with no event; per state,
+$G^2_j = 2\sum_h\sum_\ell N_{h\ell}\log\{N_{h\ell}/(Y_h \bar P_{j\ell})\} \sim \chi^2_{(K-1)(L-1)}$,
+the Anderson–Goodman test of first against second order. Both rely on the
+likelihood factorising over $(h, j)$ pairs, which makes the estimates for
+different histories asymptotically independent. The column `p.adj` holds
+Holm-adjusted p-values (Holm, 1979), which control the family-wise error rate
+over all the tests of the table without assuming that they are independent.
+
+**Why it is done this way.** The likelihood ratio test is the classical test of the order
+of a Markov chain observed on many subjects (Anderson and Goodman, 1957;
+Billingsley, 1961). The Wald version is the heterogeneity statistic used to
+compare independent estimates of a common quantity (Cochran, 1954). Both test
+the order transition by transition (or state by state), which is more specific
+than global tests of the Markov property for continuous-time multistate models
+(Titman and Putter, 2022).
+
+**Errors and warnings.** Error if `object` is not a `P2est`, if `min.h < 2`,
+or if `by = "state"` is used with `method = "wald"`. Warning, and a zero-row
+result, if nothing can be tested.
+
+**Example**
+
+```{r mt}
+markov_test(fit)
+markov_test(fit, method = "lrt")
+markov_test(fit, method = "lrt", by = "state")
+```
+
+## `print.markov_test()`
+
+**Definition**
+
+```r
+## S3 method for class 'markov_test'
+print(x, digits = 4, ...)
+```
+
+**What it does.** Prints the statistic used, the null hypothesis, the number
+of tests and the table, with `statistic`, `p.value` and `pooled` rounded to `digits` (only the
+columns present are rounded). The object keeps full precision. Returns `x`
+invisibly.
+
+# Covariate regression
+
+## `P2reg()`
+
+**Definition**
+
+```r
+P2reg(object, h, j, l = NULL, formula = ~1, family = stats::binomial("cloglog"),
+      cluster = FALSE, ...)
+```
+
+**What it does.** Fits, for a fixed history $(h, j)$, a **discrete-time
+cause-specific hazard regression** for each destination $\ell$:
+
+$$
+\mathrm{cloglog}\big(\lambda_{hj\ell}(Z)\big) = \gamma_{hj\ell} + \beta_{hj\ell}^\top Z,
+\qquad \lambda_{hj\ell}(Z) = P(X_s = \ell \mid X_{s-1} = j, X_{s-2} = h, Z).
+$$
+
+$\lambda_{hj\ell}$ is the discrete-time cause-specific hazard of moving to
+$\ell$; staying in $j$ is its complement, $1 - \sum_{\ell \neq j} \lambda_{hj\ell}$.
+With the default complementary log-log link, $e^\beta$ is the ratio of
+$-\log(1-\lambda)$ between two covariate values: exactly the hazard ratio of a
+continuous-time proportional-hazards model observed in grouped time when
+there is a single type of event (Prentice and Gloeckler, 1978), and
+approximately the cause-specific hazard ratio when the daily probabilities of
+moving are small, since then $-\log(1-\lambda) \approx \lambda$.
+
+**Why it is done this way.** Each indicator "moves to $\ell$" is, given the history, a
+Bernoulli variable with probability $\lambda_{hj\ell}(Z)$, the marginal of the
+multinomial transition. The per-destination binomial likelihoods are valid
+marginal likelihoods and give consistent estimators (a composite-likelihood
+argument; Varin, Reid and Firth, 2011), at some loss of efficiency and without
+forcing the fitted probabilities to sum to at most one; a multinomial model
+would impose it. A baseline that depends on time `s` is the usual
+discrete-time hazard model (Allison, 1982; Tutz and Schmid, 2016), and one that
+depends on the days `d` already spent in the current state is the
+semi-Markov ("clock-reset") assumption of multistate models (Putter, Fiocco
+and Geskus, 2007). Given the second-order model the likelihood factorises over
+patient-days, so model-based standard errors are valid if the model is
+correct; `cluster = TRUE` gives standard errors clustered by patient (Liang and
+Zeger, 1986; Zeileis, Köll and Graham, 2020), which stay valid if days of the
+same patient are correlated beyond the model (e.g. unobserved frailty).
+
+**Arguments**
+
+| Argument | Default | Meaning |
+|---|---|---|
+| `object` | — | `msm2data` (built with `prep2(..., covariates = )` when baseline covariates are used) |
+| `h`, `j` | — | previous and current state defining the risk set |
+| `l` | `NULL` | destination(s); `NULL` fits one model per **move** $\ell \neq j$ observed from $(h, j)$; staying ($\ell = j$) only on request, and its $e^\beta$ is not a hazard ratio |
+| `formula` | `~1` | **one-sided** formula of baseline covariates (in `object$covariates`) and of the time scales `s` (time; non-homogeneous baseline, e.g. `splines::ns(s, 3)` or `factor(s)`) and `d` (time in the current state; semi-Markov baseline, e.g. `log(d)`) |
+| `family` | `binomial("cloglog")` | GLM family; `exp(coef)` is labelled a hazard ratio only for the cloglog link |
+| `cluster` | `FALSE` | if `TRUE`, cluster-robust standard errors by subject via `sandwich::vcovCL()` |
+| `...` | — | passed to `stats::glm()` |
+
+**Value.** An object of class **`P2reg`**, a list with:
+
+| Component | Content |
+|---|---|
+| `models` | named list, one `glm` fit per destination (with the robust covariance in `$P2reg.vcov` when `cluster = TRUE`) |
+| `h`, `j` | labels of the risk set |
+| `states` | state space |
+| `formula`, `family`, `cluster` | settings used |
+| `n` | number of subjects in the risk set |
+| `n.risk` | number of at-risk instants (rows of the risk set) |
+
+**How it works.**
+
+1. The risk set is `object$triples` restricted to $(h, j)$: one row per
+   subject per instant at risk, with covariates.
+2. For each destination $\ell$, the response is $y = 1$ if the row moved to
+   $\ell$, and 0 otherwise (stayed in $j$ or moved elsewhere).
+3. `glm(y ~ covariates, family = family)` is fitted.
+4. With `cluster = TRUE`, `sandwich::vcovCL(fit, cluster = id)` is stored and
+   used by `summary()`.
+
+With `formula = ~1`, the fitted probability equals the sample proportion,
+which is exactly the RPE of `P2est()` (an internal consistency check).
+
+**Errors and warnings.**
+
+* Error: `cluster = TRUE` without the `sandwich` package.
+* Error: `h`, `j` or `l` not in the state space.
+* Error: no triples with history $(h, j)$.
+* Error: `formula` is two-sided.
+* Error: `formula` uses variables that are neither in `object$covariates` nor `s` / `d`.
+
+**Example**
+
+```{r p2reg}
+reg <- P2reg(d, h = "SP", j = "SP", formula = ~ ingreso_SP, cluster = TRUE)
+reg
+reg_sd <- P2reg(d, h = "SP", j = "SP", l = c("Recov", "NIMV", "Death"),
+                formula = ~ log(d) + s, cluster = TRUE)        # semi-Markov and time
+```
+
+## `summary.P2reg()` and `print.summary.P2reg()`
+
+**Definition**
+
+```r
+## S3 method for class 'P2reg'
+summary(object, conf.level = 0.95, ...)
+## S3 method for class 'summary.P2reg'
+print(x, digits = 4, ...)
+```
+
+**What they do.** `summary()` builds the coefficient table of all the
+destination-specific models; `print()` shows it with a header (risk set,
+link, interval level, type of standard errors), rounded to `digits`.
+
+**Value.** A data frame of class `summary.P2reg`, one row per coefficient and
+destination:
+
+| Column | Content |
+|---|---|
+| `l` | destination |
+| `term` | `(Intercept)` or covariate |
+| `estimate`, `se` | coefficient and standard error (robust if `cluster = TRUE`) |
+| `HR`, `HR.lower`, `HR.upper` | $e^\beta$ and its Wald interval (named `exp.coef`, `exp.lower`, `exp.upper` for links other than cloglog) |
+| `p.value` | Wald test of $\beta = 0$ |
+
+with attributes `h`, `j`, `cluster`, `link`, `conf.level`. For the intercept
+row, $e^\gamma$ is not a hazard ratio: it is the baseline one-step cumulative
+hazard $-\log(1 - \lambda_0)$. Error if `conf.level` is not in (0, 1).
+
+**Example**
+
+```{r p2reg-summary}
+summary(reg)
+```
+
+## `predict.P2reg()`
+
+**Definition**
+
+```r
+## S3 method for class 'P2reg'
+predict(object, newdata, type = "response", ...)
+```
+
+**What it does.** Predicts the covariate-adjusted 1-step probabilities
+$\hat P_{hj\ell}(Z)$ for given covariate profiles.
+
+**Arguments**
+
+| Argument | Default | Meaning |
+|---|---|---|
+| `object` | — | a `P2reg` object |
+| `newdata` | — | data frame, one row per profile, with the covariates of `formula` |
+| `type` | `"response"` | passed to `predict.glm()`; `"response"` gives probabilities, `"link"` the linear predictor |
+| `...` | — | passed to `predict.glm()` |
+
+**Value.** A numeric matrix, one row per row of `newdata` and one column per
+destination.
+
+**Caveat.** Each destination has its own model, so the predicted
+probabilities of all destinations need not sum exactly to 1 with continuous
+covariates. Modelling only the moves $\ell \neq j$ and obtaining "stay" by
+difference avoids this.
+
+**Example**
+
+```{r predict}
+predict(reg, newdata = data.frame(ingreso_SP = c(0, 1)))
+```
+
+## `print.P2reg()`
+
+**Definition**
+
+```r
+## S3 method for class 'P2reg'
+print(x, ...)
+```
+
+**What it does.** Prints the risk set, the link, the destinations, the
+number of subjects and at-risk instants, the covariates and the type of
+standard errors. Returns `x` invisibly.
+
+## `plot.P2reg()`
+
+**Definition**
+
+```r
+## S3 method for class 'P2reg'
+plot(x, conf.level = 0.95, terms = NULL, col = "#1E2761", xlab = NULL, main = NULL, ...)
+```
+
+**What it does.** Forest plot of the exponentiated coefficients (hazard
+ratios under cloglog) of every destination and term, with confidence
+intervals, on a log scale with a reference line at 1. Intercepts are omitted;
+`terms` selects terms. Returns the plotted `summary()` rows invisibly; error
+if there is no covariate term.
+
+```{r plot-p2reg, fig.height = 3}
+plot(reg_sd)
+```
+
+## `P2reg_all()` and `predict.P2reg_all()`
+
+**Definition**
+
+```r
+P2reg_all(object, formula = ~1, family = stats::binomial("cloglog"),
+          cluster = FALSE, min.events = 5, ...)
+## S3 method for class 'P2reg_all'
+predict(object, newdata, ...)
+```
+
+**What it does.** Fits `P2reg()` for **every** observed history $(h, j)$ with
+$j$ transient, modelling the moves $j \to \ell$, $\ell \neq j$. `predict()`
+assembles, for any covariate profile, the full covariate-adjusted tensor
+$\hat P_{hj\ell}(Z)$, which `ckequations()` (or `simulate2()`) uses like any
+estimated tensor: **covariate-adjusted multi-step prediction**.
+
+**Arguments**
+
+| Argument | Default | Meaning |
+|---|---|---|
+| `object` | — | an `msm2data` object |
+| `formula`, `family`, `cluster`, `...` | as in `P2reg()` | model for every history |
+| `min.events` | `5` | histories with fewer observed moves keep their nonparametric RPE row |
+| `newdata` | — | (for `predict()`) data frame of profiles |
+
+**Value.** `P2reg_all()` returns an object of class **`P2reg_all`**: `fits`
+(one `P2reg` per modelled history, named `"h|j"`), `rpe` (the `P2est` fit
+used for the other rows), `pairs` (histories, whether each was modelled, and terms not estimable in it because the covariate is constant in its risk set: they act as 0 in `predict()`, with a warning),
+`formula`, `family`, `states`, `absorbing`; with `print()` and `summary()`
+(stacked coefficient tables with `h` and `j`). `predict()` returns an
+$M \times M \times M$ tensor for a single profile, or a list of tensors.
+
+**How it works.** For each modelled history, the predicted move probabilities
+come from the GLMs and staying is one minus their sum (rescaled with a
+warning if they exceed 1); other rows keep the RPE; absorbing states keep
+probability 1. With `formula = ~1` the tensor equals `P2est()` exactly. If the
+formula uses `s` or `d`, `newdata` must contain them and the tensor is the
+one-step tensor at those values.
+
+**Why it is done this way.** Obtaining staying as one minus the moves makes
+every row of the predicted tensor a probability distribution, so it can be
+propagated by `ckequations()` exactly like the non-parametric tensor.
+Histories with fewer than `min.events` moves keep the non-parametric estimate,
+because a regression there would rest on too few events (the usual guidance
+asks for roughly 5 to 10 events per parameter; Vittinghoff and McCulloch,
+2007). The rescaling when the moves exceed one is a safeguard of the
+per-destination approach; a multinomial model would make it unnecessary.
+
+**Errors and warnings.** As in `P2reg()`; `predict()` errors on an empty
+`newdata` and warns when move probabilities had to be rescaled.
+
+**Example**
+
+```{r p2reg-all}
+all_fit <- P2reg_all(d, formula = ~ ingreso_SP)
+all_fit
+P_sp <- predict(all_fit, newdata = data.frame(ingreso_SP = 1))
+ckequations(P_sp, h = "SP", j = "SP", l = "Death", nsteps = 30)[c(7, 14, 30)]
+```
+
+# Comparison with a first-order model
+
+## `as_tmat()`
+
+**Definition**
+
+```r
+as_tmat(object, ...)
+```
+
+**What it does.** Builds the transition matrix, in exactly the format of
+`mstate::transMat()`, of the moves $j \to \ell$, $\ell \neq j$, observed in
+the data (including each subject's first move). A first-order `mstate` analysis then uses the same state space in
+the same order as the second-order model, which `compare_order()` requires.
+
+**Arguments**
+
+| Argument | Default | Meaning |
+|---|---|---|
+| `object` | — | an `msm2data` object, or a panel data frame |
+| `...` | — | passed to `prep2()` when `object` is a data frame |
+
+**Value.** An $M \times M$ matrix with the transitions numbered row by row
+and `NA` elsewhere, with dimnames `from`/`to`.
+
+**How it works.** Takes the distinct moves $j \neq \ell$ in `object$pairs`
+(all one-step moves, including first moves), converts them to a list of
+reachable state indices per state, and numbers them row by row exactly as
+`mstate::transMat(to_list, names = states)` does. The `mstate` package is not
+needed.
+
+**Errors and warnings.** None beyond those of `prep2()` for a data frame.
+
+**Example**
+
+```{r tmat}
+as_tmat(d)
+```
+
+## `compare_order()`
+
+**Definition**
+
+```r
+compare_order(x, pt, h, j, l, nsteps = 9L, conf.level = NULL)
+```
+
+**What it does.** Compares, step by step, the second-order prediction
+$P(X_{n+1} = \ell \mid X_1 = j, X_0 = h)$ for one or more histories $h$ with
+the **first-order** prediction $P(X_{n+1} = \ell \mid X_1 = j)$ from an
+`mstate::probtrans` object, which ignores $h$.
+
+**Arguments**
+
+| Argument | Default | Meaning |
+|---|---|---|
+| `x` | — | a `P2est` or `P2boot` object |
+| `pt` | — | `mstate::probtrans` object computed with `predt = 1` over the same states in the same order, or a `P1est` fit with bootstrap replicates |
+| `h` | — | previous states to compare with the baseline |
+| `j`, `l` | — | current and target state |
+| `nsteps` | `9L` | horizon |
+| `conf.level` | `NULL` | confidence level for both curves; default `x$conf.level` |
+
+**Value.** An `msm2pred` object (as from `compare2()`) with one group per
+$h$ plus a baseline group labelled `"1st order (mstate)"` (or
+`"1st order (discrete)"` for a `P1est` baseline), columns
+`h, n, estimate, lower, upper`, and the extra attribute `baseline`.
+
+**How it works.**
+
+1. `pt[[j]]` is the first-order trajectory from state $j$. Its columns
+   `pstate<k>` and `se<k>` (for $k$ the position of $\ell$) are read at times
+   `predt + n`, where `predt` is its first `time`, taking the last row at or
+   before each time (`probtrans` is a right-continuous step function).
+2. The first-order interval is `pstate ± z * se`, clipped to [0, 1].
+3. Each second-order curve is `ckequations(x, h, j, l, nsteps, bounds = TRUE)`.
+
+**Errors and warnings.**
+
+* Error: `x` is not a `P2est`, or `pt` is neither a `probtrans` nor a `P1est`.
+* Error: `pt` is a `P1est` without bootstrap replicates (no standard errors).
+* Error: `conf.level` not in (0, 1).
+* Error: `j` or `l` not in the state space, or `j` beyond the number of
+  components of `pt`.
+* Error: `pt[[j]]` lacks `time`, `pstate<k>` or `se<k>`, or has no valid
+  times.
+* Error: `pt` does not reach `nsteps` steps.
+
+**How a `P1est` baseline is used.** It is converted with `probtrans2()` into
+the first-order predictions from $j$, with bootstrap standard errors.
+
+**Example**
+
+```{r compare-order}
+co <- compare_order(bt, p1, h = c("NSP", "SP"), j = "SP", l = "NIMV")
+co
+```
+
+## `divergence()`
+
+**Definition**
+
+```r
+divergence(x)
+```
+
+**What it does.** For each history in a `compare_order()` result, reports
+**how many leading steps** its second-order interval and the first-order
+interval do not overlap (the "memory horizon"), and the largest difference
+between the curves.
+
+**Arguments**
+
+| Argument | Default | Meaning |
+|---|---|---|
+| `x` | — | an object returned by `compare_order()` |
+
+**Value.** A data frame, one row per history (excluding the baseline), sorted
+by decreasing `separated_steps`, with columns `h`, `n`, `s`,
+`separated_steps` (as in `overlap_step()`), `diff_steps` (leading steps whose
+paired bootstrap interval of the difference excludes 0; available when `x` is a
+`P2boot` fit and the baseline is `P1est(x)`, so that both come from the same
+resamples, `NA` otherwise) and `max_abs_diff`, the largest absolute difference
+in point estimates over the horizon.
+
+**How it works.** Splits `x` into (baseline, $h$) pairs, restores the
+`msm2pred` attributes, and calls `overlap_step()` on each pair.
+
+**Errors and warnings.** Error if `x` is not an `msm2pred`, has no baseline
+attribute (not built by `compare_order()`), or has no history besides the
+baseline.
+
+**Example**
+
+```{r divergence}
+divergence(co)
+```
+
+## `divergence_table()`
+
+**Definition**
+
+```r
+divergence_table(x, pt, nsteps = 9L, min.h = 2, targets = NULL)
+```
+
+**What it does.** The systematic first- versus second-order comparison:
+applies `compare_order()` and `divergence()` to every current state reached
+from at least `min.h` previous states and every target, and stacks the
+results, so that one table shows for which transitions and up to which
+horizon conditioning on the previous state changes the forecast.
+
+**Arguments**
+
+| Argument | Default | Meaning |
+|---|---|---|
+| `x` | — | `P2est` or `P2boot` fit |
+| `pt` | — | first-order baseline: `P1est` with replicates, or `probtrans` with `predt = 1` |
+| `nsteps` | `9L` | horizon |
+| `min.h` | `2` | minimum number of previous states for a current state to be included |
+| `targets` | `NULL` | target states (default: all) |
+
+**Value.** A data frame with one row per $(j, \ell, h)$ and columns
+`j, l, h, n, s, separated_steps, diff_steps, max_abs_diff`, sorted by decreasing
+`separated_steps` and `max_abs_diff`. Targets with zero probability for every
+group over the whole horizon are omitted. Read `diff_steps` (paired test of the
+difference) or `separated_steps` (the conservative overlap criterion) together
+with `max_abs_diff` (size of the difference).
+
+**Errors and warnings.** Error if `x` is not a `P2est`, or if no current state
+has `min.h` previous states; plus those of `compare_order()`.
+
+**Example**
+
+```{r divergence-table}
+head(divergence_table(bt, p1), 10)
+```
+
+# Simulation
+
+## `simulate2()`
+
+**Definition**
+
+```r
+simulate2(n, tensor, first, init = NULL, entry = NULL, states = NULL, maxT = 1000)
+```
+
+**What it does.** Simulates discrete-time panel data from a second-order
+Markov multistate model, defined by a second-order tensor, a matrix for the
+first move, and an entry distribution. Useful to validate methods, study the
+estimators and plan studies.
+
+**Arguments**
+
+| Argument | Default | Meaning |
+|---|---|---|
+| `n` | — | number of individuals |
+| `tensor` | — | $M \times M \times M$ tensor `P[j, l, h]`; absorbing states need `tensor[a, a, h] = 1` for all `h` |
+| `first` | — | $M \times M$ matrix, `first[h, l]` $= P(X_1 = \ell \mid X_0 = h)$ |
+| `init` | `NULL` | distribution of the entry state $X_0$ when `entry = NULL`; default uniform over transient states |
+| `entry` | `NULL` | **named** vector of per-step entry probabilities by state; its sum is the per-step probability of entering, which gives **staggered entry** |
+| `states` | `NULL` | state labels; default the tensor's dimnames, or `1:M` |
+| `maxT` | `1000` | maximum number of global time steps |
+
+**Value.** A `data.table` with columns `id`, `time` and `state` (factor with
+levels `states`), sorted by `id` and `time`, ready for `prep2()`.
+
+**How it works.**
+
+1. Absorbing states are those with `tensor[a, a, h] = 1` for all $h$.
+2. Entry: without `entry`, all individuals enter at time 0 with
+   $X_0 \sim$ `init`. With `entry`, at each global step each individual not
+   yet entered enters with probability `sum(entry)`, in a state drawn from
+   `entry`, and makes the first move at the following step.
+3. First move: $X_1 \sim$ `first[X_0, ]`.
+4. Later moves: $X_s \sim$ `tensor[X_{s-1}, , X_{s-2}]`. Individuals sharing
+   the same pair are sampled together.
+5. An individual stops when it reaches an absorbing state, or when its
+   probability row is all zero (an unspecified pair: the path ends there).
+
+**Errors and warnings.** Error if `entry` is unnamed or names states not in
+`states`. Warning if `maxT` is reached with individuals still active
+(usually a zero-probability or non-absorbing cycle in `tensor`).
+
+**Example**
+
+```{r simulate}
+## simulate from the model fitted to DIVINE (first move: first-order matrix)
+adm <- prop.table(table(factor(first, levels = estados)))
+set.seed(2)
+sim <- simulate2(2000, fit$P, first = p1$P, init = adm)
+table(sim$state)
+set.seed(2)
+head(simulate2(3, fit$P, first = p1$P, entry = c(NSP = 0.3)), 8)   # staggered entry
+```
+
+# Object classes
+
+| Class | Created by | Main components | Methods |
+|---|---|---|---|
+| `msm2data` | `prep2()` | `N`, `Y`, `triples`, `pairs`, `states`, `absorbing`, `n`, `ntriples`, `time.range`, `covariates` | `print`, `summary` |
+| `P2est` | `P2est()` | `estimate`, `P`, `P.lower`, `P.upper`, `P.se`, settings | `print` |
+| `P2boot` | `P2boot()` | a `P2est` plus `boot`, `boot1`, `B` | `print` (and every `P2est` use) |
+| `P1est` | `P1est()` | `estimate`, `P`, `P.lower`, `P.upper`, `P.se`, `boot` | `print` |
+| `probtrans2` | `probtrans2()` | an `mstate` `probtrans` list plus `h` | `plot` |
+| `msm2pred` | `compare2()`, `compare_order()` | data frame `h, n, estimate[, lower, upper]`; attributes `j`, `l`, `bounds`, `estimator`, `conf.level` (`baseline` for `compare_order()`) | `print`, `summary`, `plot` |
+| `markov_test` | `markov_test()` | data frame `j, l, K, df, statistic, p.value, pooled` (or `j, K, L, df, statistic, p.value` per state) | `print` |
+| `P2reg` | `P2reg()` | `models`, `h`, `j`, `states`, `formula`, `family`, `cluster`, `n`, `n.risk` | `print`, `summary`, `predict`, `plot` |
+| `P2reg_all` | `P2reg_all()` | `fits`, `rpe`, `pairs`, `formula`, `family`, `states`, `absorbing` | `print`, `summary`, `predict` |
+| `summary.P2reg` | `summary.P2reg()` | data frame of coefficients, HR and p-values | `print` |
+
+# Internal helpers
+
+These functions are not exported (access them with `mstate2:::`), but they
+implement the core computations and are documented here for completeness.
+
+| Helper | Definition | What it does |
+|---|---|---|
+| `.pair_matrix(P, M)` | tensor, number of states | builds the $M^2 \times M^2$ pair-transition matrix $Q$ with $Q_{(a,b),(b,c)} = P_{abc}$; pair $(a, b)$ has index $(a-1)M + b$ |
+| `.propagate(Q, hi, ji, nsteps, M)` | $Q$, start indices | starts from the pair $(h, j)$, multiplies by $Q$ `nsteps` times and returns the `nsteps × M` matrix of marginal state distributions |
+| `.ck_distribution(P, h, j, nsteps, states)` | tensor, start states | resolves `h`, `j`, builds $Q$ and propagates; shared by `ckequations()`, `compare2()`, `compare_order()` |
+| `.resolve(s, states)` | labels or indices | converts state labels to positions (indices are returned as integers; unknown labels as `NA`) |
+| `.check_conf_level(conf.level)` | a number | errors unless `conf.level` is a single number strictly between 0 and 1 |
+| `.id_counts(object)` | `msm2data` | per-subject counts of every observed triple ($n \times K$ matrix) and their $(h, j)$ and $(j, \ell)$ groups, for the bootstrap |
+| `.tensor_from_counts()`, `.first_from_counts()` | replicate totals | second-order tensor and first-order matrix of a bootstrap replicate |
+| `.boot_bands(boot, hi, ji, li, nsteps, conf.level)` | replicate tensors | percentile bands of an $n$-step curve |
+| `.trans_mat(x, names)`, `.trans_matrix(x)` | reachable states / a fit | `transMat()`-format transition matrices |
+| `.mt_wald()`, `.mt_lrt_transition()`, `.mt_lrt_state()` | estimate table | the three versions of `markov_test()` |
+| `` `%||%`(a, b) `` | two values | returns `b` when `a` is `NULL`, otherwise `a` |
+
+```{r internals}
+Q <- mstate2:::.pair_matrix(fit$P, 7)
+dim(Q)
+round(mstate2:::.propagate(Q, hi = 1, ji = 2, nsteps = 3, M = 7), 3)   # from (NSP, SP)
+```
+
+# References
+
+Allison, P. D. (1982). Discrete-time methods for the analysis of event
+histories. *Sociological Methodology*, 13, 61–98.
+
+Anderson, T. W. and Goodman, L. A. (1957). Statistical inference about Markov
+chains. *The Annals of Mathematical Statistics*, 28(1), 89–110.
+
+Benson, A. R., Gleich, D. F. and Lim, L.-H. (2017). The spacey random walk: a
+stochastic process for higher-order data. *SIAM Review*, 59(2), 321–345.
+
+Besalú, M. and Gómez Melis, G. (2024). Second order Markov multistate models.
+*SORT*, 48(2), 209–234.
+
+Billingsley, P. (1961). Statistical methods in Markov chains. *The Annals of
+Mathematical Statistics*, 32(1), 12–40.
+
+Brown, L. D., Cai, T. T. and DasGupta, A. (2001). Interval estimation for a
+binomial proportion. *Statistical Science*, 16(2), 101–133.
+
+Cochran, W. G. (1954). The combination of estimates from different
+experiments. *Biometrics*, 10(1), 101–129.
+
+Davison, A. C. and Hinkley, D. V. (1997). *Bootstrap Methods and their
+Application*. Cambridge University Press.
+
+de Wreede, L. C., Fiocco, M. and Putter, H. (2011). mstate: an R package for
+the analysis of competing risks and multi-state models. *Journal of
+Statistical Software*, 38(7), 1–30.
+
+Efron, B. and Tibshirani, R. J. (1993). *An Introduction to the Bootstrap*.
+Chapman and Hall.
+
+Field, C. A. and Welsh, A. H. (2007). Bootstrapping clustered data. *Journal
+of the Royal Statistical Society: Series B*, 69(3), 369–390.
+
+Holm, S. (1979). A simple sequentially rejective multiple test procedure.
+*Scandinavian Journal of Statistics*, 6(2), 65–70.
+
+Liang, K.-Y. and Zeger, S. L. (1986). Longitudinal data analysis using
+generalized linear models. *Biometrika*, 73(1), 13–22.
+
+Najera-Zuloaga, J., Besalú, M. and Gómez Melis, G. (2025). Second-order Markov
+multistate models: nonparametric estimation and inference. Manuscript
+submitted for publication.
+
+Prentice, R. L. and Gloeckler, L. A. (1978). Regression analysis of grouped
+survival data with application to breast cancer data. *Biometrics*, 34(1),
+57–67.
+
+Putter, H., Fiocco, M. and Geskus, R. B. (2007). Tutorial in biostatistics:
+competing risks and multi-state models. *Statistics in Medicine*, 26(11),
+2389–2430.
+
+Schenker, N. and Gentleman, J. F. (2001). On judging the significance of
+differences by examining the overlap between confidence intervals. *The
+American Statistician*, 55(3), 182–186.
+
+Titman, A. C. and Putter, H. (2022). General tests of the Markov property in
+multi-state models. *Biostatistics*, 23(2), 380–396.
+
+Tutz, G. and Schmid, M. (2016). *Modeling Discrete Time-to-Event Data*.
+Springer.
+
+Varin, C., Reid, N. and Firth, D. (2011). An overview of composite likelihood
+methods. *Statistica Sinica*, 21(1), 5–42.
+
+Vittinghoff, E. and McCulloch, C. E. (2007). Relaxing the rule of ten events
+per variable in logistic and Cox regression. *American Journal of
+Epidemiology*, 165(6), 710–718.
+
+Zeileis, A., Köll, S. and Graham, N. (2020). Various versatile variances: an
+object-oriented implementation of clustered covariances in R. *Journal of
+Statistical Software*, 95(1), 1–36.

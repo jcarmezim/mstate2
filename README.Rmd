@@ -1,0 +1,185 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file. -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.path = "man/figures/README-",
+                      fig.width = 7, fig.height = 4, dpi = 110, out.width = "75%")
+## The DIVINE data are not distributed with mstate2. To re-render this file,
+## point MSTATE2_DIVINE_DATA at a local copy of MSM_Data.RData.
+divine_path <- Sys.getenv("MSTATE2_DIVINE_DATA", "MSM_Data.RData")
+knitr::opts_chunk$set(eval = file.exists(divine_path))
+options(digits = 4)
+```
+
+# mstate2 <img src="man/figures/logo.png" align="right" width="200"/>
+
+[![R-CMD-check](https://github.com/jcarmezim/mstate2/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/jcarmezim/mstate2/actions/workflows/R-CMD-check.yaml)
+[![Codecov test coverage](https://codecov.io/gh/jcarmezim/mstate2/graph/badge.svg?token=ptcXJwFrji)](https://codecov.io/gh/jcarmezim/mstate2)
+
+**mstate2** implements **second-order Markov multistate models** in R. In a
+first-order (Markov) model, the state at the next time depends only on the
+state at the current time. In a second-order model it also depends on the
+state at the **previous time**:
+
+$$P_{hj\ell} = P(X_s = \ell \mid X_{s-1} = j,\ X_{s-2} = h).$$
+
+This captures a short-term memory that first-order models miss: two patients
+with severe pneumonia today have very different risks tomorrow depending on
+whether they already had it at the previous time or have just worsened.
+
+The package provides nonparametric estimation, multi-step prediction, tests
+of the first-order assumption, a systematic comparison with first-order
+models, and covariate regression. It **complements**
+[mstate](https://cran.r-project.org/package=mstate) and follows its
+conventions: `msprep()`-style input, `probtrans`-style output and `transMat`
+transition matrices.
+
+## Installation
+
+mstate2 is not yet on CRAN. Install the development version from GitHub:
+
+```r
+# install.packages("remotes")
+remotes::install_github("jcarmezim/mstate2", build_vignettes = TRUE)
+```
+
+## Example: the DIVINE cohort
+
+The example uses the DIVINE cohort of 2076 patients hospitalised with
+COVID-19 (the real-data illustration of the methods paper). The data are
+not distributed with mstate2; download `MSM_Data.RData` from the
+[DIVINE repository](https://github.com/bruigtp/DIVINE/tree/main/msm_data).
+Each row is a patient with the days spent in each state and how follow-up
+ended.
+
+```{r load-shown, eval = FALSE}
+library(mstate2)
+load("MSM_Data.RData")     # data frame MSM
+```
+
+```{r load-run, include = FALSE}
+library(mstate2)
+load(divine_path)
+```
+
+**1. From sojourn times to a daily panel, and the second-order counts.**
+
+```{r prep}
+panel <- sojourn_to_panel(MSM, id = "id",
+  segments  = c(NSP = "t.nosp", SP = "t.sp", NIMV = "t.nimv", IMV = "t.mv", Recov = "t.recov"),
+  absorbing = c(Disch = "disch.s", Death = "death.s"))
+d <- prep2(panel, states = c("NSP", "SP", "Recov", "NIMV", "IMV", "Disch", "Death"))
+d
+```
+
+**2. Estimation.** The probability of moving from severe pneumonia (SP) to
+non-invasive (NIMV) or invasive (IMV) ventilation depends strongly on the
+state at the previous time (Table 2 of the paper):
+
+```{r estimate}
+fit <- P2est(d)
+subset(fit$estimate, j == "SP" & l %in% c("NIMV", "IMV"))[, c("h", "j", "l", "p", "lower", "upper")]
+```
+
+**3. Is the first-order assumption tenable?** Likelihood-ratio test for each
+current state:
+
+```{r test}
+markov_test(fit, method = "lrt", by = "state")
+```
+
+**4. For how long does the previous time matter?** `compare2()` predicts the
+probability of being in NIMV $n$ days later, for patients in SP whose state at
+the previous time was NSP or SP, with subject-level bootstrap intervals; the
+dotted line marks the first day on which the intervals overlap.
+
+```{r compare}
+bt  <- P2boot(d, B = 500, seed = 1)
+cmp <- compare2(bt, h = c("NSP", "SP"), j = "SP", l = "NIMV")
+summary(cmp)
+plot(cmp, dualaxis = FALSE, xlab = "days ahead (n)")
+```
+
+**5. How much does a first-order model get wrong?** `divergence_table()`
+compares the second-order predictions with a first-order model fitted to the
+same data, for every transition:
+
+```{r divergence}
+head(divergence_table(bt, P1est(bt)), 5)
+```
+
+**6. Covariates and time scales.** A discrete-time hazard regression for
+patients in SP at both the previous and the current time, with the days
+already spent in SP (`d`) and the day of follow-up (`s`); `exp(coef)` is a
+hazard ratio:
+
+```{r regression}
+reg <- P2reg(d, h = "SP", j = "SP", l = c("Recov", "NIMV", "Death"), formula = ~ log(d) + s)
+summary(reg)
+```
+
+## Main functions
+
+| Task | Functions |
+|---|---|
+| Prepare the data | `sojourn_to_panel()`, `from_msdata()`, `msprep2()`, `rnd()`, `prep2()` |
+| Estimate | `P2est()` (RPE), `P2boot()` (bootstrap), `P1est()` (first-order model from the same data) |
+| Predict | `ckequations()` (extended Chapman-Kolmogorov), `probtrans2()` (`probtrans` format, with `plot()`) |
+| Does the previous time matter? | `compare2()`, `overlap_step()`, `markov_test()` (Wald and likelihood-ratio tests) |
+| First versus second order | `compare_order()`, `divergence()`, `divergence_table()`, `as_tmat()` |
+| Covariates | `P2reg()` (discrete-time cloglog hazard regression; time-varying or semi-Markov baselines), `P2reg_all()` (covariate-adjusted multi-step prediction) |
+| Simulate | `simulate2()` |
+
+## Documentation
+
+- `vignette("mstate2")`: a complete guided analysis, function by function.
+- `vignette("reference")`: the full reference (signature, arguments, value,
+  algorithm and error conditions of every function).
+- The package website: <https://jcarmezim.github.io/mstate2/>.
+- `tests/DIVINE_reproduction.R` reproduces Table 2 and Section 6.3 of the
+  methods paper when the DIVINE data are available.
+
+## Methods
+
+The estimators, their variances and the extended Chapman-Kolmogorov relation
+are described in:
+
+- Najera-Zuloaga J, Besalú M, Gómez Melis G (2025). *Second-Order Markov
+  Multistate Models: Nonparametric Estimation and Inference*. Manuscript
+  submitted for publication.
+- Besalú M, Gómez Melis G (2024). Second order Markov multistate models.
+  *SORT*, 48(2), 209–234.
+
+The bootstrap intervals, the likelihood-ratio test, the first-order
+comparison tools and the covariate regression are extensions developed in
+this package; see `NEWS.md`.
+
+## Citation
+
+```{r citation, eval = TRUE, comment = ""}
+citation("mstate2")
+```
+
+## Authors
+
+- **João Carmezim** (maintainer)
+- Josu Najera-Zuloaga
+- Mireia Besalú
+- Cristian Tebé
+- Guadalupe Gómez Melis
+
+mstate2 is developed within the PhD thesis *Second-Order Markov Methods for
+Multistate Survival Analysis with Application to Acute Respiratory
+Infections* (Universitat Politècnica de Catalunya).
+
+## Getting help
+
+Please report bugs, with a minimal reproducible example, on
+[GitHub Issues](https://github.com/jcarmezim/mstate2/issues).
+
+## License
+
+GPL (>= 3)

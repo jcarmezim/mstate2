@@ -1,0 +1,82 @@
+url: https://jcarmezim.github.io/mstate2/
+template:
+  bootstrap: 5
+
+authors:
+  João Carmezim:
+    href: https://github.com/jcarmezim
+
+home:
+  sidebar:
+    structure: [links, license, citation, authors, dev]
+
+reference:
+- title: Package overview
+  contents:
+  - mstate2-package
+
+- title: Building the data
+  desc: >
+    Build a daily panel from sojourn times, an mstate `msdata` object or
+    mstate's wide `msprep()` format, and compute the second-order counting
+    processes.
+  contents:
+  - prep2
+  - msprep2
+  - from_msdata
+  - sojourn_to_panel
+  - as_tmat
+
+- title: Estimation
+  desc: >
+    Nonparametric estimation of the 1-step second-order transition
+    probabilities.
+  contents:
+  - P2est
+  - P2boot
+  - P1est
+
+- title: Prediction
+  desc: Multi-step prediction via the extended Chapman-Kolmogorov relation.
+  contents:
+  - ckequations
+  - probtrans2
+  - plot.probtrans2
+
+- title: Testing the Markov assumption
+  desc: >
+    Compare trajectories across the states occupied at the previous time,
+    with evolution or bootstrap intervals, and test formally whether the
+    state at the previous time matters (Wald and likelihood-ratio tests).
+  contents:
+  - compare2
+  - overlap_step
+  - markov_test
+  - plot.msm2pred
+
+- title: Covariate regression
+  desc: >
+    Covariate-adjusted transition probabilities via a discrete-time
+    cause-specific hazard regression (with time-varying or semi-Markov
+    baselines), and covariate-adjusted multi-step prediction.
+  contents:
+  - P2reg
+  - predict.P2reg
+  - plot.P2reg
+  - P2reg_all
+  - predict.P2reg_all
+
+- title: Comparing against a first-order model
+  desc: >
+    Quantify how much (and for how long) a second-order prediction diverges
+    from a first-order one, estimated from the same data (`P1est()`) or
+    with `mstate`.
+  contents:
+  - compare_order
+  - divergence
+  - divergence_table
+
+- title: Simulation
+  contents:
+  - simulate2
+  - rnd

@@ -1,0 +1,13 @@
+^mstate2\.Rproj$
+^\.Rproj\.user$
+^LICENSE\.md$
+^README\.Rmd$
+^\.github$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^\.vscode$
+^\.git$
+^\.gitignore$
+^vignettes/.*\.orig$
+^vignettes/precompile\.R$

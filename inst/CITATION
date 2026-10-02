@@ -1,0 +1,38 @@
+citHeader("To cite mstate2 in publications, please cite the methods paper. Citing the package itself (below) is optional.")
+
+bibentry(
+  bibtype     = "Unpublished",
+  title       = "Second-Order Markov Multistate Models: Nonparametric Estimation and Inference",
+  author      = c(
+    person("Josu", "Najera-Zuloaga"),
+    person("Mireia", "Besalú"),
+    person("Guadalupe", "Gómez Melis")
+  ),
+  year        = "2025",
+  note        = "Manuscript submitted for publication",
+  textVersion = paste(
+    "Najera-Zuloaga J, Besalú M, Gómez Melis G (2025).",
+    "\"Second-Order Markov Multistate Models: Nonparametric Estimation and Inference.\"",
+    "Manuscript submitted for publication."
+  )
+)
+
+bibentry(
+  bibtype     = "Manual",
+  title       = "mstate2: Second-Order Markov Multistate Models",
+  author      = c(
+    person("João", "Carmezim"),
+    person("Josu", "Najera-Zuloaga"),
+    person("Mireia", "Besalú"),
+    person("Cristian", "Tebé"),
+    person("Guadalupe", "Gómez Melis")
+  ),
+  year        = "2026",
+  note        = paste("R package version", meta$Version),
+  url         = "https://github.com/jcarmezim/mstate2",
+  textVersion = paste0(
+    "Carmezim J, Najera-Zuloaga J, Besalú M, Tebé C, Gómez Melis G (2026). ",
+    "mstate2: Second-Order Markov Multistate Models. ",
+    "R package version ", meta$Version, ". https://github.com/jcarmezim/mstate2"
+  )
+)
