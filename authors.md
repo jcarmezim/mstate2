@@ -2,9 +2,9 @@
 
 ## Authors
 
-- **[João Carmezim](https://github.com/jcarmezim)**. Author, maintainer.
+- **Josu Najera-Zuloaga**. Author, maintainer.
 
-- **Josu Najera-Zuloaga**. Author.
+- **[João Carmezim](https://github.com/jcarmezim)**. Author.
 
 - **Mireia Besalú**. Author.
 
