@@ -14,7 +14,8 @@ second-order counting processes.
 - [`sojourn_to_panel()`](https://jcarmezim.github.io/mstate2/reference/sojourn_to_panel.md)
   : Convert sojourn-time data to discrete-time panel format
 - [`rnd()`](https://jcarmezim.github.io/mstate2/reference/rnd.md) :
-  Round half up (the convention used in the DIVINE analysis)
+  Round half away from zero (the rounding of the paper's DIVINE
+  analysis)
 - [`prep2()`](https://jcarmezim.github.io/mstate2/reference/prep2.md) :
   Build second-order counting processes from panel data
 

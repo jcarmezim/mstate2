@@ -118,7 +118,7 @@ general use of every function is explained in
 <td>3</td>
 </tr>
 <tr class="odd">
-<td>Eq. 9, Theorem 5, Corollaries 1–2</td>
+<td>Eq. 9, Theorems 4–5 (Eqs. 13–14), Corollary 2</td>
 <td>relative probability estimator (RPE), variance, CI</td>
 <td><code><a href="../reference/P2est.html">P2est()</a></code></td>
 <td>4</td>
@@ -144,9 +144,11 @@ general use of every function is explained in
 <td>6</td>
 </tr>
 <tr class="odd">
-<td>Section 5</td>
-<td>simulation from a second-order model</td>
-<td><code><a href="../reference/simulate2.html">simulate2()</a></code></td>
+<td>Section 5, Table 1 (RPE rows)</td>
+<td>simulation study of the estimator</td>
+<td>
+<code><a href="../reference/simulate2.html">simulate2()</a></code>, <code><a href="../reference/P2est.html">P2est()</a></code>
+</td>
 <td>8</td>
 </tr>
 </tbody>
@@ -199,9 +201,10 @@ NIMV → IMV → Recov, and appends the final state.</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">panel</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 27736     3</span></span></code></pre></div>
 <p>Durations are recorded in half days. They are rounded with
-<code><a href="../reference/rnd.html">rnd()</a></code>, which sends 0.5 to 1. Base R’s <code><a href="https://rdrr.io/r/base/Round.html" class="external-link">round()</a></code>
-sends 0.5 to 0, deletes the half-day stays in severe pneumonia and does
-not reproduce Table 2:</p>
+<code><a href="../reference/rnd.html">rnd()</a></code>, the rounding function of the paper’s code, which
+sends 0.5 to 1. Base R’s <code><a href="https://rdrr.io/r/base/Round.html" class="external-link">round()</a></code> sends 0.5 to 0, deletes
+the half-day stays in severe pneumonia and does not reproduce Table
+2:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">MSM</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">t.sp</span> <span class="op"><a href="https://rdrr.io/r/base/Arithmetic.html" class="external-link">%%</a></span> <span class="fl">1</span> <span class="op">==</span> <span class="fl">0.5</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="op">)</span>    <span class="co"># half-day stays in SP</span></span>
 <span><span class="co">#&gt; [1] 146</span></span>
@@ -241,23 +244,29 @@ the data.</p>
 </h2>
 <p>The RPE (Eq. 9) pools all the transitions and all the patient-days at
 risk of each history:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>P</mi><mo accent="true">̂</mo></mover><mrow><mi>h</mi><mi>j</mi><mi>ℓ</mi></mrow></msub><mo>=</mo><mfrac><mrow><munder><mo>∑</mo><mi>s</mi></munder><msub><mover><mi>N</mi><mo accent="true">̃</mo></mover><mrow><mi>h</mi><mi>j</mi><mi>ℓ</mi></mrow></msub><mo stretchy="false" form="prefix">(</mo><mi>s</mi><mo stretchy="false" form="postfix">)</mo></mrow><mrow><munder><mo>∑</mo><mi>s</mi></munder><msub><mover><mi>Y</mi><mo accent="true">̃</mo></mover><mrow><mi>h</mi><mi>j</mi></mrow></msub><mo stretchy="false" form="prefix">(</mo><mi>s</mi><mo>−</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo></mrow></mfrac><mo>,</mo><mspace width="2.0em"></mspace><mrow><mi mathvariant="normal">s</mi><mi mathvariant="normal">e</mi></mrow><mo>=</mo><msqrt><mfrac><mrow><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>−</mo><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo stretchy="false" form="postfix">)</mo></mrow><mrow><munder><mo>∑</mo><mi>s</mi></munder><msub><mover><mi>Y</mi><mo accent="true">̃</mo></mover><mrow><mi>h</mi><mi>j</mi></mrow></msub><mo stretchy="false" form="prefix">(</mo><mi>s</mi><mo>−</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo></mrow></mfrac></msqrt><mo>,</mo></mrow><annotation encoding="application/x-tex">
-\hat P_{hj\ell} = \frac{\sum_s \tilde N_{hj\ell}(s)}{\sum_s \tilde Y_{hj}(s-1)},
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>P</mi><mo accent="true">̃</mo></mover><mrow><mi>h</mi><mi>j</mi><mi>ℓ</mi></mrow></msub><mo>=</mo><mfrac><mrow><munder><mo>∑</mo><mi>s</mi></munder><msub><mover><mi>N</mi><mo accent="true">̃</mo></mover><mrow><mi>h</mi><mi>j</mi><mi>ℓ</mi></mrow></msub><mo stretchy="false" form="prefix">(</mo><mi>s</mi><mo stretchy="false" form="postfix">)</mo></mrow><mrow><munder><mo>∑</mo><mi>s</mi></munder><msub><mover><mi>Y</mi><mo accent="true">̃</mo></mover><mrow><mi>h</mi><mi>j</mi></mrow></msub><mo stretchy="false" form="prefix">(</mo><mi>s</mi><mo>−</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo></mrow></mfrac><mo>,</mo><mspace width="2.0em"></mspace><mrow><mi mathvariant="normal">s</mi><mi mathvariant="normal">e</mi></mrow><mo>=</mo><msqrt><mfrac><mrow><msub><mover><mi>P</mi><mo accent="true">̃</mo></mover><mrow><mi>h</mi><mi>j</mi><mi>ℓ</mi></mrow></msub><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mover><mi>P</mi><mo accent="true">̃</mo></mover><mrow><mi>h</mi><mi>j</mi><mi>ℓ</mi></mrow></msub><mo stretchy="false" form="postfix">)</mo></mrow><mrow><munder><mo>∑</mo><mi>s</mi></munder><msub><mover><mi>Y</mi><mo accent="true">̃</mo></mover><mrow><mi>h</mi><mi>j</mi></mrow></msub><mo stretchy="false" form="prefix">(</mo><mi>s</mi><mo>−</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo></mrow></mfrac></msqrt><mo>,</mo></mrow><annotation encoding="application/x-tex">
+\tilde P_{hj\ell} = \frac{\sum_s \tilde N_{hj\ell}(s)}{\sum_s \tilde Y_{hj}(s-1)},
 \qquad
-\mathrm{se} = \sqrt{\frac{\hat p(1-\hat p)}{\sum_s \tilde Y_{hj}(s-1)}},
+\mathrm{se} = \sqrt{\frac{\tilde P_{hj\ell}(1-\tilde P_{hj\ell})}{\sum_s \tilde Y_{hj}(s-1)}},
 </annotation></semantics></math></p>
-<p>with Wald 95% confidence intervals (Corollaries 1–2).</p>
+<p>where the standard error is the square root of the variance estimator
+of Theorem 5 (Eq. 14) divided by
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math>,
+with Wald 95% confidence intervals (Corollary 2) clipped to [0, 1], as
+in the paper’s code.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/P2est.html">P2est</a></span><span class="op">(</span><span class="va">d</span><span class="op">)</span></span>
 <span><span class="va">table2</span> <span class="op">&lt;-</span> <span class="va">fit</span><span class="op">$</span><span class="va">estimate</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">j</span> <span class="op">==</span> <span class="st">"SP"</span>, <span class="va">l</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"NIMV"</span>, <span class="st">"IMV"</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">h</span>, <span class="va">j</span>, <span class="va">l</span>, <span class="va">p</span>, <span class="va">se</span>, <span class="va">lower</span>, <span class="va">upper</span>, <span class="va">n.trans</span>, <span class="va">at.risk</span><span class="op">)</span></span>
 <span><span class="va">table2</span></span>
-<span><span class="co">#&gt;     h  j    l       p       se   lower   upper n.trans at.risk</span></span>
-<span><span class="co">#&gt; 1 NSP SP NIMV 0.22384 0.020560 0.18355 0.26414      92     411</span></span>
-<span><span class="co">#&gt; 2 NSP SP  IMV 0.15085 0.017654 0.11625 0.18545      62     411</span></span>
-<span><span class="co">#&gt; 3  SP SP NIMV 0.02549 0.003051 0.01951 0.03147      68    2668</span></span>
-<span><span class="co">#&gt; 4  SP SP  IMV 0.01837 0.002599 0.01327 0.02346      49    2668</span></span></code></pre></div>
+<span><span class="co">#&gt; # A tibble: 4 × 9</span></span>
+<span><span class="co">#&gt;   h     j     l          p      se  lower  upper n.trans at.risk</span></span>
+<span><span class="co">#&gt;   &lt;fct&gt; &lt;fct&gt; &lt;fct&gt;  &lt;dbl&gt;   &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;   &lt;int&gt;   &lt;int&gt;</span></span>
+<span><span class="co">#&gt; 1 NSP   SP    NIMV  0.224  0.0206  0.184  0.264       92     411</span></span>
+<span><span class="co">#&gt; 2 NSP   SP    IMV   0.151  0.0177  0.116  0.185       62     411</span></span>
+<span><span class="co">#&gt; 3 SP    SP    NIMV  0.0255 0.00305 0.0195 0.0315      68    2668</span></span>
+<span><span class="co">#&gt; 4 SP    SP    IMV   0.0184 0.00260 0.0133 0.0235      49    2668</span></span></code></pre></div>
 <p><strong>Comparison with Table 2 of the paper:</strong></p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">published</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.224</span>, <span class="fl">0.151</span>, <span class="fl">0.025</span>, <span class="fl">0.018</span><span class="op">)</span>        <span class="co"># NSP-&gt;NIMV, NSP-&gt;IMV, SP-&gt;NIMV, SP-&gt;IMV</span></span>
@@ -265,11 +274,13 @@ risk of each history:</p>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/transmute.html" class="external-link">transmute</a></span><span class="op">(</span>history <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="va">h</span>, <span class="va">j</span>, sep <span class="op">=</span> <span class="st">" -&gt; "</span><span class="op">)</span>, to <span class="op">=</span> <span class="va">l</span>,</span>
 <span>            paper <span class="op">=</span> <span class="va">published</span>, mstate2 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">p</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>match <span class="op">=</span> <span class="va">paper</span> <span class="op">==</span> <span class="va">mstate2</span><span class="op">)</span></span>
-<span><span class="co">#&gt;     history   to paper mstate2 match</span></span>
-<span><span class="co">#&gt; 1 NSP -&gt; SP NIMV 0.224   0.224  TRUE</span></span>
-<span><span class="co">#&gt; 2 NSP -&gt; SP  IMV 0.151   0.151  TRUE</span></span>
-<span><span class="co">#&gt; 3  SP -&gt; SP NIMV 0.025   0.025  TRUE</span></span>
-<span><span class="co">#&gt; 4  SP -&gt; SP  IMV 0.018   0.018  TRUE</span></span></code></pre></div>
+<span><span class="co">#&gt; # A tibble: 4 × 5</span></span>
+<span><span class="co">#&gt;   history   to    paper mstate2 match</span></span>
+<span><span class="co">#&gt;   &lt;chr&gt;     &lt;fct&gt; &lt;dbl&gt;   &lt;dbl&gt; &lt;lgl&gt;</span></span>
+<span><span class="co">#&gt; 1 NSP -&gt; SP NIMV  0.224   0.224 TRUE </span></span>
+<span><span class="co">#&gt; 2 NSP -&gt; SP IMV   0.151   0.151 TRUE </span></span>
+<span><span class="co">#&gt; 3 SP -&gt; SP  NIMV  0.025   0.025 TRUE </span></span>
+<span><span class="co">#&gt; 4 SP -&gt; SP  IMV   0.018   0.018 TRUE</span></span></code></pre></div>
 <p>The four probabilities match to the three decimals published. A
 patient in severe pneumonia who was in non-severe pneumonia at the
 previous time (who has just worsened) moves to non-invasive ventilation
@@ -339,14 +350,15 @@ longer changes the prediction significantly.</p>
 <span><span class="co">#&gt; Trajectory comparison (RPE, 95% evolution intervals)</span></span>
 <span><span class="co">#&gt;   target 'IMV' via current state 'SP'; preceding: NSP, SP</span></span>
 <span><span class="co">#&gt;   intervals first overlap at step 7 (time s = 8); significant for the first 6 step(s).</span></span></code></pre></div>
-<p>These are the curves of Figures 4–5 of the paper. Without intervals
+<p>These are the curves of Figures 4–5 of the paper, with its colours
+(blue for NSP, red for SP at the previous time). Without intervals
 (<code>bounds = FALSE</code>), the two histories start far apart and
-converge:</p>
+converge (the RPE curves of Figure 4):</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">op</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="../reference/compare2.html">compare2</a></span><span class="op">(</span><span class="va">fit</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"NSP"</span>, <span class="st">"SP"</span><span class="op">)</span>, <span class="st">"SP"</span>, <span class="st">"NIMV"</span>, bounds <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>,</span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="../reference/compare2.html">compare2</a></span><span class="op">(</span><span class="va">fit</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"NSP"</span>, <span class="st">"SP"</span><span class="op">)</span>, <span class="st">"SP"</span>, <span class="st">"NIMV"</span>, bounds <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>, col <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"blue"</span>, <span class="st">"red"</span><span class="op">)</span>,</span>
 <span>     dualaxis <span class="op">=</span> <span class="cn">FALSE</span>, xlab <span class="op">=</span> <span class="st">"days (n)"</span>, main <span class="op">=</span> <span class="st">"SP -&gt; NIMV"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="../reference/compare2.html">compare2</a></span><span class="op">(</span><span class="va">fit</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"NSP"</span>, <span class="st">"SP"</span><span class="op">)</span>, <span class="st">"SP"</span>, <span class="st">"IMV"</span>, bounds <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>,</span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="../reference/compare2.html">compare2</a></span><span class="op">(</span><span class="va">fit</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"NSP"</span>, <span class="st">"SP"</span><span class="op">)</span>, <span class="st">"SP"</span>, <span class="st">"IMV"</span>, bounds <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>, col <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"blue"</span>, <span class="st">"red"</span><span class="op">)</span>,</span>
 <span>     dualaxis <span class="op">=</span> <span class="cn">FALSE</span>, xlab <span class="op">=</span> <span class="st">"days (n)"</span>, main <span class="op">=</span> <span class="st">"SP -&gt; IMV"</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
 <img src="figures/paper-figure-curves-1.png" alt="plot of chunk figure-curves"><p class="caption">
@@ -355,12 +367,12 @@ plot of chunk figure-curves
 </div>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span><span class="va">op</span><span class="op">)</span></span></code></pre></div>
-<p>With evolution intervals; the dotted line marks the first
+<p>With evolution intervals (Figure 5); the dotted line marks the first
 overlap:</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">op</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">cmp_nimv</span>, dualaxis <span class="op">=</span> <span class="cn">FALSE</span>, xlab <span class="op">=</span> <span class="st">"days (n)"</span>, main <span class="op">=</span> <span class="st">"SP -&gt; NIMV"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">cmp_imv</span>,  dualaxis <span class="op">=</span> <span class="cn">FALSE</span>, xlab <span class="op">=</span> <span class="st">"days (n)"</span>, main <span class="op">=</span> <span class="st">"SP -&gt; IMV"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">cmp_nimv</span>, col <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"blue"</span>, <span class="st">"red"</span><span class="op">)</span>, dualaxis <span class="op">=</span> <span class="cn">FALSE</span>, xlab <span class="op">=</span> <span class="st">"days (n)"</span>, main <span class="op">=</span> <span class="st">"SP -&gt; NIMV"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">cmp_imv</span>,  col <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"blue"</span>, <span class="st">"red"</span><span class="op">)</span>, dualaxis <span class="op">=</span> <span class="cn">FALSE</span>, xlab <span class="op">=</span> <span class="st">"days (n)"</span>, main <span class="op">=</span> <span class="st">"SP -&gt; IMV"</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
 <img src="figures/paper-figure-intervals-1.png" alt="plot of chunk figure-intervals"><p class="caption">
 plot of chunk figure-intervals
@@ -380,8 +392,18 @@ plot of chunk figure-intervals
 <span><span class="co">#&gt; 2 IMV                7              6</span></span></code></pre></div>
 <p>The state at the previous time changes the prediction of non-invasive
 ventilation for 4 days (the intervals overlap from day 5) and of
-invasive ventilation for 6 days (from day 7), as reported in Section
-6.3.</p>
+invasive ventilation for 6 days (from day 7). The paper reports the
+overlap “around the fifth day” for NIMV and “between the sixth and
+seventh day” for IMV (Section 6.3).</p>
+<p>These curves are those of the paper’s code: its
+<code>Chapman.Kolmogorov()</code> function gives the same nine values
+for each history (differences below
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mn>10</mn><mrow><mi>−</mi><mn>16</mn></mrow></msup><annotation encoding="application/x-tex">10^{-16}</annotation></semantics></math>),
+and the evolution limits differ by about
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mn>10</mn><mrow><mi>−</mi><mn>6</mn></mrow></msup><annotation encoding="application/x-tex">10^{-6}</annotation></semantics></math>
+only because the paper’s code uses
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>z</mi><mo>=</mo><mn>1.96</mn></mrow><annotation encoding="application/x-tex">z = 1.96</annotation></semantics></math>
+and <code>mstate2</code> uses <code>qnorm(0.975)</code>.</p>
 </div>
 <div class="section level2">
 <h2 id="beyond-the-paper-bootstrap-intervals">7. Beyond the paper: bootstrap intervals<a class="anchor" aria-label="anchor" href="#beyond-the-paper-bootstrap-intervals"></a>
@@ -401,8 +423,8 @@ context.</p>
 <span><span class="co">#&gt; [1] 8</span></span></code></pre></div>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">op</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">cmp_nimv</span>, dualaxis <span class="op">=</span> <span class="cn">FALSE</span>, xlab <span class="op">=</span> <span class="st">"days (n)"</span>, main <span class="op">=</span> <span class="st">"Evolution intervals (paper)"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">cmp_b</span>,    dualaxis <span class="op">=</span> <span class="cn">FALSE</span>, xlab <span class="op">=</span> <span class="st">"days (n)"</span>, main <span class="op">=</span> <span class="st">"Bootstrap intervals"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">cmp_nimv</span>, col <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"blue"</span>, <span class="st">"red"</span><span class="op">)</span>, dualaxis <span class="op">=</span> <span class="cn">FALSE</span>, xlab <span class="op">=</span> <span class="st">"days (n)"</span>, main <span class="op">=</span> <span class="st">"Evolution intervals (paper)"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">cmp_b</span>,    col <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"blue"</span>, <span class="st">"red"</span><span class="op">)</span>, dualaxis <span class="op">=</span> <span class="cn">FALSE</span>, xlab <span class="op">=</span> <span class="st">"days (n)"</span>, main <span class="op">=</span> <span class="st">"Bootstrap intervals"</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
 <img src="figures/paper-figure-boot-1.png" alt="plot of chunk figure-boot"><p class="caption">
 plot of chunk figure-boot
@@ -414,60 +436,100 @@ plot of chunk figure-boot
 separated for 7 days instead of 4.</p>
 </div>
 <div class="section level2">
-<h2 id="simulation-from-a-second-order-model-section-5">8. Simulation from a second-order model (Section 5)<a class="anchor" aria-label="anchor" href="#simulation-from-a-second-order-model-section-5"></a>
+<h2 id="step-6-the-simulation-study-section-5-table-1">8. Step 6: the simulation study (Section 5, Table 1)<a class="anchor" aria-label="anchor" href="#step-6-the-simulation-study-section-5-table-1"></a>
 </h2>
 <p>Section 5 of the paper studies the estimators on data simulated from
-a second-order model, with patients entering the study at different
-times (auxiliary state 0). <code><a href="../reference/simulate2.html">simulate2()</a></code> implements that
-mechanism: the state at entry, the first move (which has no previous
-time) and every later move drawn from the tensor
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>P</mi><mrow><mi>h</mi><mi>j</mi><mi>ℓ</mi></mrow></msub><annotation encoding="application/x-tex">P_{hj\ell}</annotation></semantics></math>,
-until an absorbing state.</p>
-<p>The design and parameters of the paper’s simulation study are given
-there; here the mechanism is illustrated with the model fitted to
-DIVINE. The first move is taken from the empirical day 0 → day 1
-transitions:</p>
+a four-state model: states 1, 2 and 3 and an absorbing state A.
+Individuals enter the study at different times through an auxiliary
+state 0 (probability 0.05 of entering state 1 and 0.05 of entering state
+2 at each step), make a first move with first-order probabilities and
+then move with second-order probabilities until they are absorbed. The
+paper simulates 1,000 individuals and repeats the study 100 times.
+<code><a href="../reference/simulate2.html">simulate2()</a></code> implements this mechanism, with the
+probabilities of Section 5.1 written as a tensor <code>P[j, l, h]</code>
+and a first-move matrix:</p>
 <div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">first_moves</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">inner_join</a></span><span class="op">(</span></span>
-<span>  <span class="va">panel</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">time</span> <span class="op">==</span> <span class="fl">0</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">id</span>, from <span class="op">=</span> <span class="va">state</span><span class="op">)</span>,     <span class="co"># state at admission</span></span>
-<span>  <span class="va">panel</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">time</span> <span class="op">==</span> <span class="fl">1</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">id</span>, to <span class="op">=</span> <span class="va">state</span><span class="op">)</span>,       <span class="co"># state on day 1</span></span>
-<span>  by <span class="op">=</span> <span class="st">"id"</span><span class="op">)</span></span>
-<span><span class="va">first_mat</span> <span class="op">&lt;-</span> <span class="va">first_moves</span> <span class="op">|&gt;</span>                                    <span class="co"># first move (no previous time)</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span>from <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">from</span>, <span class="va">estados</span><span class="op">)</span>, to <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">to</span>, <span class="va">estados</span><span class="op">)</span>, .drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">from</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>p <span class="op">=</span> <span class="va">n</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">pmax</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">n</span><span class="op">)</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">ungroup</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/stats/xtabs.html" class="external-link">xtabs</a></span><span class="op">(</span>formula <span class="op">=</span> <span class="va">p</span> <span class="op">~</span> <span class="va">from</span> <span class="op">+</span> <span class="va">to</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">unclass</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="va">init</span> <span class="op">&lt;-</span> <span class="va">first_moves</span> <span class="op">|&gt;</span>                                         <span class="co"># distribution at admission</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span>state <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">from</span>, <span class="va">estados</span><span class="op">)</span>, .drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>p <span class="op">=</span> <span class="va">n</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">n</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/pull.html" class="external-link">pull</a></span><span class="op">(</span><span class="va">p</span>, name <span class="op">=</span> <span class="va">state</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">2025</span><span class="op">)</span></span>
-<span><span class="va">sim</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simulate2.html">simulate2</a></span><span class="op">(</span><span class="fl">20000</span>, <span class="va">fit</span><span class="op">$</span><span class="va">P</span>, first <span class="op">=</span> <span class="va">first_mat</span>, init <span class="op">=</span> <span class="va">init</span><span class="op">)</span></span>
-<span><span class="va">fit_sim</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/P2est.html">P2est</a></span><span class="op">(</span><span class="fu"><a href="../reference/prep2.html">prep2</a></span><span class="op">(</span><span class="va">sim</span>, states <span class="op">=</span> <span class="va">estados</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span>DIVINE <span class="op">=</span> <span class="va">fit</span><span class="op">$</span><span class="va">estimate</span>, simulated <span class="op">=</span> <span class="va">fit_sim</span><span class="op">$</span><span class="va">estimate</span>, .id <span class="op">=</span> <span class="st">"data"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">j</span> <span class="op">==</span> <span class="st">"SP"</span>, <span class="va">l</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"NIMV"</span>, <span class="st">"IMV"</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">data</span>, <span class="va">h</span>, <span class="va">j</span>, <span class="va">l</span>, <span class="va">p</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/arrange.html" class="external-link">arrange</a></span><span class="op">(</span><span class="va">h</span>, <span class="va">l</span>, <span class="va">data</span><span class="op">)</span></span>
-<span><span class="co">#&gt;        data   h  j    l       p</span></span>
-<span><span class="co">#&gt; 1    DIVINE NSP SP NIMV 0.22384</span></span>
-<span><span class="co">#&gt; 2 simulated NSP SP NIMV 0.22748</span></span>
-<span><span class="co">#&gt; 3    DIVINE NSP SP  IMV 0.15085</span></span>
-<span><span class="co">#&gt; 4 simulated NSP SP  IMV 0.15420</span></span>
-<span><span class="co">#&gt; 5    DIVINE  SP SP NIMV 0.02549</span></span>
-<span><span class="co">#&gt; 6 simulated  SP SP NIMV 0.02712</span></span>
-<span><span class="co">#&gt; 7    DIVINE  SP SP  IMV 0.01837</span></span>
-<span><span class="co">#&gt; 8 simulated  SP SP  IMV 0.01943</span></span></code></pre></div>
-<p>With a large simulated cohort, the RPE recovers the probabilities of
-the model it was simulated from. Staggered entry is obtained with the
-argument <code>entry</code> (see <code><a href="../reference/simulate2.html">?simulate2</a></code>).</p>
+<code class="sourceCode R"><span><span class="va">st</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"1"</span>, <span class="st">"2"</span>, <span class="st">"3"</span>, <span class="st">"A"</span><span class="op">)</span></span>
+<span><span class="va">tensor</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/array.html" class="external-link">array</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">4</span>, <span class="fl">4</span>, <span class="fl">4</span><span class="op">)</span>, dimnames <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">st</span>, <span class="va">st</span>, <span class="va">st</span><span class="op">)</span><span class="op">)</span>   <span class="co"># P[j, l, h]</span></span>
+<span><span class="va">tensor</span><span class="op">[</span><span class="st">"2"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"2"</span>, <span class="st">"3"</span><span class="op">)</span>, <span class="st">"1"</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.4</span>, <span class="fl">0.6</span><span class="op">)</span>   <span class="co"># 1 -&gt; 2 -&gt; {2, 3}</span></span>
+<span><span class="va">tensor</span><span class="op">[</span><span class="st">"3"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"3"</span>, <span class="st">"A"</span><span class="op">)</span>, <span class="st">"1"</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.1</span>, <span class="fl">0.9</span><span class="op">)</span>   <span class="co"># 1 -&gt; 3 -&gt; {3, A}</span></span>
+<span><span class="va">tensor</span><span class="op">[</span><span class="st">"2"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"2"</span>, <span class="st">"3"</span><span class="op">)</span>, <span class="st">"2"</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.7</span>, <span class="fl">0.3</span><span class="op">)</span>   <span class="co"># 2 -&gt; 2 -&gt; {2, 3}</span></span>
+<span><span class="va">tensor</span><span class="op">[</span><span class="st">"3"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"3"</span>, <span class="st">"A"</span><span class="op">)</span>, <span class="st">"2"</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.8</span>, <span class="fl">0.2</span><span class="op">)</span>   <span class="co"># 2 -&gt; 3 -&gt; {3, A}</span></span>
+<span><span class="va">tensor</span><span class="op">[</span><span class="st">"3"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"3"</span>, <span class="st">"A"</span><span class="op">)</span>, <span class="st">"3"</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">0.5</span><span class="op">)</span>   <span class="co"># 3 -&gt; 3 -&gt; {3, A}</span></span>
+<span><span class="va">tensor</span><span class="op">[</span><span class="st">"A"</span>, <span class="st">"A"</span>, <span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">1</span>                          <span class="co"># A is absorbing</span></span>
+<span><span class="va">first</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">4</span>, <span class="fl">4</span>, dimnames <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">st</span>, <span class="va">st</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">first</span><span class="op">[</span><span class="st">"1"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"2"</span>, <span class="st">"3"</span><span class="op">)</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.1</span>, <span class="fl">0.8</span>, <span class="fl">0.1</span><span class="op">)</span> <span class="co"># first move from state 1</span></span>
+<span><span class="va">first</span><span class="op">[</span><span class="st">"2"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"2"</span>, <span class="st">"3"</span><span class="op">)</span><span class="op">]</span>      <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">0.5</span><span class="op">)</span>      <span class="co"># first move from state 2</span></span>
+<span><span class="va">entry</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"1"</span> <span class="op">=</span> <span class="fl">0.05</span>, <span class="st">"2"</span> <span class="op">=</span> <span class="fl">0.05</span><span class="op">)</span>               <span class="co"># entry from the auxiliary state 0</span></span></code></pre></div>
+<p>Table 1 reports one of the two probabilities of each history (the
+other is its complement):
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>p</mi><mn>123</mn></msub><mo>=</mo><mn>0.6</mn></mrow><annotation encoding="application/x-tex">p_{123} = 0.6</annotation></semantics></math>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>p</mi><mrow><mn>13</mn><mi>A</mi></mrow></msub><mo>=</mo><mn>0.9</mn></mrow><annotation encoding="application/x-tex">p_{13A} = 0.9</annotation></semantics></math>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>p</mi><mn>222</mn></msub><mo>=</mo><mn>0.7</mn></mrow><annotation encoding="application/x-tex">p_{222} = 0.7</annotation></semantics></math>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>p</mi><mn>233</mn></msub><mo>=</mo><mn>0.8</mn></mrow><annotation encoding="application/x-tex">p_{233} = 0.8</annotation></semantics></math>
+and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>p</mi><mn>333</mn></msub><mo>=</mo><mn>0.5</mn></mrow><annotation encoding="application/x-tex">p_{333} = 0.5</annotation></semantics></math>.
+Each replicate simulates 1,000 individuals and estimates them with
+<code><a href="../reference/P2est.html">P2est()</a></code>:</p>
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">truth</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span>h    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"1"</span>, <span class="st">"1"</span>, <span class="st">"2"</span>, <span class="st">"2"</span>, <span class="st">"3"</span><span class="op">)</span>,</span>
+<span>                j    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"2"</span>, <span class="st">"3"</span>, <span class="st">"2"</span>, <span class="st">"3"</span>, <span class="st">"3"</span><span class="op">)</span>,</span>
+<span>                l    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"3"</span>, <span class="st">"A"</span>, <span class="st">"2"</span>, <span class="st">"3"</span>, <span class="st">"3"</span><span class="op">)</span>,</span>
+<span>                true <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.6</span>, <span class="fl">0.9</span>, <span class="fl">0.7</span>, <span class="fl">0.8</span>, <span class="fl">0.5</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">one_replicate</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">r</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">sim</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simulate2.html">simulate2</a></span><span class="op">(</span><span class="fl">1000</span>, <span class="va">tensor</span>, <span class="va">first</span>, entry <span class="op">=</span> <span class="va">entry</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/P2est.html">P2est</a></span><span class="op">(</span><span class="fu"><a href="../reference/prep2.html">prep2</a></span><span class="op">(</span><span class="va">sim</span>, states <span class="op">=</span> <span class="va">st</span>, check.consecutive <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="va">estimate</span> <span class="op">|&gt;</span></span>
+<span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/across.html" class="external-link">across</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">h</span>, <span class="va">j</span>, <span class="va">l</span><span class="op">)</span>, <span class="va">as.character</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">inner_join</a></span><span class="op">(</span><span class="va">truth</span>, by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"h"</span>, <span class="st">"j"</span>, <span class="st">"l"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">5</span><span class="op">)</span>                                      <span class="co"># the seed of the paper's code</span></span>
+<span><span class="va">reps</span> <span class="op">&lt;-</span> <span class="fu">purrr</span><span class="fu">::</span><span class="fu"><a href="https://purrr.tidyverse.org/reference/map.html" class="external-link">map</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">100</span>, <span class="va">one_replicate</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span>.id <span class="op">=</span> <span class="st">"replicate"</span><span class="op">)</span></span></code></pre></div>
+<p>The four measures of Table 1 are the mean squared error (MSE), the
+empirical standard deviation of the 100 estimates (ESD), the average of
+the estimated standard errors (ASD) and the coverage of the 95%
+intervals (CP):</p>
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">paper_table1</span> <span class="op">&lt;-</span> <span class="va">truth</span> <span class="op">|&gt;</span>                         <span class="co"># RPE rows of Table 1</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>paper_MSE <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.0008</span>, <span class="fl">0.0020</span>, <span class="fl">0.0001</span>, <span class="fl">0.0002</span>, <span class="fl">0.0002</span><span class="op">)</span>,</span>
+<span>         paper_ESD <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.0274</span>, <span class="fl">0.0444</span>, <span class="fl">0.0121</span>, <span class="fl">0.0123</span>, <span class="fl">0.0130</span><span class="op">)</span>,</span>
+<span>         paper_ASD <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.0245</span>, <span class="fl">0.0420</span>, <span class="fl">0.0125</span>, <span class="fl">0.0134</span>, <span class="fl">0.0132</span><span class="op">)</span>,</span>
+<span>         paper_CP  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">91</span>, <span class="fl">91</span>, <span class="fl">97</span>, <span class="fl">97</span>, <span class="fl">96</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">table1</span> <span class="op">&lt;-</span> <span class="va">reps</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html" class="external-link">summarise</a></span><span class="op">(</span>MSE <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="op">(</span><span class="va">p</span> <span class="op">-</span> <span class="va">true</span><span class="op">)</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span>, ESD <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="va">p</span><span class="op">)</span>, ASD <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">se</span><span class="op">)</span>,</span>
+<span>            CP  <span class="op">=</span> <span class="fl">100</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">lower</span> <span class="op">&lt;</span> <span class="va">true</span> <span class="op">&amp;</span> <span class="va">true</span> <span class="op">&lt;</span> <span class="va">upper</span><span class="op">)</span>,</span>
+<span>            .by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">h</span>, <span class="va">j</span>, <span class="va">l</span>, <span class="va">true</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">left_join</a></span><span class="op">(</span><span class="va">paper_table1</span>, by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"h"</span>, <span class="st">"j"</span>, <span class="st">"l"</span>, <span class="st">"true"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">table1</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/transmute.html" class="external-link">transmute</a></span><span class="op">(</span>probability <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"p"</span>, <span class="va">h</span>, <span class="va">j</span>, <span class="va">l</span>, <span class="st">" = "</span>, <span class="va">true</span><span class="op">)</span>,</span>
+<span>            MSE <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">MSE</span>, <span class="fl">4</span><span class="op">)</span>, <span class="va">paper_MSE</span>, ESD <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">ESD</span>, <span class="fl">4</span><span class="op">)</span>, <span class="va">paper_ESD</span>,</span>
+<span>            ASD <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">ASD</span>, <span class="fl">4</span><span class="op">)</span>, <span class="va">paper_ASD</span>, <span class="va">CP</span>, <span class="va">paper_CP</span><span class="op">)</span></span>
+<span><span class="co">#&gt; # A tibble: 5 × 9</span></span>
+<span><span class="co">#&gt;   probability    MSE paper_MSE    ESD paper_ESD    ASD paper_ASD    CP paper_CP</span></span>
+<span><span class="co">#&gt;   &lt;chr&gt;        &lt;dbl&gt;     &lt;dbl&gt;  &lt;dbl&gt;     &lt;dbl&gt;  &lt;dbl&gt;     &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt;</span></span>
+<span><span class="co">#&gt; 1 p123 = 0.6  0.0006    0.0008 0.0256    0.0274 0.0244    0.0245    94       91</span></span>
+<span><span class="co">#&gt; 2 p13A = 0.9  0.0016    0.002  0.0399    0.0444 0.04      0.042     89       91</span></span>
+<span><span class="co">#&gt; 3 p222 = 0.7  0.0002    0.0001 0.0129    0.0121 0.0124    0.0125    93       97</span></span>
+<span><span class="co">#&gt; 4 p233 = 0.8  0.0002    0.0002 0.0123    0.0123 0.0134    0.0134    97       97</span></span>
+<span><span class="co">#&gt; 5 p333 = 0.5  0.0002    0.0002 0.013     0.013  0.0132    0.0132    95       96</span></span></code></pre></div>
+<p>The values agree with the RPE rows of Table 1 up to Monte Carlo error
+(100 replicates; the paper’s code draws the transitions of the whole
+cohort as binomial counts and <code><a href="../reference/simulate2.html">simulate2()</a></code> draws them
+individual by individual, so the random numbers differ): the estimator
+is almost unbiased, the estimated standard errors (ASD) match the
+observed variability (ESD), and the coverage is close to 95%. The CPE
+rows of Table 1 are not reproduced, because the package implements only
+the RPE.</p>
 </div>
 <div class="section level2">
 <h2 id="checklist">9. Checklist<a class="anchor" aria-label="anchor" href="#checklist"></a>
 </h2>
 <table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
 <thead><tr class="header">
 <th>Result</th>
 <th>Paper</th>
@@ -496,17 +558,31 @@ argument <code>entry</code> (see <code><a href="../reference/simulate2.html">?si
 </tr>
 <tr class="odd">
 <td>First overlap of the evolution intervals, SP → NIMV</td>
-<td>day 5</td>
+<td>around day 5</td>
 <td>day 5</td>
 </tr>
 <tr class="even">
 <td>First overlap of the evolution intervals, SP → IMV</td>
+<td>between days 6 and 7</td>
 <td>day 7</td>
-<td>day 7</td>
+</tr>
+<tr class="odd">
+<td>Table 1, ESD of the RPE of
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>p</mi><mn>233</mn></msub><annotation encoding="application/x-tex">p_{233}</annotation></semantics></math>
+</td>
+<td>0.0123</td>
+<td>0.0123</td>
+</tr>
+<tr class="even">
+<td>Table 1, ASD of the RPE of
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>p</mi><mn>233</mn></msub><annotation encoding="application/x-tex">p_{233}</annotation></semantics></math>
+</td>
+<td>0.0134</td>
+<td>0.0134</td>
 </tr>
 </tbody>
 </table>
-<p>The same checks run as a script in
+<p>The DIVINE checks (Table 2 and Section 6.3) also run as a script in
 <code>tests/DIVINE_reproduction.R</code> whenever the DIVINE data are
 available.</p>
 </div>

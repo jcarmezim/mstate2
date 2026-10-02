@@ -61,7 +61,8 @@ simulate2(
 
 ## Value
 
-A `data.table` in panel format (`id`, `time`, `state`), suitable for
+A tibble in panel format (`id`, `time`, `state`, with `state` a factor
+with levels `states`), ordered by id and time and suitable for
 [`prep2`](https://jcarmezim.github.io/mstate2/reference/prep2.md).
 
 ## Details
@@ -78,6 +79,16 @@ state 0): at each step every not-yet-entered individual enters state
 of individuals at risk varies across global time. With `entry = NULL`
 all individuals start at global time 0.
 
+The design of Section 5 of the paper (four states, one absorbing; entry
+probabilities 0.05 and 0.05; 1,000 individuals) is
+`simulate2(1000, tensor, first, entry = c("1" = 0.05, "2" = 0.05))` with
+the tensor and first-step matrix of Section 5.1 (see
+[`vignette("paper")`](https://jcarmezim.github.io/mstate2/articles/paper.md)).
+The paper's code draws the counts of each transition at the population
+level, as independent binomials; here each individual draws its next
+state from a multinomial with the same probabilities, which gives the
+same model.
+
 ## Examples
 
 ``` r
@@ -91,12 +102,13 @@ first <- matrix(0, 3, 3, dimnames = list(st, st)); first["A", "B"] <- 1
 set.seed(1)
 panel <- simulate2(200, tens, first, init = c(A = 1, B = 0, C = 0))
 head(panel)
-#>       id  time  state
-#>    <int> <int> <fctr>
-#> 1:     1     0      A
-#> 2:     1     1      B
-#> 3:     1     2      C
-#> 4:     2     0      A
-#> 5:     2     1      B
-#> 6:     2     2      B
+#> # A tibble: 6 × 3
+#>      id  time state
+#>   <int> <int> <fct>
+#> 1     1     0 A    
+#> 2     1     1 B    
+#> 3     1     2 C    
+#> 4     2     0 A    
+#> 5     2     1 B    
+#> 6     2     2 B    
 ```

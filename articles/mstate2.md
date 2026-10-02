@@ -57,10 +57,10 @@ matrix.
 
 | Stage | Function | Output (class) |
 |----|----|----|
-| Data | [`sojourn_to_panel()`](https://jcarmezim.github.io/mstate2/reference/sojourn_to_panel.md), [`rnd()`](https://jcarmezim.github.io/mstate2/reference/rnd.md) | daily panel `(id, time, state)` |
+| Data | [`sojourn_to_panel()`](https://jcarmezim.github.io/mstate2/reference/sojourn_to_panel.md), [`rnd()`](https://jcarmezim.github.io/mstate2/reference/rnd.md) | daily panel, a tibble `(id, time, state)` |
 | Counting processes | [`prep2()`](https://jcarmezim.github.io/mstate2/reference/prep2.md) | `msm2data` |
 | Estimation | [`P2est()`](https://jcarmezim.github.io/mstate2/reference/P2est.md), [`P2boot()`](https://jcarmezim.github.io/mstate2/reference/P2boot.md) | `P2est`, `P2boot` |
-| Prediction | [`ckequations()`](https://jcarmezim.github.io/mstate2/reference/ckequations.md) | vector / matrix / data frame |
+| Prediction | [`ckequations()`](https://jcarmezim.github.io/mstate2/reference/ckequations.md) | vector / matrix / tibble |
 | Does the previous time matter? | [`compare2()`](https://jcarmezim.github.io/mstate2/reference/compare2.md), [`overlap_step()`](https://jcarmezim.github.io/mstate2/reference/overlap_step.md) | `msm2pred`, list |
 | Simulation | [`simulate2()`](https://jcarmezim.github.io/mstate2/reference/simulate2.md) | panel |
 
@@ -96,9 +96,9 @@ load("MSM_Data.RData")
 dim(MSM)
 #> [1] 2076    9
 count(MSM, inistat)                                   # state at admission
-#>    inistat    n
-#> 1:       1 1855
-#> 2:       2  221
+#>   inistat    n
+#> 1       1 1855
+#> 2       2  221
 summarise(MSM, discharged = sum(disch.s), died = sum(death.s))
 #>   discharged died
 #> 1       1858  218
@@ -144,14 +144,16 @@ panel <- sojourn_to_panel(MSM, id = "id", segments = segs, absorbing = absb)
 dim(panel)
 #> [1] 27736     3
 count(panel, state)
-#>    state     n
-#> 1: Death   218
-#> 2: Disch  1858
-#> 3:   IMV  4681
-#> 4:  NIMV  1019
-#> 5:   NSP 12432
-#> 6: Recov  4228
-#> 7:    SP  3300
+#> # A tibble: 7 × 2
+#>   state     n
+#>   <chr> <int>
+#> 1 Death   218
+#> 2 Disch  1858
+#> 3 IMV    4681
+#> 4 NIMV   1019
+#> 5 NSP   12432
+#> 6 Recov  4228
+#> 7 SP     3300
 ```
 
 [`count()`](https://dplyr.tidyverse.org/reference/count.html) gives the
@@ -217,21 +219,25 @@ d
 #>   absorbing       : Disch, Death
 #>   distinct (h,j)  : 12
 head(d$N)
-#>      h   j   l s    N
-#> 1: NSP NSP NSP 2 1505
-#> 2: NSP NSP NSP 3 1306
-#> 3: NSP NSP NSP 4 1147
-#> 4: NSP NSP NSP 5  955
-#> 5: NSP NSP NSP 6  788
-#> 6: NSP NSP NSP 7  610
+#> # A tibble: 6 × 5
+#>   h     j     l         s     N
+#>   <fct> <fct> <fct> <int> <int>
+#> 1 NSP   NSP   NSP       2  1505
+#> 2 NSP   NSP   NSP       3  1306
+#> 3 NSP   NSP   NSP       4  1147
+#> 4 NSP   NSP   NSP       5   955
+#> 5 NSP   NSP   NSP       6   788
+#> 6 NSP   NSP   NSP       7   610
 head(d$Y)
-#>      h   j s    Y
-#> 1: NSP NSP 2 1658
-#> 2: NSP NSP 3 1505
-#> 3: NSP NSP 4 1306
-#> 4: NSP NSP 5 1147
-#> 5: NSP NSP 6  955
-#> 6: NSP NSP 7  788
+#> # A tibble: 6 × 4
+#>   h     j         s     Y
+#>   <fct> <fct> <int> <int>
+#> 1 NSP   NSP       2  1658
+#> 2 NSP   NSP       3  1505
+#> 3 NSP   NSP       4  1306
+#> 4 NSP   NSP       5  1147
+#> 5 NSP   NSP       6   955
+#> 6 NSP   NSP       7   788
 ```
 
 Besides `N` and `Y`, the object contains `triples`, one row per patient
@@ -253,19 +259,21 @@ expo <- summary(d)
 #> <msm2data summary>
 #>   2076 subjects, 23584 triples, time 0-138
 #>   exposure per (h, j) pair:
-#>         h     j total_at_risk s_min s_max
-#>  1:   NSP   NSP         10577     2    43
-#>  2:   NSP    SP           411     2    37
-#>  3:    SP    SP          2668     2    50
-#>  4:    SP Recov           223     3    51
-#>  5:    SP  NIMV           214     2    37
-#>  6:    SP   IMV           166     2    38
-#>  7: Recov Recov          3764     4   138
-#>  8:  NIMV Recov           101     3    36
-#>  9:  NIMV  NIMV           805     3    41
-#> 10:  NIMV   IMV           102     3    21
-#> 11:   IMV Recov           140     4    97
-#> 12:   IMV   IMV          4413     3    96
+#> # A tibble: 12 × 5
+#>    h     j     total_at_risk s_min s_max
+#>    <fct> <fct>         <int> <int> <int>
+#>  1 NSP   NSP           10577     2    43
+#>  2 NSP   SP              411     2    37
+#>  3 SP    SP             2668     2    50
+#>  4 SP    Recov           223     3    51
+#>  5 SP    NIMV            214     2    37
+#>  6 SP    IMV             166     2    38
+#>  7 Recov Recov          3764     4   138
+#>  8 NIMV  Recov           101     3    36
+#>  9 NIMV  NIMV            805     3    41
+#> 10 NIMV  IMV             102     3    21
+#> 11 IMV   Recov           140     4    97
+#> 12 IMV   IMV            4413     3    96
 ```
 
 Histories such as $`(\mathrm{NSP}, \mathrm{NSP})`$ accumulate more than
@@ -293,10 +301,15 @@ estimator** (RPE), which pools all transitions and all patient-days at
 risk of the history:
 
 ``` math
-\hat P_{hj\ell} = \frac{\sum_s \tilde N_{hj\ell}(s)}{\sum_s \tilde Y_{hj}(s-1)},
+\tilde P_{hj\ell} = \frac{\sum_s \tilde N_{hj\ell}(s)}{\sum_s \tilde Y_{hj}(s-1)},
 \qquad
-\mathrm{se} = \sqrt{\frac{\hat p(1-\hat p)}{\sum_s \tilde Y_{hj}(s-1)}}.
+\mathrm{se} = \sqrt{\frac{\tilde P_{hj\ell}(1-\tilde P_{hj\ell})}{\sum_s \tilde Y_{hj}(s-1)}}.
 ```
+
+These are Eq. 9 and the variance of Theorem 5 of the paper; the Wald
+interval $`\tilde P_{hj\ell} \pm z\,\mathrm{se}`$ is that of its
+Corollary 2. On DIVINE, the estimates coincide with those of the paper’s
+code.
 
 For every absorbing state $`a`$, `P[a, a, h]` is set to 1 for every
 $`h`$, so that no probability is lost when predictions are propagated.
@@ -320,17 +333,19 @@ part for patients in severe pneumonia at the current time:
 
 fit$estimate |>
   filter(j == "SP")
-#>      h  j     l        p       se    lower    upper n.trans at.risk
-#> 1  NSP SP    SP 0.615572 0.023995 0.568542 0.662602     253     411
-#> 2  NSP SP Recov 0.007299 0.004199 0.000000 0.015529       3     411
-#> 3  NSP SP  NIMV 0.223844 0.020560 0.183547 0.264141      92     411
-#> 4  NSP SP   IMV 0.150852 0.017654 0.116250 0.185453      62     411
-#> 5  NSP SP Death 0.002433 0.002430 0.000000 0.007196       1     411
-#> 6   SP SP    SP 0.864693 0.006622 0.851713 0.877672    2307    2668
-#> 7   SP SP Recov 0.082459 0.005325 0.072022 0.092896     220    2668
-#> 8   SP SP  NIMV 0.025487 0.003051 0.019507 0.031467      68    2668
-#> 9   SP SP   IMV 0.018366 0.002599 0.013271 0.023461      49    2668
-#> 10  SP SP Death 0.008996 0.001828 0.005413 0.012578      24    2668
+#> # A tibble: 10 × 9
+#>    h     j     l           p      se   lower   upper n.trans at.risk
+#>    <fct> <fct> <fct>   <dbl>   <dbl>   <dbl>   <dbl>   <int>   <int>
+#>  1 NSP   SP    SP    0.616   0.0240  0.569   0.663       253     411
+#>  2 NSP   SP    Recov 0.00730 0.00420 0       0.0155        3     411
+#>  3 NSP   SP    NIMV  0.224   0.0206  0.184   0.264        92     411
+#>  4 NSP   SP    IMV   0.151   0.0177  0.116   0.185        62     411
+#>  5 NSP   SP    Death 0.00243 0.00243 0       0.00720       1     411
+#>  6 SP    SP    SP    0.865   0.00662 0.852   0.878      2307    2668
+#>  7 SP    SP    Recov 0.0825  0.00533 0.0720  0.0929      220    2668
+#>  8 SP    SP    NIMV  0.0255  0.00305 0.0195  0.0315       68    2668
+#>  9 SP    SP    IMV   0.0184  0.00260 0.0133  0.0235       49    2668
+#> 10 SP    SP    Death 0.00900 0.00183 0.00541 0.0126       24    2668
 ```
 
 A patient in `SP` who was in `NSP` at the previous time (who has just
@@ -364,9 +379,11 @@ fit_lg <- P2est(d, ci = "logit")
 fit_lg$estimate |>
   filter(j == "SP", l == "Death") |>
   select(h, l, p, lower, upper)
-#>     h     l        p     lower   upper
-#> 1 NSP Death 0.002433 0.0003426 0.01706
-#> 2  SP Death 0.008996 0.0060365 0.01339
+#> # A tibble: 2 × 5
+#>   h     l           p    lower  upper
+#>   <fct> <fct>   <dbl>    <dbl>  <dbl>
+#> 1 NSP   Death 0.00243 0.000343 0.0171
+#> 2 SP    Death 0.00900 0.00604  0.0134
 ```
 
 ### `P2boot()`: bootstrap of patients
@@ -391,21 +408,23 @@ once, so replicates are cheap:
 
 system.time(bt <- P2boot(d, B = 500, seed = 1))
 #>    user  system elapsed 
-#>   0.168   0.004   0.165
+#>   0.210   0.008   0.225
 bt$estimate |>
   filter(j == "SP") |>
   select(h, l, p, se, se.boot)
-#>      h     l        p       se  se.boot
-#> 1  NSP    SP 0.615572 0.023995 0.024436
-#> 2  NSP Recov 0.007299 0.004199 0.004189
-#> 3  NSP  NIMV 0.223844 0.020560 0.019790
-#> 4  NSP   IMV 0.150852 0.017654 0.017963
-#> 5  NSP Death 0.002433 0.002430 0.002376
-#> 6   SP    SP 0.864693 0.006622 0.007362
-#> 7   SP Recov 0.082459 0.005325 0.004295
-#> 8   SP  NIMV 0.025487 0.003051 0.003471
-#> 9   SP   IMV 0.018366 0.002599 0.002752
-#> 10  SP Death 0.008996 0.001828 0.001995
+#> # A tibble: 10 × 5
+#>    h     l           p      se se.boot
+#>    <fct> <fct>   <dbl>   <dbl>   <dbl>
+#>  1 NSP   SP    0.616   0.0240  0.0244 
+#>  2 NSP   Recov 0.00730 0.00420 0.00419
+#>  3 NSP   NIMV  0.224   0.0206  0.0198 
+#>  4 NSP   IMV   0.151   0.0177  0.0180 
+#>  5 NSP   Death 0.00243 0.00243 0.00238
+#>  6 SP    SP    0.865   0.00662 0.00736
+#>  7 SP    Recov 0.0825  0.00533 0.00430
+#>  8 SP    NIMV  0.0255  0.00305 0.00347
+#>  9 SP    IMV   0.0184  0.00260 0.00275
+#> 10 SP    Death 0.00900 0.00183 0.00199
 ```
 
 **Why.** Patients are the independent units and their days are not, so
@@ -464,16 +483,18 @@ tensors:
 ``` r
 
 ckequations(fit, h = "NSP", j = "SP", l = "NIMV", nsteps = 9, bounds = TRUE)
-#>   n estimate   lower  upper
-#> 1 1  0.22384 0.18355 0.2641
-#> 2 2  0.18200 0.13672 0.2326
-#> 3 3  0.15869 0.11440 0.2107
-#> 4 4  0.13827 0.09584 0.1904
-#> 5 5  0.12040 0.08040 0.1717
-#> 6 6  0.10479 0.06753 0.1545
-#> 7 7  0.09115 0.05677 0.1387
-#> 8 8  0.07926 0.04778 0.1244
-#> 9 9  0.06888 0.04025 0.1113
+#> # A tibble: 9 × 4
+#>       n estimate  lower upper
+#>   <int>    <dbl>  <dbl> <dbl>
+#> 1     1   0.224  0.184  0.264
+#> 2     2   0.182  0.137  0.233
+#> 3     3   0.159  0.114  0.211
+#> 4     4   0.138  0.0958 0.190
+#> 5     5   0.120  0.0804 0.172
+#> 6     6   0.105  0.0675 0.154
+#> 7     7   0.0912 0.0568 0.139
+#> 8     8   0.0793 0.0478 0.124
+#> 9     9   0.0689 0.0403 0.111
 ```
 
 These intervals are conservative: they assume that all the probabilities
@@ -484,16 +505,18 @@ percentiles:
 ``` r
 
 ckequations(bt, h = "NSP", j = "SP", l = "NIMV", nsteps = 9, bounds = TRUE)
-#>   n estimate   lower   upper
-#> 1 1  0.22384 0.18338 0.26076
-#> 2 2  0.18200 0.15000 0.21307
-#> 3 3  0.15869 0.13269 0.18496
-#> 4 4  0.13827 0.11577 0.16086
-#> 5 5  0.12040 0.09894 0.14100
-#> 6 6  0.10479 0.08578 0.12367
-#> 7 7  0.09115 0.07425 0.10913
-#> 8 8  0.07926 0.06264 0.09679
-#> 9 9  0.06888 0.05298 0.08504
+#> # A tibble: 9 × 4
+#>       n estimate  lower  upper
+#>   <int>    <dbl>  <dbl>  <dbl>
+#> 1     1   0.224  0.183  0.261 
+#> 2     2   0.182  0.150  0.213 
+#> 3     3   0.159  0.133  0.185 
+#> 4     4   0.138  0.116  0.161 
+#> 5     5   0.120  0.0989 0.141 
+#> 6     6   0.105  0.0858 0.124 
+#> 7     7   0.0912 0.0743 0.109 
+#> 8     8   0.0793 0.0626 0.0968
+#> 9     9   0.0689 0.0530 0.0850
 ```
 
 ## 6. Does the previous time matter?
@@ -582,8 +605,10 @@ generates a daily panel from a second-order model given by a tensor
 `P[j, l, h]`, a matrix `first` for the first move (which has no previous
 time) and the distribution `init` of the state at time 0; with `entry`,
 patients enter at different global times (Section 5 of the paper). It is
-useful to study the methods under a known model. For instance, from the
-model fitted to DIVINE:
+useful to study the methods under a known model;
+[`vignette("paper")`](https://jcarmezim.github.io/mstate2/articles/paper.md)
+uses it to reproduce the simulation study of the paper (Table 1). For
+instance, from the model fitted to DIVINE:
 
 ``` r
 
@@ -622,6 +647,7 @@ round(c(DIVINE = fit$P["SP", "NIMV", "NSP"], simulated = fit_sim$P["SP", "NIMV",
 | First overlap of the intervals | the criterion of Section 6.3 of the paper | Najera-Zuloaga et al. (2025) |
 | Bootstrap of whole patients | patients are the independent units | Davison and Hinkley (1997); Field and Welsh (2007) |
 | Percentile intervals for $`n`$-step predictions | non-linear functions of all the estimates; near-nominal coverage in simulation | Efron and Tibshirani (1993) |
+| Tables handled with the tidyverse and returned as tibbles; tensors as arrays | readable data handling; the predictions are linear algebra | Wickham et al. (2019) |
 
 ## 9. Summary
 
@@ -661,3 +687,6 @@ Field, C. A. and Welsh, A. H. (2007). Bootstrapping clustered data.
 Najera-Zuloaga, J., Besalú, M. and Gómez Melis, G. (2025). Second-order
 Markov multistate models: nonparametric estimation and inference.
 Manuscript submitted for publication.
+
+Wickham, H. et al. (2019). Welcome to the tidyverse. *Journal of Open
+Source Software*, 4(43), 1686.

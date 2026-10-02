@@ -196,6 +196,12 @@ and refers to time
 <li>
 <strong>Absorbing states</strong> satisfy
 <code>P[a, a, h] = 1</code> for every <code>h</code>.</li>
+<li>
+<strong>Tables and arrays.</strong> Data handling uses the tidyverse
+(<code>dplyr</code>, <code>tidyr</code>, <code>purrr</code>,
+<code>tibble</code>) and every table is returned as a tibble. The
+tensors and the Chapman–Kolmogorov propagation are plain arrays and
+matrices, because they are linear algebra.</li>
 </ul>
 <div class="section level3">
 <h3 id="example-data-used-in-this-document">Example data used in this document<a class="anchor" aria-label="anchor" href="#example-data-used-in-this-document"></a>
@@ -235,9 +241,9 @@ invasive ventilation (<code>NIMV</code>, <code>IMV</code>), recovery
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rnd.html">rnd</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></code></pre></div>
 <p><strong>What it does.</strong> Rounds numbers to the nearest integer,
 sending halves <strong>away from zero</strong> (0.5 → 1, 2.5 → 3, −0.5 →
-−1). It is the default discretisation of
-<code><a href="../reference/sojourn_to_panel.html">sojourn_to_panel()</a></code>, and the convention of the DIVINE
-analysis.</p>
+−1). It is the default discretisation of <code><a href="../reference/sojourn_to_panel.html">sojourn_to_panel()</a></code>
+and the same function, with the same name, that the code of the methods
+paper uses to turn the DIVINE sojourn times into days.</p>
 <p><strong>Arguments</strong></p>
 <table class="table">
 <thead><tr class="header">
@@ -258,7 +264,8 @@ analysis.</p>
 in the direction of the sign and truncating towards zero. Base R’s
 <code><a href="https://rdrr.io/r/base/Round.html" class="external-link">round()</a></code> instead sends halves to the nearest <em>even</em>
 integer (IEC 60559), so <code>round(0.5) = 0</code> would make a
-half-day stay vanish.</p>
+half-day stay vanish. Only <code><a href="../reference/rnd.html">rnd()</a></code> reproduces Table 2 of the
+paper.</p>
 <p><strong>Errors and warnings.</strong> None.</p>
 <p><strong>Example</strong></p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
@@ -326,21 +333,26 @@ order</strong>
 </tr>
 </tbody>
 </table>
-<p><strong>Value.</strong> A <code>data.table</code> with columns
-<code>id</code>, <code>time</code> (0, 1, 2, …) and <code>state</code>
-(character).</p>
+<p><strong>Value.</strong> A tibble with columns <code>id</code>,
+<code>time</code> (0, 1, 2, …) and <code>state</code> (character).</p>
 <p><strong>How it works.</strong> For each subject:</p>
 <ol style="list-style-type: decimal">
-<li>Durations are discretised with <code>round_fun</code>; negative or
-<code>NA</code> durations become 0 (“not visited”).</li>
-<li>Each state label is repeated as many times as its duration, in the
-order of <code>segments</code>.</li>
+<li>The duration columns are put in long format (one row per subject and
+state, <code><a href="https://tidyr.tidyverse.org/reference/pivot_longer.html" class="external-link">tidyr::pivot_longer()</a></code>) and discretised with
+<code>round_fun</code>; negative or <code>NA</code> durations become 0
+(“not visited”).</li>
+<li>Each state is repeated as many times as its duration
+(<code><a href="https://tidyr.tidyverse.org/reference/uncount.html" class="external-link">tidyr::uncount()</a></code>), in the order of
+<code>segments</code>.</li>
 <li>The first absorbing state whose indicator equals 1 is appended. If
 none equals 1, the subject is right-censored and has no final absorbing
 row.</li>
 <li>Times are numbered from 0. Subjects with no duration and no event
-contribute no rows.</li>
+contribute no rows. Subjects keep the row order of
+<code>data</code>.</li>
 </ol>
+<p>This is the discretisation of the paper’s code, which also rounds
+each sojourn separately with <code><a href="../reference/rnd.html">rnd()</a></code>.</p>
 <p><strong>Errors and warnings.</strong> Error if <code>data</code> is
 not a data frame, or if any column named in <code>id</code>,
 <code>segments</code> or <code>absorbing</code> is missing. Warning if a
@@ -357,14 +369,16 @@ cannot be recovered from sojourn times: the order is imposed by
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">panel</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 27736     3</span></span>
 <span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">panel</span>, <span class="va">state</span><span class="op">)</span>         <span class="co"># patient-days in each state</span></span>
-<span><span class="co">#&gt;    state     n</span></span>
-<span><span class="co">#&gt; 1: Death   218</span></span>
-<span><span class="co">#&gt; 2: Disch  1858</span></span>
-<span><span class="co">#&gt; 3:   IMV  4681</span></span>
-<span><span class="co">#&gt; 4:  NIMV  1019</span></span>
-<span><span class="co">#&gt; 5:   NSP 12432</span></span>
-<span><span class="co">#&gt; 6: Recov  4228</span></span>
-<span><span class="co">#&gt; 7:    SP  3300</span></span></code></pre></div>
+<span><span class="co">#&gt; # A tibble: 7 × 2</span></span>
+<span><span class="co">#&gt;   state     n</span></span>
+<span><span class="co">#&gt;   &lt;chr&gt; &lt;int&gt;</span></span>
+<span><span class="co">#&gt; 1 Death   218</span></span>
+<span><span class="co">#&gt; 2 Disch  1858</span></span>
+<span><span class="co">#&gt; 3 IMV    4681</span></span>
+<span><span class="co">#&gt; 4 NIMV   1019</span></span>
+<span><span class="co">#&gt; 5 NSP   12432</span></span>
+<span><span class="co">#&gt; 6 Recov  4228</span></span>
+<span><span class="co">#&gt; 7 SP     3300</span></span></code></pre></div>
 <p>Every DIVINE patient ends in <code>Disch</code> or
 <code>Death</code>, so no follow-up is censored.</p>
 </div>
@@ -449,16 +463,14 @@ id/time/state with a warning instead of an error</td>
 <tbody>
 <tr class="odd">
 <td><code>N</code></td>
-<td>
-<code>data.table</code> <code>(h, j, l, s, N)</code>:
+<td>tibble <code>(h, j, l, s, N)</code>:
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>N</mi><mo accent="true">̃</mo></mover><mrow><mi>h</mi><mi>j</mi><mi>ℓ</mi></mrow></msub><mo stretchy="false" form="prefix">(</mo><mi>s</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\tilde N_{hj\ell}(s)</annotation></semantics></math>,
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>s</mi><annotation encoding="application/x-tex">s</annotation></semantics></math>
 = time of the destination</td>
 </tr>
 <tr class="even">
 <td><code>Y</code></td>
-<td>
-<code>data.table</code> <code>(h, j, s, Y)</code>:
+<td>tibble <code>(h, j, s, Y)</code>:
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>Y</mi><mo accent="true">̃</mo></mover><mrow><mi>h</mi><mi>j</mi></mrow></msub><mo stretchy="false" form="prefix">(</mo><mi>s</mi><mo>−</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\tilde Y_{hj}(s-1)</annotation></semantics></math>,
 indexed by the same
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>s</mi><annotation encoding="application/x-tex">s</annotation></semantics></math>
@@ -466,10 +478,8 @@ indexed by the same
 </tr>
 <tr class="odd">
 <td><code>triples</code></td>
-<td>
-<code>data.table</code> <code>(id, h, j, l, s)</code>: one row per
-subject per at-risk instant; used by <code><a href="../reference/P2boot.html">P2boot()</a></code> to resample
-subjects</td>
+<td>tibble <code>(id, h, j, l, s)</code>: one row per subject per
+at-risk instant; used by <code><a href="../reference/P2boot.html">P2boot()</a></code> to resample subjects</td>
 </tr>
 <tr class="even">
 <td><code>states</code></td>
@@ -493,6 +503,8 @@ subjects</td>
 </tr>
 </tbody>
 </table>
+<p>The columns <code>h</code>, <code>j</code>, <code>l</code> are
+factors with levels <code>states</code>.</p>
 <p><strong>How it works.</strong></p>
 <ol style="list-style-type: decimal">
 <li>Validates the columns and <code>NA</code>s and renames them to
@@ -500,13 +512,28 @@ subjects</td>
 <code>state</code> to a factor with levels <code>states</code>.</li>
 <li>Sorts by <code>(id, time)</code> and, if requested, checks that
 times within each subject increase by exactly 1.</li>
-<li>Within each subject, <code>h = shift(state, 2)</code> and
-<code>j = shift(state, 1)</code>. The first two rows of each subject
+<li>Within each subject, <code>h = lag(state, 2)</code> and
+<code>j = lag(state, 1)</code>. The first two rows of each subject
 (incomplete history) are dropped; the remaining rows are the triples,
 with the current row’s state as <code>l</code>.</li>
 <li>
-<code>N</code> counts triples by <code>(h, j, l, s)</code>;
-<code>Y</code> sums <code>N</code> over <code>l</code>.</li>
+<code>N</code> counts triples by <code>(h, j, l, s)</code>
+(<code><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count()</a></code>); <code>Y</code> sums <code>N</code> over
+<code>l</code>. These are the counting processes of Section 2.2 of the
+paper. With complete follow-up,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>∑</mo><mi>ℓ</mi></msub><msub><mover><mi>N</mi><mo accent="true">̃</mo></mover><mrow><mi>h</mi><mi>j</mi><mi>ℓ</mi></mrow></msub><mo stretchy="false" form="prefix">(</mo><mi>s</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\sum_\ell \tilde N_{hj\ell}(s)</annotation></semantics></math>
+is exactly the number of subjects in
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>h</mi><annotation encoding="application/x-tex">h</annotation></semantics></math>
+at
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>s</mi><mo>−</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">s-2</annotation></semantics></math>
+and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math>
+at
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>s</mi><mo>−</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">s-1</annotation></semantics></math>;
+a subject whose follow-up stops in
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math>
+(right-censored) is not counted at risk, because its next state is not
+observed.</li>
 <li>If <code>absorbing</code> is <code>NULL</code>, a state is absorbing
 when it is occupied but never left
 (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>j</mi><mo>→</mo><mi>ℓ</mi></mrow><annotation encoding="application/x-tex">j \to \ell</annotation></semantics></math>
@@ -546,21 +573,25 @@ consecutive <strong>rows</strong>).</li>
 <span><span class="co">#&gt;   absorbing       : Disch, Death</span></span>
 <span><span class="co">#&gt;   distinct (h,j)  : 12</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">N</span><span class="op">)</span></span>
-<span><span class="co">#&gt;      h   j   l s    N</span></span>
-<span><span class="co">#&gt; 1: NSP NSP NSP 2 1505</span></span>
-<span><span class="co">#&gt; 2: NSP NSP NSP 3 1306</span></span>
-<span><span class="co">#&gt; 3: NSP NSP NSP 4 1147</span></span>
-<span><span class="co">#&gt; 4: NSP NSP NSP 5  955</span></span>
-<span><span class="co">#&gt; 5: NSP NSP NSP 6  788</span></span>
-<span><span class="co">#&gt; 6: NSP NSP NSP 7  610</span></span>
+<span><span class="co">#&gt; # A tibble: 6 × 5</span></span>
+<span><span class="co">#&gt;   h     j     l         s     N</span></span>
+<span><span class="co">#&gt;   &lt;fct&gt; &lt;fct&gt; &lt;fct&gt; &lt;int&gt; &lt;int&gt;</span></span>
+<span><span class="co">#&gt; 1 NSP   NSP   NSP       2  1505</span></span>
+<span><span class="co">#&gt; 2 NSP   NSP   NSP       3  1306</span></span>
+<span><span class="co">#&gt; 3 NSP   NSP   NSP       4  1147</span></span>
+<span><span class="co">#&gt; 4 NSP   NSP   NSP       5   955</span></span>
+<span><span class="co">#&gt; 5 NSP   NSP   NSP       6   788</span></span>
+<span><span class="co">#&gt; 6 NSP   NSP   NSP       7   610</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">Y</span><span class="op">)</span></span>
-<span><span class="co">#&gt;      h   j s    Y</span></span>
-<span><span class="co">#&gt; 1: NSP NSP 2 1658</span></span>
-<span><span class="co">#&gt; 2: NSP NSP 3 1505</span></span>
-<span><span class="co">#&gt; 3: NSP NSP 4 1306</span></span>
-<span><span class="co">#&gt; 4: NSP NSP 5 1147</span></span>
-<span><span class="co">#&gt; 5: NSP NSP 6  955</span></span>
-<span><span class="co">#&gt; 6: NSP NSP 7  788</span></span>
+<span><span class="co">#&gt; # A tibble: 6 × 4</span></span>
+<span><span class="co">#&gt;   h     j         s     Y</span></span>
+<span><span class="co">#&gt;   &lt;fct&gt; &lt;fct&gt; &lt;int&gt; &lt;int&gt;</span></span>
+<span><span class="co">#&gt; 1 NSP   NSP       2  1658</span></span>
+<span><span class="co">#&gt; 2 NSP   NSP       3  1505</span></span>
+<span><span class="co">#&gt; 3 NSP   NSP       4  1306</span></span>
+<span><span class="co">#&gt; 4 NSP   NSP       5  1147</span></span>
+<span><span class="co">#&gt; 5 NSP   NSP       6   955</span></span>
+<span><span class="co">#&gt; 6 NSP   NSP       7   788</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">triples</span><span class="op">)</span>      <span class="co"># one row per patient-day at risk (not printed)</span></span>
 <span><span class="co">#&gt; [1] "id" "h"  "j"  "l"  "s"</span></span></code></pre></div>
 </div>
@@ -584,8 +615,8 @@ pairs. <code><a href="https://rdrr.io/r/base/summary.html" class="external-link"
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mi>h</mi><mo>,</mo><mi>j</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(h, j)</annotation></semantics></math>
 pair</strong>.</p>
 <p><strong>Value.</strong> <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> returns <code>x</code>
-invisibly. <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> returns invisibly a
-<code>data.table</code> with one row per
+invisibly. <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> returns invisibly a tibble with one
+row per
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mi>h</mi><mo>,</mo><mi>j</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(h, j)</annotation></semantics></math>
 and columns <code>total_at_risk</code>
 (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>∑</mo><mi>s</mi></msub><msub><mover><mi>Y</mi><mo accent="true">̃</mo></mover><mrow><mi>h</mi><mi>j</mi></mrow></msub><mo stretchy="false" form="prefix">(</mo><mi>s</mi><mo>−</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\sum_s \tilde Y_{hj}(s-1)</annotation></semantics></math>,
@@ -597,19 +628,21 @@ the RPE denominator, in subject-instants), <code>s_min</code> and
 <span><span class="co">#&gt; &lt;msm2data summary&gt;</span></span>
 <span><span class="co">#&gt;   2076 subjects, 23584 triples, time 0-138</span></span>
 <span><span class="co">#&gt;   exposure per (h, j) pair:</span></span>
-<span><span class="co">#&gt;         h     j total_at_risk s_min s_max</span></span>
-<span><span class="co">#&gt;  1:   NSP   NSP         10577     2    43</span></span>
-<span><span class="co">#&gt;  2:   NSP    SP           411     2    37</span></span>
-<span><span class="co">#&gt;  3:    SP    SP          2668     2    50</span></span>
-<span><span class="co">#&gt;  4:    SP Recov           223     3    51</span></span>
-<span><span class="co">#&gt;  5:    SP  NIMV           214     2    37</span></span>
-<span><span class="co">#&gt;  6:    SP   IMV           166     2    38</span></span>
-<span><span class="co">#&gt;  7: Recov Recov          3764     4   138</span></span>
-<span><span class="co">#&gt;  8:  NIMV Recov           101     3    36</span></span>
-<span><span class="co">#&gt;  9:  NIMV  NIMV           805     3    41</span></span>
-<span><span class="co">#&gt; 10:  NIMV   IMV           102     3    21</span></span>
-<span><span class="co">#&gt; 11:   IMV Recov           140     4    97</span></span>
-<span><span class="co">#&gt; 12:   IMV   IMV          4413     3    96</span></span></code></pre></div>
+<span><span class="co">#&gt; # A tibble: 12 × 5</span></span>
+<span><span class="co">#&gt;    h     j     total_at_risk s_min s_max</span></span>
+<span><span class="co">#&gt;    &lt;fct&gt; &lt;fct&gt;         &lt;int&gt; &lt;int&gt; &lt;int&gt;</span></span>
+<span><span class="co">#&gt;  1 NSP   NSP           10577     2    43</span></span>
+<span><span class="co">#&gt;  2 NSP   SP              411     2    37</span></span>
+<span><span class="co">#&gt;  3 SP    SP             2668     2    50</span></span>
+<span><span class="co">#&gt;  4 SP    Recov           223     3    51</span></span>
+<span><span class="co">#&gt;  5 SP    NIMV            214     2    37</span></span>
+<span><span class="co">#&gt;  6 SP    IMV             166     2    38</span></span>
+<span><span class="co">#&gt;  7 Recov Recov          3764     4   138</span></span>
+<span><span class="co">#&gt;  8 NIMV  Recov           101     3    36</span></span>
+<span><span class="co">#&gt;  9 NIMV  NIMV            805     3    41</span></span>
+<span><span class="co">#&gt; 10 NIMV  IMV             102     3    21</span></span>
+<span><span class="co">#&gt; 11 IMV   Recov           140     4    97</span></span>
+<span><span class="co">#&gt; 12 IMV   IMV            4413     3    96</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
@@ -673,7 +706,7 @@ tensors.</p>
 <tbody>
 <tr class="odd">
 <td><code>estimate</code></td>
-<td>data frame, one row per observed
+<td>tibble, one row per observed
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mi>h</mi><mo>,</mo><mi>j</mi><mo>,</mo><mi>ℓ</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(h, j, \ell)</annotation></semantics></math>:
 <code>h, j, l, p, se, lower, upper, n.trans, at.risk</code>
 </td>
@@ -682,8 +715,8 @@ tensors.</p>
 <td><code>P</code></td>
 <td>
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>M</mi><mo>×</mo><mi>M</mi><mo>×</mo><mi>M</mi></mrow><annotation encoding="application/x-tex">M \times M \times M</annotation></semantics></math>
-tensor of estimates, layout <code>[j, l, h]</code>
-</td>
+tensor of estimates, layout <code>[j, l, h]</code> (as in the paper’s
+code)</td>
 </tr>
 <tr class="odd">
 <td>
@@ -719,16 +752,22 @@ tensor of estimates, layout <code>[j, l, h]</code>
 and <code>at.risk</code>
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>=</mo><msub><mo>∑</mo><mi>s</mi></msub><msub><mover><mi>Y</mi><mo accent="true">̃</mo></mover><mrow><mi>h</mi><mi>j</mi></mrow></msub><mo stretchy="false" form="prefix">(</mo><mi>s</mi><mo>−</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">= \sum_s \tilde Y_{hj}(s-1)</annotation></semantics></math>.</p>
 <p><strong>How it works.</strong></p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>P</mi><mo accent="true">̂</mo></mover><mrow><mi>h</mi><mi>j</mi><mi>ℓ</mi></mrow></msub><mo>=</mo><mfrac><mrow><munder><mo>∑</mo><mi>s</mi></munder><msub><mover><mi>N</mi><mo accent="true">̃</mo></mover><mrow><mi>h</mi><mi>j</mi><mi>ℓ</mi></mrow></msub><mo stretchy="false" form="prefix">(</mo><mi>s</mi><mo stretchy="false" form="postfix">)</mo></mrow><mrow><munder><mo>∑</mo><mi>s</mi></munder><msub><mover><mi>Y</mi><mo accent="true">̃</mo></mover><mrow><mi>h</mi><mi>j</mi></mrow></msub><mo stretchy="false" form="prefix">(</mo><mi>s</mi><mo>−</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo></mrow></mfrac><mo>,</mo><mspace width="2.0em"></mspace><mrow><mi mathvariant="normal">s</mi><mi mathvariant="normal">e</mi></mrow><mo>=</mo><msqrt><mfrac><mrow><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>−</mo><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo stretchy="false" form="postfix">)</mo></mrow><mrow><munder><mo>∑</mo><mi>s</mi></munder><msub><mover><mi>Y</mi><mo accent="true">̃</mo></mover><mrow><mi>h</mi><mi>j</mi></mrow></msub><mo stretchy="false" form="prefix">(</mo><mi>s</mi><mo>−</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo></mrow></mfrac></msqrt><mi>.</mi></mrow><annotation encoding="application/x-tex">
-\hat P_{hj\ell} = \frac{\sum_s \tilde N_{hj\ell}(s)}{\sum_s \tilde Y_{hj}(s-1)},
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>P</mi><mo accent="true">̃</mo></mover><mrow><mi>h</mi><mi>j</mi><mi>ℓ</mi></mrow></msub><mo>=</mo><mfrac><mrow><munder><mo>∑</mo><mi>s</mi></munder><msub><mover><mi>N</mi><mo accent="true">̃</mo></mover><mrow><mi>h</mi><mi>j</mi><mi>ℓ</mi></mrow></msub><mo stretchy="false" form="prefix">(</mo><mi>s</mi><mo stretchy="false" form="postfix">)</mo></mrow><mrow><munder><mo>∑</mo><mi>s</mi></munder><msub><mover><mi>Y</mi><mo accent="true">̃</mo></mover><mrow><mi>h</mi><mi>j</mi></mrow></msub><mo stretchy="false" form="prefix">(</mo><mi>s</mi><mo>−</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo></mrow></mfrac><mo>,</mo><mspace width="2.0em"></mspace><mrow><mi mathvariant="normal">s</mi><mi mathvariant="normal">e</mi></mrow><mo>=</mo><msqrt><mfrac><mrow><msub><mover><mi>P</mi><mo accent="true">̃</mo></mover><mrow><mi>h</mi><mi>j</mi><mi>ℓ</mi></mrow></msub><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mover><mi>P</mi><mo accent="true">̃</mo></mover><mrow><mi>h</mi><mi>j</mi><mi>ℓ</mi></mrow></msub><mo stretchy="false" form="postfix">)</mo></mrow><mrow><munder><mo>∑</mo><mi>s</mi></munder><msub><mover><mi>Y</mi><mo accent="true">̃</mo></mover><mrow><mi>h</mi><mi>j</mi></mrow></msub><mo stretchy="false" form="prefix">(</mo><mi>s</mi><mo>−</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo></mrow></mfrac></msqrt><mi>.</mi></mrow><annotation encoding="application/x-tex">
+\tilde P_{hj\ell} = \frac{\sum_s \tilde N_{hj\ell}(s)}{\sum_s \tilde Y_{hj}(s-1)},
 \qquad
-\mathrm{se} = \sqrt{\frac{\hat p(1-\hat p)}{\sum_s \tilde Y_{hj}(s-1)}}.
+\mathrm{se} = \sqrt{\frac{\tilde P_{hj\ell}(1-\tilde P_{hj\ell})}{\sum_s \tilde Y_{hj}(s-1)}}.
 </annotation></semantics></math></p>
-<p>The RPE pools all exposure and weighs every subject-instant equally
-(the paper shows it is more efficient than the conditional probability
-estimator, which is therefore not implemented). Intervals: Wald
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo>±</mo><mi>z</mi><mspace width="0.167em"></mspace><mrow><mi mathvariant="normal">s</mi><mi mathvariant="normal">e</mi></mrow></mrow><annotation encoding="application/x-tex">\hat p \pm z\,\mathrm{se}</annotation></semantics></math>
-(clipped if <code>clip</code>), or logit
+<p>The estimator is Eq. 9 of the paper; the standard error is
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>𝜍</mi><mo accent="true">̃</mo></mover><mrow><mi>h</mi><mi>j</mi><mi>ℓ</mi></mrow></msub><mi>/</mi><msqrt><mi>n</mi></msqrt></mrow><annotation encoding="application/x-tex">\tilde\varsigma_{hj\ell}/\sqrt{n}</annotation></semantics></math>,
+with the variance estimator of Theorem 5 (Eq. 14), because
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>π</mi><mo accent="true">̂</mo></mover><mrow><mi>h</mi><mi>j</mi></mrow></msub><mo stretchy="false" form="prefix">(</mo><mi>s</mi><mo>−</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo><mo>=</mo><msub><mover><mi>Y</mi><mo accent="true">̃</mo></mover><mrow><mi>h</mi><mi>j</mi></mrow></msub><mo stretchy="false" form="prefix">(</mo><mi>s</mi><mo>−</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo><mi>/</mi><mi>n</mi></mrow><annotation encoding="application/x-tex">\hat\pi_{hj}(s-1) = \tilde Y_{hj}(s-1)/n</annotation></semantics></math>.
+The RPE pools all exposure and weighs every subject-instant equally (the
+paper shows, Corollary 3, that it is more efficient than the conditional
+probability estimator, which is therefore not implemented). Intervals:
+Wald
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>P</mi><mo accent="true">̃</mo></mover><mo>±</mo><mi>z</mi><mspace width="0.167em"></mspace><mrow><mi mathvariant="normal">s</mi><mi mathvariant="normal">e</mi></mrow></mrow><annotation encoding="application/x-tex">\tilde P \pm z\,\mathrm{se}</annotation></semantics></math>
+(Corollary 2; clipped if <code>clip</code>, as in the paper’s code), or
+logit
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">e</mi><mi mathvariant="normal">x</mi><mi mathvariant="normal">p</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">t</mi></mrow><mo stretchy="false" form="prefix">(</mo><mrow><mi mathvariant="normal">l</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">g</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">t</mi></mrow><mspace width="0.167em"></mspace><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo>±</mo><mi>z</mi><mspace width="0.167em"></mspace><mrow><mi mathvariant="normal">s</mi><mi mathvariant="normal">e</mi></mrow><mi>/</mi><mo stretchy="false" form="prefix">(</mo><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>−</mo><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\mathrm{expit}(\mathrm{logit}\,\hat p \pm z\,\mathrm{se}/(\hat p(1-\hat p)))</annotation></semantics></math>,
 which degenerates to
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">[</mo><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo>,</mo><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo stretchy="false" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[\hat p, \hat p]</annotation></semantics></math>
@@ -742,7 +781,19 @@ and every
 <code>P.upper[a, a, h]</code> are set to 1, so that absorbing states
 keep their probability mass during propagation. Unobserved
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mi>h</mi><mo>,</mo><mi>j</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(h, j)</annotation></semantics></math>
-pairs are left at 0.</p>
+pairs are left at 0, as the paper prescribes when nobody is at risk.</p>
+<p><strong>Agreement with the paper’s code.</strong> On DIVINE, the 343
+entries of <code>P</code> coincide with the tensor of the paper’s
+illustration code. The only differences are (i)
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>z</mi><annotation encoding="application/x-tex">z</annotation></semantics></math>
+is computed exactly (<code>qnorm(0.975)</code> = 1.959964, against 1.96
+in the paper’s code), which changes the confidence limits by about
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mn>10</mn><mrow><mi>−</mi><mn>6</mn></mrow></msup><annotation encoding="application/x-tex">10^{-6}</annotation></semantics></math>,
+and (ii) <code>P[a, a, h] = 1</code> also for pairs
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mi>h</mi><mo>,</mo><mi>a</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(h, a)</annotation></semantics></math>
+that never occur (e.g. SP → Disch), which the paper’s code leaves at 0;
+those pairs have probability 0 of being reached, so no prediction
+changes.</p>
 <p><strong>Errors and warnings.</strong> Error if <code>object</code> is
 not an <code>msm2data</code> or if <code>conf.level</code> is not a
 single number strictly between 0 and 1.</p>
@@ -755,17 +806,19 @@ single number strictly between 0 and 1.</p>
 <span><span class="co">#&gt;   95% wald confidence intervals; 2076 subjects</span></span>
 <span><span class="co">#&gt;   39 estimated transition probabilities (h -&gt; j -&gt; l)</span></span>
 <span><span class="va">fit</span><span class="op">$</span><span class="va">estimate</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">j</span> <span class="op">==</span> <span class="st">"SP"</span><span class="op">)</span>             <span class="co"># Table 2 of the paper</span></span>
-<span><span class="co">#&gt;      h  j     l        p       se    lower    upper n.trans at.risk</span></span>
-<span><span class="co">#&gt; 1  NSP SP    SP 0.615572 0.023995 0.568542 0.662602     253     411</span></span>
-<span><span class="co">#&gt; 2  NSP SP Recov 0.007299 0.004199 0.000000 0.015529       3     411</span></span>
-<span><span class="co">#&gt; 3  NSP SP  NIMV 0.223844 0.020560 0.183547 0.264141      92     411</span></span>
-<span><span class="co">#&gt; 4  NSP SP   IMV 0.150852 0.017654 0.116250 0.185453      62     411</span></span>
-<span><span class="co">#&gt; 5  NSP SP Death 0.002433 0.002430 0.000000 0.007196       1     411</span></span>
-<span><span class="co">#&gt; 6   SP SP    SP 0.864693 0.006622 0.851713 0.877672    2307    2668</span></span>
-<span><span class="co">#&gt; 7   SP SP Recov 0.082459 0.005325 0.072022 0.092896     220    2668</span></span>
-<span><span class="co">#&gt; 8   SP SP  NIMV 0.025487 0.003051 0.019507 0.031467      68    2668</span></span>
-<span><span class="co">#&gt; 9   SP SP   IMV 0.018366 0.002599 0.013271 0.023461      49    2668</span></span>
-<span><span class="co">#&gt; 10  SP SP Death 0.008996 0.001828 0.005413 0.012578      24    2668</span></span>
+<span><span class="co">#&gt; # A tibble: 10 × 9</span></span>
+<span><span class="co">#&gt;    h     j     l           p      se   lower   upper n.trans at.risk</span></span>
+<span><span class="co">#&gt;    &lt;fct&gt; &lt;fct&gt; &lt;fct&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;int&gt;   &lt;int&gt;</span></span>
+<span><span class="co">#&gt;  1 NSP   SP    SP    0.616   0.0240  0.569   0.663       253     411</span></span>
+<span><span class="co">#&gt;  2 NSP   SP    Recov 0.00730 0.00420 0       0.0155        3     411</span></span>
+<span><span class="co">#&gt;  3 NSP   SP    NIMV  0.224   0.0206  0.184   0.264        92     411</span></span>
+<span><span class="co">#&gt;  4 NSP   SP    IMV   0.151   0.0177  0.116   0.185        62     411</span></span>
+<span><span class="co">#&gt;  5 NSP   SP    Death 0.00243 0.00243 0       0.00720       1     411</span></span>
+<span><span class="co">#&gt;  6 SP    SP    SP    0.865   0.00662 0.852   0.878      2307    2668</span></span>
+<span><span class="co">#&gt;  7 SP    SP    Recov 0.0825  0.00533 0.0720  0.0929      220    2668</span></span>
+<span><span class="co">#&gt;  8 SP    SP    NIMV  0.0255  0.00305 0.0195  0.0315       68    2668</span></span>
+<span><span class="co">#&gt;  9 SP    SP    IMV   0.0184  0.00260 0.0133  0.0235       49    2668</span></span>
+<span><span class="co">#&gt; 10 SP    SP    Death 0.00900 0.00183 0.00541 0.0126       24    2668</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">P</span><span class="op">[</span>, , <span class="st">"NSP"</span><span class="op">]</span>, <span class="fl">3</span><span class="op">)</span>     <span class="co"># transition matrix for patients in NSP at the previous time</span></span>
 <span><span class="co">#&gt;         NSP    SP Recov  NIMV   IMV Disch Death</span></span>
 <span><span class="co">#&gt; NSP   0.843 0.024 0.000 0.000 0.000 0.129 0.003</span></span>
@@ -885,24 +938,28 @@ not an <code>msm2data</code>, if <code>B &lt; 2</code> or if
 <span><span class="co">#&gt;   95% percentile intervals for n-step predictions; 2076 subjects</span></span>
 <span><span class="co">#&gt;   39 estimated transition probabilities (h -&gt; j -&gt; l)</span></span>
 <span><span class="va">bt</span><span class="op">$</span><span class="va">estimate</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">j</span> <span class="op">==</span> <span class="st">"SP"</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">h</span>, <span class="va">l</span>, <span class="va">p</span>, <span class="va">se</span>, <span class="va">se.boot</span><span class="op">)</span></span>
-<span><span class="co">#&gt;      h     l        p       se  se.boot</span></span>
-<span><span class="co">#&gt; 1  NSP    SP 0.615572 0.023995 0.024436</span></span>
-<span><span class="co">#&gt; 2  NSP Recov 0.007299 0.004199 0.004189</span></span>
-<span><span class="co">#&gt; 3  NSP  NIMV 0.223844 0.020560 0.019790</span></span>
-<span><span class="co">#&gt; 4  NSP   IMV 0.150852 0.017654 0.017963</span></span>
-<span><span class="co">#&gt; 5  NSP Death 0.002433 0.002430 0.002376</span></span>
-<span><span class="co">#&gt; 6   SP    SP 0.864693 0.006622 0.007362</span></span>
-<span><span class="co">#&gt; 7   SP Recov 0.082459 0.005325 0.004295</span></span>
-<span><span class="co">#&gt; 8   SP  NIMV 0.025487 0.003051 0.003471</span></span>
-<span><span class="co">#&gt; 9   SP   IMV 0.018366 0.002599 0.002752</span></span>
-<span><span class="co">#&gt; 10  SP Death 0.008996 0.001828 0.001995</span></span>
+<span><span class="co">#&gt; # A tibble: 10 × 5</span></span>
+<span><span class="co">#&gt;    h     l           p      se se.boot</span></span>
+<span><span class="co">#&gt;    &lt;fct&gt; &lt;fct&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;</span></span>
+<span><span class="co">#&gt;  1 NSP   SP    0.616   0.0240  0.0244 </span></span>
+<span><span class="co">#&gt;  2 NSP   Recov 0.00730 0.00420 0.00419</span></span>
+<span><span class="co">#&gt;  3 NSP   NIMV  0.224   0.0206  0.0198 </span></span>
+<span><span class="co">#&gt;  4 NSP   IMV   0.151   0.0177  0.0180 </span></span>
+<span><span class="co">#&gt;  5 NSP   Death 0.00243 0.00243 0.00238</span></span>
+<span><span class="co">#&gt;  6 SP    SP    0.865   0.00662 0.00736</span></span>
+<span><span class="co">#&gt;  7 SP    Recov 0.0825  0.00533 0.00430</span></span>
+<span><span class="co">#&gt;  8 SP    NIMV  0.0255  0.00305 0.00347</span></span>
+<span><span class="co">#&gt;  9 SP    IMV   0.0184  0.00260 0.00275</span></span>
+<span><span class="co">#&gt; 10 SP    Death 0.00900 0.00183 0.00199</span></span>
 <span><span class="fu"><a href="../reference/ckequations.html">ckequations</a></span><span class="op">(</span><span class="va">bt</span>, h <span class="op">=</span> <span class="st">"NSP"</span>, j <span class="op">=</span> <span class="st">"SP"</span>, l <span class="op">=</span> <span class="st">"NIMV"</span>, nsteps <span class="op">=</span> <span class="fl">5</span>, bounds <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="co">#&gt;   n estimate   lower  upper</span></span>
-<span><span class="co">#&gt; 1 1   0.2238 0.18338 0.2608</span></span>
-<span><span class="co">#&gt; 2 2   0.1820 0.15000 0.2131</span></span>
-<span><span class="co">#&gt; 3 3   0.1587 0.13269 0.1850</span></span>
-<span><span class="co">#&gt; 4 4   0.1383 0.11577 0.1609</span></span>
-<span><span class="co">#&gt; 5 5   0.1204 0.09894 0.1410</span></span></code></pre></div>
+<span><span class="co">#&gt; # A tibble: 5 × 4</span></span>
+<span><span class="co">#&gt;       n estimate  lower upper</span></span>
+<span><span class="co">#&gt;   &lt;int&gt;    &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;</span></span>
+<span><span class="co">#&gt; 1     1    0.224 0.183  0.261</span></span>
+<span><span class="co">#&gt; 2     2    0.182 0.150  0.213</span></span>
+<span><span class="co">#&gt; 3     3    0.159 0.133  0.185</span></span>
+<span><span class="co">#&gt; 4     4    0.138 0.116  0.161</span></span>
+<span><span class="co">#&gt; 5     5    0.120 0.0989 0.141</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
@@ -971,11 +1028,6 @@ propagate the confidence-limit tensors</td>
 </table>
 <p><strong>Value.</strong> Depends on the arguments:</p>
 <table class="table">
-<colgroup>
-<col width="33%">
-<col width="33%">
-<col width="33%">
-</colgroup>
 <thead><tr class="header">
 <th><code>l</code></th>
 <th><code>bounds</code></th>
@@ -1002,7 +1054,7 @@ propagate the confidence-limit tensors</td>
 <tr class="even">
 <td>one state</td>
 <td><code>TRUE</code></td>
-<td>data frame with columns <code>n, estimate, lower, upper</code>
+<td>tibble with columns <code>n, estimate, lower, upper</code>
 </td>
 </tr>
 </tbody>
@@ -1027,15 +1079,22 @@ the pair, which gives the distribution of
 This is exact, and costs one matrix–vector product per step. Writing a
 second-order chain as a first-order chain on pairs of consecutive states
 is the standard representation of higher-order Markov chains
-(e.g. Benson, Gleich and Lim, 2017). With <code>bounds = TRUE</code>,
-the same propagation is applied to <code>P.lower</code> and
-<code>P.upper</code>, and the results are clipped to [0, 1]; if
-<code>x</code> is a <code>P2boot</code> fit, the bounds are instead
-percentile bootstrap intervals (every replicate tensor is propagated),
-with close to nominal coverage. These bounds are heuristic sensitivity
-bands, not confidence intervals with nominal coverage: the rows of the
-limit tensors do not sum to 1, so without clipping an upper bound could
-even exceed 1.</p>
+(e.g. Benson, Gleich and Lim, 2017). It gives exactly the sum over paths
+of Eq. 6 of the paper: with <code>nsteps = 9</code>, the result equals
+the nine values of the <code>Chapman.Kolmogorov(P, h, j, l)</code>
+function of the paper’s code (differences below
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mn>10</mn><mrow><mi>−</mi><mn>16</mn></mrow></msup><annotation encoding="application/x-tex">10^{-16}</annotation></semantics></math>
+on DIVINE).</p>
+<p>With <code>bounds = TRUE</code>, the same propagation is applied to
+<code>P.lower</code> and <code>P.upper</code>: these are the
+<strong>evolution intervals</strong> of Section 6.3 of the paper. As the
+paper explains, they are not confidence intervals; they are built to
+contain them, so that two evolution intervals that do not overlap
+indicate a significant difference. The rows of the limit tensors do not
+sum to 1, so the bounds are also clipped to [0, 1] (on DIVINE this
+changes nothing). If <code>x</code> is a <code>P2boot</code> fit, the
+bounds are instead percentile bootstrap intervals (every replicate
+tensor is propagated), with close to nominal coverage.</p>
 <p><strong>Errors and warnings.</strong></p>
 <ul>
 <li>Error: <code>x</code> is neither a <code>P2est</code> nor a
@@ -1062,12 +1121,14 @@ are no limits to propagate).</li>
 <span><span class="co">#&gt; [4,]   0 0.398 0.183 0.138 0.226 0.015 0.040</span></span>
 <span><span class="co">#&gt; [5,]   0 0.344 0.220 0.120 0.231 0.032 0.052</span></span>
 <span><span class="fu"><a href="../reference/ckequations.html">ckequations</a></span><span class="op">(</span><span class="va">fit</span>, h <span class="op">=</span> <span class="st">"NSP"</span>, j <span class="op">=</span> <span class="st">"SP"</span>, l <span class="op">=</span> <span class="st">"NIMV"</span>, nsteps <span class="op">=</span> <span class="fl">5</span>, bounds <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="co">#&gt;   n estimate   lower  upper</span></span>
-<span><span class="co">#&gt; 1 1   0.2238 0.18355 0.2641</span></span>
-<span><span class="co">#&gt; 2 2   0.1820 0.13672 0.2326</span></span>
-<span><span class="co">#&gt; 3 3   0.1587 0.11440 0.2107</span></span>
-<span><span class="co">#&gt; 4 4   0.1383 0.09584 0.1904</span></span>
-<span><span class="co">#&gt; 5 5   0.1204 0.08040 0.1717</span></span>
+<span><span class="co">#&gt; # A tibble: 5 × 4</span></span>
+<span><span class="co">#&gt;       n estimate  lower upper</span></span>
+<span><span class="co">#&gt;   &lt;int&gt;    &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;</span></span>
+<span><span class="co">#&gt; 1     1    0.224 0.184  0.264</span></span>
+<span><span class="co">#&gt; 2     2    0.182 0.137  0.233</span></span>
+<span><span class="co">#&gt; 3     3    0.159 0.114  0.211</span></span>
+<span><span class="co">#&gt; 4     4    0.138 0.0958 0.190</span></span>
+<span><span class="co">#&gt; 5     5    0.120 0.0804 0.172</span></span>
 <span><span class="fu"><a href="../reference/ckequations.html">ckequations</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">P</span>, h <span class="op">=</span> <span class="st">"NSP"</span>, j <span class="op">=</span> <span class="st">"SP"</span>, l <span class="op">=</span> <span class="st">"NIMV"</span>, nsteps <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>        <span class="co"># a bare tensor</span></span>
 <span><span class="co">#&gt; [1] 0.2238 0.1820 0.1587 0.1383 0.1204</span></span></code></pre></div>
 </div>
@@ -1145,7 +1206,7 @@ only</td>
 <code>h</code>, <code>n</code>, <code>estimate</code> and, if
 <code>bounds = TRUE</code>, <code>lower</code>, <code>upper</code>; and
 attributes <code>j</code>, <code>l</code>, <code>bounds</code>,
-<code>estimator</code>, <code>conf.level</code>.</p>
+<code>bands</code>, <code>estimator</code>, <code>conf.level</code>.</p>
 <p><strong>How it works.</strong> Builds
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Q</mi><annotation encoding="application/x-tex">Q</annotation></semantics></math>
 (and, with bounds,
@@ -1158,7 +1219,9 @@ as in <code><a href="../reference/ckequations.html">ckequations()</a></code>, wi
 With a <code>P2boot</code> fit the bounds are percentile bootstrap
 intervals, and the attribute <code>bands</code> records which kind was
 used (<code>"evolution"</code> or <code>"bootstrap"</code>). The curves
-are stacked in long format.</p>
+are stacked in long format (<code><a href="https://purrr.tidyverse.org/reference/map.html" class="external-link">purrr::map()</a></code> and
+<code><a href="https://purrr.tidyverse.org/reference/list_c.html" class="external-link">purrr::list_rbind()</a></code>). These are the curves of Figures 4
+(RPE) and 5 of the paper.</p>
 <p><strong>Errors and warnings.</strong> Error if <code>object</code> is
 not a <code>P2est</code>, or if <code>j</code>, <code>l</code> or any
 <code>h</code> is not in the state space.</p>
@@ -1263,7 +1326,10 @@ are separated exactly when
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">max</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><msub><mi>L</mi><mn>1</mn></msub><mo>,</mo><msub><mi>L</mi><mn>2</mn></msub><mo stretchy="false" form="postfix">)</mo><mo>&gt;</mo><mrow><mi mathvariant="normal">min</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><msub><mi>U</mi><mn>1</mn></msub><mo>,</mo><msub><mi>U</mi><mn>2</mn></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\max(L_1, L_2) &gt; \min(U_1, U_2)</annotation></semantics></math>.
 The first step where this fails is the first overlap.</p>
 <p><strong>Why it is done this way.</strong> Non-overlap of the two
-intervals is the criterion of the methods paper (Section 6.3).</p>
+intervals is the criterion of the methods paper (Section 6.3). In
+DIVINE, the evolution intervals first overlap at step 5 for SP → NIMV
+and at step 7 for SP → IMV, the “fifth day” and “between the sixth and
+seventh day” of the paper.</p>
 <p><strong>Errors and warnings.</strong> Error if <code>x</code> has no
 bounds, or does not have exactly two groups.</p>
 <p><strong>Example</strong></p>
@@ -1343,8 +1409,9 @@ intervals when available. Returns <code>x</code> invisibly.</li>
 <tr class="even">
 <td><code>col</code></td>
 <td><code>NULL</code></td>
-<td>colours, one per group (default red, blue, dark green, purple,
-orange)</td>
+<td>colours, one per group in the order of <code>h</code> (default red,
+blue, dark green, purple, orange); the paper uses blue for NSP and red
+for SP</td>
 </tr>
 <tr class="odd">
 <td>
@@ -1497,10 +1564,10 @@ state; its sum is the per-step probability of entering, which gives
 </tr>
 </tbody>
 </table>
-<p><strong>Value.</strong> A <code>data.table</code> with columns
-<code>id</code>, <code>time</code> and <code>state</code> (factor with
-levels <code>states</code>), sorted by <code>id</code> and
-<code>time</code>, ready for <code><a href="../reference/prep2.html">prep2()</a></code>.</p>
+<p><strong>Value.</strong> A tibble with columns <code>id</code>,
+<code>time</code> and <code>state</code> (factor with levels
+<code>states</code>), sorted by <code>id</code> and <code>time</code>,
+ready for <code><a href="../reference/prep2.html">prep2()</a></code>.</p>
 <p><strong>How it works.</strong></p>
 <ol style="list-style-type: decimal">
 <li>Absorbing states are those with <code>tensor[a, a, h] = 1</code> for
@@ -1521,6 +1588,15 @@ pair are sampled together.</li>
 probability row is all zero (an unspecified pair: the path ends
 there).</li>
 </ol>
+<p>The individual states are kept in vectors and updated with a loop
+over global time, because drawing every individual’s next state at every
+step is much faster that way than with a table. The design of Section 5
+of the paper is <code>entry = c("1" = 0.05, "2" = 0.05)</code> with the
+tensor and first-step matrix of Section 5.1 (see
+<code><a href="../articles/paper.html">vignette("paper")</a></code>). The paper’s code draws the number of
+individuals making each transition as independent binomials; here every
+individual draws its own next state from the same probabilities, which
+is the same model.</p>
 <p><strong>Errors and warnings.</strong> Error if <code>entry</code> is
 unnamed or names states not in <code>states</code>. Warning if
 <code>maxT</code> is reached with individuals still active (usually a
@@ -1547,25 +1623,29 @@ zero-probability or non-absorbing cycle in <code>tensor</code>).</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span></span>
 <span><span class="va">sim</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simulate2.html">simulate2</a></span><span class="op">(</span><span class="fl">2000</span>, <span class="va">fit</span><span class="op">$</span><span class="va">P</span>, first <span class="op">=</span> <span class="va">first_mat</span>, init <span class="op">=</span> <span class="va">init</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">sim</span>, <span class="va">state</span><span class="op">)</span></span>
-<span><span class="co">#&gt;    state     n</span></span>
-<span><span class="co">#&gt; 1:   NSP 11601</span></span>
-<span><span class="co">#&gt; 2:    SP  3303</span></span>
-<span><span class="co">#&gt; 3: Recov  4409</span></span>
-<span><span class="co">#&gt; 4:  NIMV  1023</span></span>
-<span><span class="co">#&gt; 5:   IMV  5382</span></span>
-<span><span class="co">#&gt; 6: Disch  1780</span></span>
-<span><span class="co">#&gt; 7: Death   220</span></span>
+<span><span class="co">#&gt; # A tibble: 7 × 2</span></span>
+<span><span class="co">#&gt;   state     n</span></span>
+<span><span class="co">#&gt;   &lt;fct&gt; &lt;int&gt;</span></span>
+<span><span class="co">#&gt; 1 NSP   11601</span></span>
+<span><span class="co">#&gt; 2 SP     3303</span></span>
+<span><span class="co">#&gt; 3 Recov  4409</span></span>
+<span><span class="co">#&gt; 4 NIMV   1023</span></span>
+<span><span class="co">#&gt; 5 IMV    5382</span></span>
+<span><span class="co">#&gt; 6 Disch  1780</span></span>
+<span><span class="co">#&gt; 7 Death   220</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="../reference/simulate2.html">simulate2</a></span><span class="op">(</span><span class="fl">3</span>, <span class="va">fit</span><span class="op">$</span><span class="va">P</span>, first <span class="op">=</span> <span class="va">first_mat</span>, entry <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>NSP <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span><span class="op">)</span>, <span class="fl">8</span><span class="op">)</span>   <span class="co"># staggered entry</span></span>
-<span><span class="co">#&gt;    id time state</span></span>
-<span><span class="co">#&gt; 1:  1    1   NSP</span></span>
-<span><span class="co">#&gt; 2:  1    2   NSP</span></span>
-<span><span class="co">#&gt; 3:  1    3   NSP</span></span>
-<span><span class="co">#&gt; 4:  1    4   NSP</span></span>
-<span><span class="co">#&gt; 5:  1    5    SP</span></span>
-<span><span class="co">#&gt; 6:  1    6    SP</span></span>
-<span><span class="co">#&gt; 7:  1    7    SP</span></span>
-<span><span class="co">#&gt; 8:  1    8    SP</span></span></code></pre></div>
+<span><span class="co">#&gt; # A tibble: 8 × 3</span></span>
+<span><span class="co">#&gt;      id  time state</span></span>
+<span><span class="co">#&gt;   &lt;int&gt; &lt;int&gt; &lt;fct&gt;</span></span>
+<span><span class="co">#&gt; 1     1     1 NSP  </span></span>
+<span><span class="co">#&gt; 2     1     2 NSP  </span></span>
+<span><span class="co">#&gt; 3     1     3 NSP  </span></span>
+<span><span class="co">#&gt; 4     1     4 NSP  </span></span>
+<span><span class="co">#&gt; 5     1     5 SP   </span></span>
+<span><span class="co">#&gt; 6     1     6 SP   </span></span>
+<span><span class="co">#&gt; 7     1     7 SP   </span></span>
+<span><span class="co">#&gt; 8     1     8 SP</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
@@ -1697,7 +1777,7 @@ between 0 and 1</td>
 <td><code>msm2data</code></td>
 <td>per-subject counts of every observed triple
 (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>×</mo><mi>K</mi></mrow><annotation encoding="application/x-tex">n \times K</annotation></semantics></math>
-matrix) and their
+matrix, from <code>count(id, h, j, l)</code>) and their
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mi>h</mi><mo>,</mo><mi>j</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(h, j)</annotation></semantics></math>
 groups, for the bootstrap</td>
 </tr>

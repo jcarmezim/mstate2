@@ -2,9 +2,10 @@
 
 For a fixed current state \\j\\ and target \\\ell\\, computes the n-step
 transition probabilities for several preceding states \\h\\, with their
-evolution intervals. The construction behind Figures 4-5: it assesses
-whether, and for how long, the preceding state affects the future
-trajectory.
+evolution intervals. This is the construction of Section 6.3 of the
+methods paper (the RPE curves of Figure 4 and the evolution intervals of
+Figure 5): it assesses whether, and for how long, the state at the
+previous time affects the future trajectory.
 
 ## Usage
 
@@ -46,7 +47,8 @@ compare2(object, h, j, l, nsteps = 9L, bounds = TRUE)
 ## Value
 
 An object of class "msm2pred" (a data frame): columns h, n, estimate
-and, when bounds = TRUE, lower and upper.
+and, when bounds = TRUE, lower and upper; one block of `nsteps` rows per
+previous state, in the order given in `h`.
 
 ## Examples
 

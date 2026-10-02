@@ -108,9 +108,11 @@ bt
 #>   95% percentile intervals for n-step predictions; 500 subjects
 #>   4 estimated transition probabilities (h -> j -> l)
 ckequations(bt, h = "A", j = "B", l = "C", nsteps = 4, bounds = TRUE)
-#>   n  estimate     lower     upper
-#> 1 1 0.3760000 0.3429500 0.4161000
-#> 2 2 0.8038857 0.7767577 0.8279400
-#> 3 3 0.9383641 0.9213130 0.9508064
-#> 4 4 0.9806287 0.9724156 0.9859350
+#> # A tibble: 4 × 4
+#>       n estimate lower upper
+#>   <int>    <dbl> <dbl> <dbl>
+#> 1     1    0.376 0.343 0.416
+#> 2     2    0.804 0.777 0.828
+#> 3     3    0.938 0.921 0.951
+#> 4     4    0.981 0.972 0.986
 ```

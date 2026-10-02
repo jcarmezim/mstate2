@@ -2,11 +2,11 @@
 
 Computes \\P\_{hj\ell}(1,n) = P(X\_{n+1} = \ell \mid X_1 = j, X_0 = h)\\
 for \\n = 1, \dots, nsteps\\ via the extension of the Chapman-Kolmogorov
-relation (Eq. 6). The second-order chain is lifted to a first-order
-chain on ordered pairs of states, \\Q\_{(a,b)\to(b,c)} = P\_{abc}\\, and
-the initial pair distribution is propagated; this is exact, works for
-any number of states and any horizon, and is far cheaper than expanding
-the path sum.
+relation (Eq. 6 of the methods paper). The second-order chain is lifted
+to a first-order chain on ordered pairs of states, \\Q\_{(a,b)\to(b,c)}
+= P\_{abc}\\, and the initial pair distribution is propagated; this is
+exact, works for any number of states and any horizon, and is far
+cheaper than expanding the path sum.
 
 ## Usage
 
@@ -37,8 +37,8 @@ ckequations(x, h, j, l = NULL, nsteps = 9L, bounds = FALSE)
 - bounds:
 
   If x is a "P2est" object and a single l is given, also propagate the
-  CI tensors to return evolution-interval bounds (clipped to \[0, 1\]).
-  If x is a
+  CI tensors to return evolution-interval bounds (Section 6.3 of the
+  paper; additionally clipped to \[0, 1\]). If x is a
   [`P2boot`](https://jcarmezim.github.io/mstate2/reference/P2boot.md)
   object, the bounds are instead percentile bootstrap intervals of the
   n-step probability (every replicate tensor is propagated), which have
@@ -49,7 +49,17 @@ ckequations(x, h, j, l = NULL, nsteps = 9L, bounds = FALSE)
 If l is a single state and bounds = FALSE: a numeric vector of length
 nsteps. If l is a vector: an \\nsteps \times length(l)\\ matrix. If l is
 NULL: an \\nsteps \times M\\ matrix (one column per state). If bounds =
-TRUE: a data.frame with columns n, estimate, lower, upper.
+TRUE: a tibble with columns n, estimate, lower, upper.
+
+## Details
+
+Step \\n\\ is the probability of being in \\\ell\\ at time \\s = n +
+1\\; \\n = 1\\ is the one-step probability \\P\_{hj\ell}\\. With the
+default `nsteps = 9`, the result is the vector of nine values returned
+by the `Chapman.Kolmogorov(P, h, j, l)` function of the paper's code
+(steps 1-9, times 2-10, as in Figures 4-5). The evolution intervals of
+Section 6.3 are obtained by propagating the tensors of lower and upper
+confidence limits in the same way.
 
 ## Why the chain on pairs
 
@@ -83,11 +93,13 @@ fit <- P2est(prep2(panel))
 ckequations(fit, h = "A", j = "B", l = "B", nsteps = 6)
 #> [1] 0.624000000 0.196114286 0.061635918 0.019371289 0.006088119 0.001913409
 ckequations(fit, h = "A", j = "B", l = "B", nsteps = 6, bounds = TRUE)
-#>   n    estimate        lower       upper
-#> 1 1 0.624000000 0.5815429998 0.666457000
-#> 2 2 0.196114286 0.1579645768 0.237886054
-#> 3 3 0.061635918 0.0429079321 0.084911367
-#> 4 4 0.019371289 0.0116550854 0.030308377
-#> 5 5 0.006088119 0.0031658719 0.010818313
-#> 6 6 0.001913409 0.0008599461 0.003861503
+#> # A tibble: 6 × 4
+#>       n estimate    lower   upper
+#>   <int>    <dbl>    <dbl>   <dbl>
+#> 1     1  0.624   0.582    0.666  
+#> 2     2  0.196   0.158    0.238  
+#> 3     3  0.0616  0.0429   0.0849 
+#> 4     4  0.0194  0.0117   0.0303 
+#> 5     5  0.00609 0.00317  0.0108 
+#> 6     6  0.00191 0.000860 0.00386
 ```

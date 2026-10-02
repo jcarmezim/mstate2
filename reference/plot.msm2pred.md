@@ -38,7 +38,10 @@ plot(
 
 - col, lty, lwd, alpha:
 
-  Appearance of lines and interval shading.
+  Appearance of lines and interval shading. The colours are used in the
+  order of `h` in
+  [`compare2`](https://jcarmezim.github.io/mstate2/reference/compare2.md);
+  the paper's figures use blue for NSP and red for SP.
 
 - add:
 

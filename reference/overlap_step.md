@@ -9,7 +9,9 @@ changes the prediction. This is the criterion of the methods paper
 ([`P2est`](https://jcarmezim.github.io/mstate2/reference/P2est.md) fit)
 or to percentile bootstrap intervals
 ([`P2boot`](https://jcarmezim.github.io/mstate2/reference/P2boot.md)
-fit).
+fit). In DIVINE, the evolution intervals of the paper first overlap at
+step 5 for SP to NIMV ("around the fifth day") and at step 7 for SP to
+IMV ("between the sixth and seventh day").
 
 ## Usage
 

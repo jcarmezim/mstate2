@@ -99,13 +99,14 @@ not consecutive integers.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>An object of class "msm2data": a list with <code>N</code> (the counts
-  \(\tilde N_{hj\ell}(s)\), columns <code>h, j, l, s, N</code>), <code>Y</code> (the
-  at-risk counts \(\tilde Y_{hj}(s-1)\), columns <code>h, j, s, Y</code>),
-  <code>triples</code> (one row per subject per observed triple, columns
-  <code>id, h, j, l, s</code>; used by <code><a href="P2boot.html">P2boot</a></code> to resample
-  subjects), <code>states</code>, <code>absorbing</code>, <code>n</code> (subjects),
-  <code>ntriples</code> and <code>time.range</code>.</p>
+    <p>An object of class "msm2data": a list with the tibbles <code>N</code>
+  (the counts \(\tilde N_{hj\ell}(s)\), columns <code>h, j, l, s, N</code>),
+  <code>Y</code> (the at-risk counts \(\tilde Y_{hj}(s-1)\), columns
+  <code>h, j, s, Y</code>) and <code>triples</code> (one row per subject per observed
+  triple, columns <code>id, h, j, l, s</code>; used by <code><a href="P2boot.html">P2boot</a></code> to
+  resample subjects), where <code>h, j, l</code> are factors with levels
+  <code>states</code>; and <code>states</code>, <code>absorbing</code>, <code>n</code>
+  (subjects), <code>ntriples</code> and <code>time.range</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -114,7 +115,15 @@ not consecutive integers.</p></dd>
         \(h \to j \to \ell\) ending at time \(s\);</p></li>
 <li><p>\(\tilde Y_{hj}(s-1)\): number of subjects at risk, i.e. occupying
         \(h\) at \(s-2\) and \(j\) at \(s-1\).</p></li>
-</ul><p>Consecutive <em>observations</em> are treated as consecutive time steps. Supply
+</ul><p>These are the counting processes of Section 2.2 of the methods paper
+(Najera-Zuloaga, Besalu and Gomez Melis, 2025), indexed by the time
+\(s \ge 2\) of the destination state. The at-risk count is computed as
+\(\tilde Y_{hj}(s-1) = \sum_\ell \tilde N_{hj\ell}(s)\): with complete
+follow-up, as in the paper and in DIVINE, this is exactly the number of
+subjects in \(h\) at \(s-2\) and \(j\) at \(s-1\); a subject
+whose follow-up stops in \(j\) at \(s-1\) (right-censored) is not
+counted at risk at \(s\), because the next state is not observed.</p>
+<p>Consecutive <em>observations</em> are treated as consecutive time steps. Supply
 a regular integer time grid (e.g. days) for the counting-process indices to
 match the paper's definitions.</p>
     </div>
@@ -131,6 +140,9 @@ computed once and every other function reuses them.</p>
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
     <p>Anderson, T. W. and Goodman, L. A. (1957). Statistical inference about
 Markov chains. <em>Annals of Mathematical Statistics</em>, 28(1), 89-110.</p>
+<p>Najera-Zuloaga, J., Besalu, M. and Gomez Melis, G. (2025). Second-order
+Markov multistate models: nonparametric estimation and inference.
+Manuscript submitted for publication.</p>
     </div>
 
     <div class="section level2">

@@ -40,6 +40,10 @@ Conventions used throughout the package:
 - **Steps and time.** A prediction of $`n`$ steps starts from
   $`X_0 = h`$, $`X_1 = j`$ and refers to time $`s = n + 1`$.
 - **Absorbing states** satisfy `P[a, a, h] = 1` for every `h`.
+- **Tables and arrays.** Data handling uses the tidyverse (`dplyr`,
+  `tidyr`, `purrr`, `tibble`) and every table is returned as a tibble.
+  The tensors and the Chapman–Kolmogorov propagation are plain arrays
+  and matrices, because they are linear algebra.
 
 ### Example data used in this document
 
@@ -84,8 +88,9 @@ rnd(x)
 **What it does.** Rounds numbers to the nearest integer, sending halves
 **away from zero** (0.5 → 1, 2.5 → 3, −0.5 → −1). It is the default
 discretisation of
-[`sojourn_to_panel()`](https://jcarmezim.github.io/mstate2/reference/sojourn_to_panel.md),
-and the convention of the DIVINE analysis.
+[`sojourn_to_panel()`](https://jcarmezim.github.io/mstate2/reference/sojourn_to_panel.md)
+and the same function, with the same name, that the code of the methods
+paper uses to turn the DIVINE sojourn times into days.
 
 **Arguments**
 
@@ -100,7 +105,9 @@ and the convention of the DIVINE analysis.
 truncating towards zero. Base R’s
 [`round()`](https://rdrr.io/r/base/Round.html) instead sends halves to
 the nearest *even* integer (IEC 60559), so `round(0.5) = 0` would make a
-half-day stay vanish.
+half-day stay vanish. Only
+[`rnd()`](https://jcarmezim.github.io/mstate2/reference/rnd.md)
+reproduces Table 2 of the paper.
 
 **Errors and warnings.** None.
 
@@ -140,20 +147,28 @@ unit, with the state occupied).
 | `absorbing` | — | named character vector, `c(state = "0/1 indicator column", ...)` |
 | `round_fun` | `rnd` | function used to discretise durations |
 
-**Value.** A `data.table` with columns `id`, `time` (0, 1, 2, …) and
-`state` (character).
+**Value.** A tibble with columns `id`, `time` (0, 1, 2, …) and `state`
+(character).
 
 **How it works.** For each subject:
 
-1.  Durations are discretised with `round_fun`; negative or `NA`
-    durations become 0 (“not visited”).
-2.  Each state label is repeated as many times as its duration, in the
-    order of `segments`.
+1.  The duration columns are put in long format (one row per subject and
+    state,
+    [`tidyr::pivot_longer()`](https://tidyr.tidyverse.org/reference/pivot_longer.html))
+    and discretised with `round_fun`; negative or `NA` durations become
+    0 (“not visited”).
+2.  Each state is repeated as many times as its duration
+    ([`tidyr::uncount()`](https://tidyr.tidyverse.org/reference/uncount.html)),
+    in the order of `segments`.
 3.  The first absorbing state whose indicator equals 1 is appended. If
     none equals 1, the subject is right-censored and has no final
     absorbing row.
 4.  Times are numbered from 0. Subjects with no duration and no event
-    contribute no rows.
+    contribute no rows. Subjects keep the row order of `data`.
+
+This is the discretisation of the paper’s code, which also rounds each
+sojourn separately with
+[`rnd()`](https://jcarmezim.github.io/mstate2/reference/rnd.md).
 
 **Errors and warnings.** Error if `data` is not a data frame, or if any
 column named in `id`, `segments` or `absorbing` is missing. Warning if a
@@ -174,14 +189,16 @@ panel <- sojourn_to_panel(MSM, id = "id", segments = segs, absorbing = absb)
 dim(panel)
 #> [1] 27736     3
 count(panel, state)         # patient-days in each state
-#>    state     n
-#> 1: Death   218
-#> 2: Disch  1858
-#> 3:   IMV  4681
-#> 4:  NIMV  1019
-#> 5:   NSP 12432
-#> 6: Recov  4228
-#> 7:    SP  3300
+#> # A tibble: 7 × 2
+#>   state     n
+#>   <chr> <int>
+#> 1 Death   218
+#> 2 Disch  1858
+#> 3 IMV    4681
+#> 4 NIMV   1019
+#> 5 NSP   12432
+#> 6 Recov  4228
+#> 7 SP     3300
 ```
 
 Every DIVINE patient ends in `Disch` or `Death`, so no follow-up is
@@ -219,14 +236,16 @@ the input of
 
 | Component | Content |
 |----|----|
-| `N` | `data.table` `(h, j, l, s, N)`: $`\tilde N_{hj\ell}(s)`$, $`s`$ = time of the destination |
-| `Y` | `data.table` `(h, j, s, Y)`: $`\tilde Y_{hj}(s-1)`$, indexed by the same $`s`$ |
-| `triples` | `data.table` `(id, h, j, l, s)`: one row per subject per at-risk instant; used by [`P2boot()`](https://jcarmezim.github.io/mstate2/reference/P2boot.md) to resample subjects |
+| `N` | tibble `(h, j, l, s, N)`: $`\tilde N_{hj\ell}(s)`$, $`s`$ = time of the destination |
+| `Y` | tibble `(h, j, s, Y)`: $`\tilde Y_{hj}(s-1)`$, indexed by the same $`s`$ |
+| `triples` | tibble `(id, h, j, l, s)`: one row per subject per at-risk instant; used by [`P2boot()`](https://jcarmezim.github.io/mstate2/reference/P2boot.md) to resample subjects |
 | `states` | the state space, in order |
 | `absorbing` | absorbing states (character) |
 | `n` | number of subjects |
 | `ntriples` | number of triples (rows of `triples`) |
 | `time.range` | range of observed times |
+
+The columns `h`, `j`, `l` are factors with levels `states`.
 
 **How it works.**
 
@@ -234,11 +253,18 @@ the input of
     `state`. Converts `state` to a factor with levels `states`.
 2.  Sorts by `(id, time)` and, if requested, checks that times within
     each subject increase by exactly 1.
-3.  Within each subject, `h = shift(state, 2)` and
-    `j = shift(state, 1)`. The first two rows of each subject
-    (incomplete history) are dropped; the remaining rows are the
-    triples, with the current row’s state as `l`.
-4.  `N` counts triples by `(h, j, l, s)`; `Y` sums `N` over `l`.
+3.  Within each subject, `h = lag(state, 2)` and `j = lag(state, 1)`.
+    The first two rows of each subject (incomplete history) are dropped;
+    the remaining rows are the triples, with the current row’s state as
+    `l`.
+4.  `N` counts triples by `(h, j, l, s)`
+    ([`count()`](https://dplyr.tidyverse.org/reference/count.html)); `Y`
+    sums `N` over `l`. These are the counting processes of Section 2.2
+    of the paper. With complete follow-up,
+    $`\sum_\ell \tilde N_{hj\ell}(s)`$ is exactly the number of subjects
+    in $`h`$ at $`s-2`$ and $`j`$ at $`s-1`$; a subject whose follow-up
+    stops in $`j`$ (right-censored) is not counted at risk, because its
+    next state is not observed.
 5.  If `absorbing` is `NULL`, a state is absorbing when it is occupied
     but never left ($`j \to \ell`$ with $`\ell \ne j`$ never observed).
 
@@ -272,21 +298,25 @@ d
 #>   absorbing       : Disch, Death
 #>   distinct (h,j)  : 12
 head(d$N)
-#>      h   j   l s    N
-#> 1: NSP NSP NSP 2 1505
-#> 2: NSP NSP NSP 3 1306
-#> 3: NSP NSP NSP 4 1147
-#> 4: NSP NSP NSP 5  955
-#> 5: NSP NSP NSP 6  788
-#> 6: NSP NSP NSP 7  610
+#> # A tibble: 6 × 5
+#>   h     j     l         s     N
+#>   <fct> <fct> <fct> <int> <int>
+#> 1 NSP   NSP   NSP       2  1505
+#> 2 NSP   NSP   NSP       3  1306
+#> 3 NSP   NSP   NSP       4  1147
+#> 4 NSP   NSP   NSP       5   955
+#> 5 NSP   NSP   NSP       6   788
+#> 6 NSP   NSP   NSP       7   610
 head(d$Y)
-#>      h   j s    Y
-#> 1: NSP NSP 2 1658
-#> 2: NSP NSP 3 1505
-#> 3: NSP NSP 4 1306
-#> 4: NSP NSP 5 1147
-#> 5: NSP NSP 6  955
-#> 6: NSP NSP 7  788
+#> # A tibble: 6 × 4
+#>   h     j         s     Y
+#>   <fct> <fct> <int> <int>
+#> 1 NSP   NSP       2  1658
+#> 2 NSP   NSP       3  1505
+#> 3 NSP   NSP       4  1306
+#> 4 NSP   NSP       5  1147
+#> 5 NSP   NSP       6   955
+#> 6 NSP   NSP       7   788
 names(d$triples)      # one row per patient-day at risk (not printed)
 #> [1] "id" "h"  "j"  "l"  "s"
 ```
@@ -311,7 +341,7 @@ returns the **exposure per $`(h, j)`$ pair**.
 
 **Value.** [`print()`](https://rdrr.io/r/base/print.html) returns `x`
 invisibly. [`summary()`](https://rdrr.io/r/base/summary.html) returns
-invisibly a `data.table` with one row per $`(h, j)`$ and columns
+invisibly a tibble with one row per $`(h, j)`$ and columns
 `total_at_risk` ($`\sum_s \tilde Y_{hj}(s-1)`$, the RPE denominator, in
 subject-instants), `s_min` and `s_max`.
 
@@ -323,19 +353,21 @@ expo <- summary(d)
 #> <msm2data summary>
 #>   2076 subjects, 23584 triples, time 0-138
 #>   exposure per (h, j) pair:
-#>         h     j total_at_risk s_min s_max
-#>  1:   NSP   NSP         10577     2    43
-#>  2:   NSP    SP           411     2    37
-#>  3:    SP    SP          2668     2    50
-#>  4:    SP Recov           223     3    51
-#>  5:    SP  NIMV           214     2    37
-#>  6:    SP   IMV           166     2    38
-#>  7: Recov Recov          3764     4   138
-#>  8:  NIMV Recov           101     3    36
-#>  9:  NIMV  NIMV           805     3    41
-#> 10:  NIMV   IMV           102     3    21
-#> 11:   IMV Recov           140     4    97
-#> 12:   IMV   IMV          4413     3    96
+#> # A tibble: 12 × 5
+#>    h     j     total_at_risk s_min s_max
+#>    <fct> <fct>         <int> <int> <int>
+#>  1 NSP   NSP           10577     2    43
+#>  2 NSP   SP              411     2    37
+#>  3 SP    SP             2668     2    50
+#>  4 SP    Recov           223     3    51
+#>  5 SP    NIMV            214     2    37
+#>  6 SP    IMV             166     2    38
+#>  7 Recov Recov          3764     4   138
+#>  8 NIMV  Recov           101     3    36
+#>  9 NIMV  NIMV            805     3    41
+#> 10 NIMV  IMV             102     3    21
+#> 11 IMV   Recov           140     4    97
+#> 12 IMV   IMV            4413     3    96
 ```
 
 ## Estimation
@@ -367,8 +399,8 @@ errors and confidence intervals, with the relative probability estimator
 
 | Component | Content |
 |----|----|
-| `estimate` | data frame, one row per observed $`(h, j, \ell)`$: `h, j, l, p, se, lower, upper, n.trans, at.risk` |
-| `P` | $`M \times M \times M`$ tensor of estimates, layout `[j, l, h]` |
+| `estimate` | tibble, one row per observed $`(h, j, \ell)`$: `h, j, l, p, se, lower, upper, n.trans, at.risk` |
+| `P` | $`M \times M \times M`$ tensor of estimates, layout `[j, l, h]` (as in the paper’s code) |
 | `P.lower`, `P.upper` | tensors of the confidence limits |
 | `P.se` | tensor of standard errors |
 | `states`, `absorbing` | state space and absorbing states |
@@ -381,21 +413,36 @@ $`= \sum_s \tilde Y_{hj}(s-1)`$.
 **How it works.**
 
 ``` math
-\hat P_{hj\ell} = \frac{\sum_s \tilde N_{hj\ell}(s)}{\sum_s \tilde Y_{hj}(s-1)},
+\tilde P_{hj\ell} = \frac{\sum_s \tilde N_{hj\ell}(s)}{\sum_s \tilde Y_{hj}(s-1)},
 \qquad
-\mathrm{se} = \sqrt{\frac{\hat p(1-\hat p)}{\sum_s \tilde Y_{hj}(s-1)}}.
+\mathrm{se} = \sqrt{\frac{\tilde P_{hj\ell}(1-\tilde P_{hj\ell})}{\sum_s \tilde Y_{hj}(s-1)}}.
 ```
 
-The RPE pools all exposure and weighs every subject-instant equally (the
-paper shows it is more efficient than the conditional probability
-estimator, which is therefore not implemented). Intervals: Wald
-$`\hat p \pm z\,\mathrm{se}`$ (clipped if `clip`), or logit
+The estimator is Eq. 9 of the paper; the standard error is
+$`\tilde\varsigma_{hj\ell}/\sqrt{n}`$, with the variance estimator of
+Theorem 5 (Eq. 14), because
+$`\hat\pi_{hj}(s-1) = \tilde Y_{hj}(s-1)/n`$. The RPE pools all exposure
+and weighs every subject-instant equally (the paper shows, Corollary 3,
+that it is more efficient than the conditional probability estimator,
+which is therefore not implemented). Intervals: Wald
+$`\tilde P \pm z\,\mathrm{se}`$ (Corollary 2; clipped if `clip`, as in
+the paper’s code), or logit
 $`\mathrm{expit}(\mathrm{logit}\,\hat p \pm z\,\mathrm{se}/(\hat p(1-\hat p)))`$,
 which degenerates to $`[\hat p, \hat p]`$ when $`\hat p \in \{0, 1\}`$.
 Finally, for every absorbing state $`a`$ and every $`h`$, `P[a, a, h]`,
 `P.lower[a, a, h]` and `P.upper[a, a, h]` are set to 1, so that
 absorbing states keep their probability mass during propagation.
-Unobserved $`(h, j)`$ pairs are left at 0.
+Unobserved $`(h, j)`$ pairs are left at 0, as the paper prescribes when
+nobody is at risk.
+
+**Agreement with the paper’s code.** On DIVINE, the 343 entries of `P`
+coincide with the tensor of the paper’s illustration code. The only
+differences are (i) $`z`$ is computed exactly (`qnorm(0.975)` =
+1.959964, against 1.96 in the paper’s code), which changes the
+confidence limits by about $`10^{-6}`$, and (ii) `P[a, a, h] = 1` also
+for pairs $`(h, a)`$ that never occur (e.g. SP → Disch), which the
+paper’s code leaves at 0; those pairs have probability 0 of being
+reached, so no prediction changes.
 
 **Errors and warnings.** Error if `object` is not an `msm2data` or if
 `conf.level` is not a single number strictly between 0 and 1.
@@ -411,17 +458,19 @@ fit
 #>   95% wald confidence intervals; 2076 subjects
 #>   39 estimated transition probabilities (h -> j -> l)
 fit$estimate |> filter(j == "SP")             # Table 2 of the paper
-#>      h  j     l        p       se    lower    upper n.trans at.risk
-#> 1  NSP SP    SP 0.615572 0.023995 0.568542 0.662602     253     411
-#> 2  NSP SP Recov 0.007299 0.004199 0.000000 0.015529       3     411
-#> 3  NSP SP  NIMV 0.223844 0.020560 0.183547 0.264141      92     411
-#> 4  NSP SP   IMV 0.150852 0.017654 0.116250 0.185453      62     411
-#> 5  NSP SP Death 0.002433 0.002430 0.000000 0.007196       1     411
-#> 6   SP SP    SP 0.864693 0.006622 0.851713 0.877672    2307    2668
-#> 7   SP SP Recov 0.082459 0.005325 0.072022 0.092896     220    2668
-#> 8   SP SP  NIMV 0.025487 0.003051 0.019507 0.031467      68    2668
-#> 9   SP SP   IMV 0.018366 0.002599 0.013271 0.023461      49    2668
-#> 10  SP SP Death 0.008996 0.001828 0.005413 0.012578      24    2668
+#> # A tibble: 10 × 9
+#>    h     j     l           p      se   lower   upper n.trans at.risk
+#>    <fct> <fct> <fct>   <dbl>   <dbl>   <dbl>   <dbl>   <int>   <int>
+#>  1 NSP   SP    SP    0.616   0.0240  0.569   0.663       253     411
+#>  2 NSP   SP    Recov 0.00730 0.00420 0       0.0155        3     411
+#>  3 NSP   SP    NIMV  0.224   0.0206  0.184   0.264        92     411
+#>  4 NSP   SP    IMV   0.151   0.0177  0.116   0.185        62     411
+#>  5 NSP   SP    Death 0.00243 0.00243 0       0.00720       1     411
+#>  6 SP    SP    SP    0.865   0.00662 0.852   0.878      2307    2668
+#>  7 SP    SP    Recov 0.0825  0.00533 0.0720  0.0929      220    2668
+#>  8 SP    SP    NIMV  0.0255  0.00305 0.0195  0.0315       68    2668
+#>  9 SP    SP    IMV   0.0184  0.00260 0.0133  0.0235       49    2668
+#> 10 SP    SP    Death 0.00900 0.00183 0.00541 0.0126       24    2668
 round(fit$P[, , "NSP"], 3)     # transition matrix for patients in NSP at the previous time
 #>         NSP    SP Recov  NIMV   IMV Disch Death
 #> NSP   0.843 0.024 0.000 0.000 0.000 0.129 0.003
@@ -515,24 +564,28 @@ bt
 #>   95% percentile intervals for n-step predictions; 2076 subjects
 #>   39 estimated transition probabilities (h -> j -> l)
 bt$estimate |> filter(j == "SP") |> select(h, l, p, se, se.boot)
-#>      h     l        p       se  se.boot
-#> 1  NSP    SP 0.615572 0.023995 0.024436
-#> 2  NSP Recov 0.007299 0.004199 0.004189
-#> 3  NSP  NIMV 0.223844 0.020560 0.019790
-#> 4  NSP   IMV 0.150852 0.017654 0.017963
-#> 5  NSP Death 0.002433 0.002430 0.002376
-#> 6   SP    SP 0.864693 0.006622 0.007362
-#> 7   SP Recov 0.082459 0.005325 0.004295
-#> 8   SP  NIMV 0.025487 0.003051 0.003471
-#> 9   SP   IMV 0.018366 0.002599 0.002752
-#> 10  SP Death 0.008996 0.001828 0.001995
+#> # A tibble: 10 × 5
+#>    h     l           p      se se.boot
+#>    <fct> <fct>   <dbl>   <dbl>   <dbl>
+#>  1 NSP   SP    0.616   0.0240  0.0244 
+#>  2 NSP   Recov 0.00730 0.00420 0.00419
+#>  3 NSP   NIMV  0.224   0.0206  0.0198 
+#>  4 NSP   IMV   0.151   0.0177  0.0180 
+#>  5 NSP   Death 0.00243 0.00243 0.00238
+#>  6 SP    SP    0.865   0.00662 0.00736
+#>  7 SP    Recov 0.0825  0.00533 0.00430
+#>  8 SP    NIMV  0.0255  0.00305 0.00347
+#>  9 SP    IMV   0.0184  0.00260 0.00275
+#> 10 SP    Death 0.00900 0.00183 0.00199
 ckequations(bt, h = "NSP", j = "SP", l = "NIMV", nsteps = 5, bounds = TRUE)
-#>   n estimate   lower  upper
-#> 1 1   0.2238 0.18338 0.2608
-#> 2 2   0.1820 0.15000 0.2131
-#> 3 3   0.1587 0.13269 0.1850
-#> 4 4   0.1383 0.11577 0.1609
-#> 5 5   0.1204 0.09894 0.1410
+#> # A tibble: 5 × 4
+#>       n estimate  lower upper
+#>   <int>    <dbl>  <dbl> <dbl>
+#> 1     1    0.224 0.183  0.261
+#> 2     2    0.182 0.150  0.213
+#> 3     3    0.159 0.133  0.185
+#> 4     4    0.138 0.116  0.161
+#> 5     5    0.120 0.0989 0.141
 ```
 
 ## Prediction
@@ -565,12 +618,12 @@ relation. Optionally adds evolution-interval bounds.
 
 **Value.** Depends on the arguments:
 
-| `l` | `bounds` | Returned value |
-|----|----|----|
-| one state | `FALSE` | numeric vector of length `nsteps` |
-| several states | `FALSE` | matrix `nsteps × length(l)` |
-| `NULL` | ignored | matrix `nsteps × M` (each row sums to 1) |
-| one state | `TRUE` | data frame with columns `n, estimate, lower, upper` |
+| `l`            | `bounds` | Returned value                                  |
+|----------------|----------|-------------------------------------------------|
+| one state      | `FALSE`  | numeric vector of length `nsteps`               |
+| several states | `FALSE`  | matrix `nsteps × length(l)`                     |
+| `NULL`         | ignored  | matrix `nsteps × M` (each row sums to 1)        |
+| one state      | `TRUE`   | tibble with columns `n, estimate, lower, upper` |
 
 **How it works.** The second-order chain $`X`$ is lifted to the
 first-order chain of pairs $`Z_s = (X_{s-1}, X_s)`$, with
@@ -582,13 +635,20 @@ gives the distribution of $`X_{m+1}`$. This is exact, and costs one
 matrix–vector product per step. Writing a second-order chain as a
 first-order chain on pairs of consecutive states is the standard
 representation of higher-order Markov chains (e.g. Benson, Gleich and
-Lim, 2017). With `bounds = TRUE`, the same propagation is applied to
-`P.lower` and `P.upper`, and the results are clipped to \[0, 1\]; if `x`
-is a `P2boot` fit, the bounds are instead percentile bootstrap intervals
-(every replicate tensor is propagated), with close to nominal coverage.
-These bounds are heuristic sensitivity bands, not confidence intervals
-with nominal coverage: the rows of the limit tensors do not sum to 1, so
-without clipping an upper bound could even exceed 1.
+Lim, 2017). It gives exactly the sum over paths of Eq. 6 of the paper:
+with `nsteps = 9`, the result equals the nine values of the
+`Chapman.Kolmogorov(P, h, j, l)` function of the paper’s code
+(differences below $`10^{-16}`$ on DIVINE).
+
+With `bounds = TRUE`, the same propagation is applied to `P.lower` and
+`P.upper`: these are the **evolution intervals** of Section 6.3 of the
+paper. As the paper explains, they are not confidence intervals; they
+are built to contain them, so that two evolution intervals that do not
+overlap indicate a significant difference. The rows of the limit tensors
+do not sum to 1, so the bounds are also clipped to \[0, 1\] (on DIVINE
+this changes nothing). If `x` is a `P2boot` fit, the bounds are instead
+percentile bootstrap intervals (every replicate tensor is propagated),
+with close to nominal coverage.
 
 **Errors and warnings.**
 
@@ -615,12 +675,14 @@ round(ckequations(fit, h = "NSP", j = "SP", nsteps = 5), 3)            # full di
 #> [4,]   0 0.398 0.183 0.138 0.226 0.015 0.040
 #> [5,]   0 0.344 0.220 0.120 0.231 0.032 0.052
 ckequations(fit, h = "NSP", j = "SP", l = "NIMV", nsteps = 5, bounds = TRUE)
-#>   n estimate   lower  upper
-#> 1 1   0.2238 0.18355 0.2641
-#> 2 2   0.1820 0.13672 0.2326
-#> 3 3   0.1587 0.11440 0.2107
-#> 4 4   0.1383 0.09584 0.1904
-#> 5 5   0.1204 0.08040 0.1717
+#> # A tibble: 5 × 4
+#>       n estimate  lower upper
+#>   <int>    <dbl>  <dbl> <dbl>
+#> 1     1    0.224 0.184  0.264
+#> 2     2    0.182 0.137  0.233
+#> 3     3    0.159 0.114  0.211
+#> 4     4    0.138 0.0958 0.190
+#> 5     5    0.120 0.0804 0.172
 ckequations(fit$P, h = "NSP", j = "SP", l = "NIMV", nsteps = 5)        # a bare tensor
 #> [1] 0.2238 0.1820 0.1587 0.1383 0.1204
 ```
@@ -654,7 +716,7 @@ whether, and for how long, the previous state changes the forecast.
 
 **Value.** An object of class **`msm2pred`** (also a data frame), with
 columns `h`, `n`, `estimate` and, if `bounds = TRUE`, `lower`, `upper`;
-and attributes `j`, `l`, `bounds`, `estimator`, `conf.level`.
+and attributes `j`, `l`, `bounds`, `bands`, `estimator`, `conf.level`.
 
 **How it works.** Builds $`Q`$ (and, with bounds, $`Q_{\text{lower}}`$
 and $`Q_{\text{upper}}`$) once, and propagates it from each $`(h, j)`$
@@ -663,7 +725,10 @@ as in
 with the bounds clipped to \[0, 1\]. With a `P2boot` fit the bounds are
 percentile bootstrap intervals, and the attribute `bands` records which
 kind was used (`"evolution"` or `"bootstrap"`). The curves are stacked
-in long format.
+in long format
+([`purrr::map()`](https://purrr.tidyverse.org/reference/map.html) and
+[`purrr::list_rbind()`](https://purrr.tidyverse.org/reference/list_c.html)).
+These are the curves of Figures 4 (RPE) and 5 of the paper.
 
 **Errors and warnings.** Error if `object` is not a `P2est`, or if `j`,
 `l` or any `h` is not in the state space.
@@ -734,7 +799,10 @@ $`\max(L_1, L_2) > \min(U_1, U_2)`$. The first step where this fails is
 the first overlap.
 
 **Why it is done this way.** Non-overlap of the two intervals is the
-criterion of the methods paper (Section 6.3).
+criterion of the methods paper (Section 6.3). In DIVINE, the evolution
+intervals first overlap at step 5 for SP → NIMV and at step 7 for SP →
+IMV, the “fifth day” and “between the sixth and seventh day” of the
+paper.
 
 **Errors and warnings.** Error if `x` has no bounds, or does not have
 exactly two groups.
@@ -803,7 +871,7 @@ plot(x, type = NULL, col = NULL, lty = 1, lwd = 2, alpha = 0.2, add = FALSE,
 | Argument | Default | Meaning |
 |----|----|----|
 | `type` | `NULL` | `"interval"` (shaded bands) or `"curve"` (lines); default `"interval"` if bounds exist |
-| `col` | `NULL` | colours, one per group (default red, blue, dark green, purple, orange) |
+| `col` | `NULL` | colours, one per group in the order of `h` (default red, blue, dark green, purple, orange); the paper uses blue for NSP and red for SP |
 | `lty`, `lwd` | `1`, `2` | line type and width |
 | `alpha` | `0.2` | transparency of the bands |
 | `add` | `FALSE` | overlay on the current plot |
@@ -859,8 +927,8 @@ study the estimators and plan studies.
 | `states` | `NULL` | state labels; default the tensor’s dimnames, or `1:M` |
 | `maxT` | `1000` | maximum number of global time steps |
 
-**Value.** A `data.table` with columns `id`, `time` and `state` (factor
-with levels `states`), sorted by `id` and `time`, ready for
+**Value.** A tibble with columns `id`, `time` and `state` (factor with
+levels `states`), sorted by `id` and `time`, ready for
 [`prep2()`](https://jcarmezim.github.io/mstate2/reference/prep2.md).
 
 **How it works.**
@@ -877,6 +945,16 @@ with levels `states`), sorted by `id` and `time`, ready for
 5.  An individual stops when it reaches an absorbing state, or when its
     probability row is all zero (an unspecified pair: the path ends
     there).
+
+The individual states are kept in vectors and updated with a loop over
+global time, because drawing every individual’s next state at every step
+is much faster that way than with a table. The design of Section 5 of
+the paper is `entry = c("1" = 0.05, "2" = 0.05)` with the tensor and
+first-step matrix of Section 5.1 (see
+[`vignette("paper")`](https://jcarmezim.github.io/mstate2/articles/paper.md)).
+The paper’s code draws the number of individuals making each transition
+as independent binomials; here every individual draws its own next state
+from the same probabilities, which is the same model.
 
 **Errors and warnings.** Error if `entry` is unnamed or names states not
 in `states`. Warning if `maxT` is reached with individuals still active
@@ -906,25 +984,29 @@ init <- first_moves |>                                         # distribution at
 set.seed(2)
 sim <- simulate2(2000, fit$P, first = first_mat, init = init)
 count(sim, state)
-#>    state     n
-#> 1:   NSP 11601
-#> 2:    SP  3303
-#> 3: Recov  4409
-#> 4:  NIMV  1023
-#> 5:   IMV  5382
-#> 6: Disch  1780
-#> 7: Death   220
+#> # A tibble: 7 × 2
+#>   state     n
+#>   <fct> <int>
+#> 1 NSP   11601
+#> 2 SP     3303
+#> 3 Recov  4409
+#> 4 NIMV   1023
+#> 5 IMV    5382
+#> 6 Disch  1780
+#> 7 Death   220
 set.seed(2)
 head(simulate2(3, fit$P, first = first_mat, entry = c(NSP = 0.3)), 8)   # staggered entry
-#>    id time state
-#> 1:  1    1   NSP
-#> 2:  1    2   NSP
-#> 3:  1    3   NSP
-#> 4:  1    4   NSP
-#> 5:  1    5    SP
-#> 6:  1    6    SP
-#> 7:  1    7    SP
-#> 8:  1    8    SP
+#> # A tibble: 8 × 3
+#>      id  time state
+#>   <int> <int> <fct>
+#> 1     1     1 NSP  
+#> 2     1     2 NSP  
+#> 3     1     3 NSP  
+#> 4     1     4 NSP  
+#> 5     1     5 SP   
+#> 6     1     6 SP   
+#> 7     1     7 SP   
+#> 8     1     8 SP
 ```
 
 ## Object classes
@@ -949,7 +1031,7 @@ completeness.
 | `.ck_distribution(P, h, j, nsteps, states)` | tensor, start states | resolves `h`, `j`, builds $`Q`$ and propagates; shared by [`ckequations()`](https://jcarmezim.github.io/mstate2/reference/ckequations.md) and [`compare2()`](https://jcarmezim.github.io/mstate2/reference/compare2.md) |
 | `.resolve(s, states)` | labels or indices | converts state labels to positions (indices are returned as integers; unknown labels as `NA`) |
 | `.check_conf_level(conf.level)` | a number | errors unless `conf.level` is a single number strictly between 0 and 1 |
-| `.id_counts(object)` | `msm2data` | per-subject counts of every observed triple ($`n \times K`$ matrix) and their $`(h, j)`$ groups, for the bootstrap |
+| `.id_counts(object)` | `msm2data` | per-subject counts of every observed triple ($`n \times K`$ matrix, from `count(id, h, j, l)`) and their $`(h, j)`$ groups, for the bootstrap |
 | `.tensor_from_counts()` | replicate totals | second-order tensor of a bootstrap replicate |
 | `.boot_curves()`, `.boot_bands()` | replicate tensors | $`n`$-step curve of every replicate, and its percentile bands |
 | `` `%||%`(a, b) `` | two values | returns `b` when `a` is `NULL`, otherwise `a` |

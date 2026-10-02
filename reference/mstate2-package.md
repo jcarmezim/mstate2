@@ -49,9 +49,18 @@ multi-step predictions.
     [`simulate2`](https://jcarmezim.github.io/mstate2/reference/simulate2.md)
     (the simulation design of the paper).
 
+## Implementation
+
+Data handling uses the tidyverse (dplyr, tidyr, purrr, tibble); tables
+are returned as tibbles. The transition-probability tensors and the
+Chapman-Kolmogorov propagation are plain R arrays and matrices, because
+they are linear algebra rather than data manipulation.
+
 See
 [`vignette("mstate2")`](https://jcarmezim.github.io/mstate2/articles/mstate2.md)
-for a guided analysis and
+for a guided analysis,
+[`vignette("paper")`](https://jcarmezim.github.io/mstate2/articles/paper.md)
+for the reproduction of the methods paper and
 [`vignette("reference")`](https://jcarmezim.github.io/mstate2/articles/reference.md)
 for the complete function reference.
 
@@ -67,14 +76,14 @@ Useful links:
 
 ## Author
 
-**Maintainer**: João Carmezim <joaocarmezimcorreia@gmail.com>
+**Maintainer**: Jo\<U+00E3\>o Carmezim <joaocarmezimcorreia@gmail.com>
 
 Authors:
 
-- Josu Najera-Zuloaga <josu.najera@ehu.eus>
+- Josu Najera-Zuloaga <josu.najera@ehu.eus> (creator of the package)
 
-- Mireia Besalú
+- Mireia Besal\<U+00FA\>
 
-- Cristian Tebé
+- Cristian Teb\<U+00E9\>
 
-- Guadalupe Gómez Melis
+- Guadalupe G\<U+00F3\>mez Melis
