@@ -391,7 +391,7 @@ once, so replicates are cheap:
 
 system.time(bt <- P2boot(d, B = 500, seed = 1))
 #>    user  system elapsed 
-#>   0.190   0.016   0.201
+#>   0.167   0.004   0.161
 subset(bt$estimate, j == "SP")[, c("h", "l", "p", "se", "se.boot")]
 #>      h     l        p       se  se.boot
 #> 5  NSP    SP 0.615572 0.023995 0.024436
@@ -713,5 +713,7 @@ with evolution or bootstrap intervals.
 
 - [mstate2: second-order Markov multistate models with the DIVINE
   cohort](https://jcarmezim.github.io/mstate2/articles/mstate2.md):
+- [Reproducing the DIVINE analysis of the methods
+  paper](https://jcarmezim.github.io/mstate2/articles/paper.md):
 - [mstate2 function
   reference](https://jcarmezim.github.io/mstate2/articles/reference.md):

@@ -29,13 +29,13 @@ submitted for publication.
     }
 
 Carmezim J, Najera-Zuloaga J, Besalú M, Tebé C, Gómez Melis G (2026).
-mstate2: Second-Order Markov Multistate Models. R package version 0.2.0.
+mstate2: Second-Order Markov Multistate Models. R package version 0.1.0.
 https://github.com/jcarmezim/mstate2
 
     @Manual{,
       title = {mstate2: Second-Order Markov Multistate Models},
       author = {João Carmezim and Josu Najera-Zuloaga and Mireia Besalú and Cristian Tebé and Guadalupe {Gómez Melis}},
       year = {2026},
-      note = {R package version 0.2.0},
+      note = {R package version 0.1.0},
       url = {https://github.com/jcarmezim/mstate2},
     }
