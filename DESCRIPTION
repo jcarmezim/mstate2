@@ -1,0 +1,36 @@
+Package: mstate2
+Type: Package
+Title: Second-Order Markov Multistate Models
+Version: 0.1.0
+Authors@R: c(
+    person("Josu", "Najera-Zuloaga", role = "aut",
+           email = "josu.najera@ehu.eus",
+           comment = c(note = "creator of the package")),
+    person("João", "Carmezim", role = c("aut", "cre"),
+           email = "joaocarmezimcorreia@gmail.com"),
+    person("Mireia", "Besalú", role = "aut"),
+    person("Cristian", "Tebé", role = "aut"),
+    person("Guadalupe", "Gómez Melis", role = "aut"))
+Description: Nonparametric estimation and inference for second-order Markov
+    multistate models in discrete time, in which the next state depends on
+    the states at the current and at the previous time. Implements the
+    methods of Najera-Zuloaga, Besalu and Gomez Melis (2025, in review): the
+    relative probability estimator (RPE) of the 1-step second-order
+    transition probabilities with its variance and confidence intervals, the
+    extended Chapman-Kolmogorov relation for n-step prediction, evolution
+    intervals, the comparison of trajectories across the states at the
+    previous time, and simulation from a second-order model. Adds
+    subject-level bootstrap intervals for the n-step predictions. Builds on
+    Besalu and Gomez Melis (2024) "Second order Markov multistate models",
+    SORT, 48(2), 209-234.
+License: GPL (>= 3)
+Encoding: UTF-8
+Depends: R (>= 4.1.0)
+Imports: dplyr (>= 1.1.0), tidyr, purrr (>= 1.0.0), tibble, stats, graphics,
+    grDevices, utils
+Suggests: testthat (>= 3.0.0), knitr, rmarkdown
+Config/testthat/edition: 3
+VignetteBuilder: knitr
+URL: https://jcarmezim.github.io/mstate2/, https://github.com/jcarmezim/mstate2
+BugReports: https://github.com/jcarmezim/mstate2/issues
+RoxygenNote: 7.3.1

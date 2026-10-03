@@ -1,0 +1,51 @@
+url: https://jcarmezim.github.io/mstate2/
+template:
+  bootstrap: 5
+
+authors:
+  João Carmezim:
+    href: https://github.com/jcarmezim
+
+home:
+  sidebar:
+    structure: [links, license, citation, authors, dev]
+
+reference:
+- title: Package overview
+  contents:
+  - mstate2-package
+
+- title: Building the data
+  desc: >
+    Build a daily panel from the days spent in each state and compute the
+    second-order counting processes.
+  contents:
+  - sojourn_to_panel
+  - rnd
+  - prep2
+
+- title: Estimation
+  desc: >
+    Relative probability estimator of the 1-step second-order transition
+    probabilities, and subject-level bootstrap.
+  contents:
+  - P2est
+  - P2boot
+
+- title: Prediction
+  desc: Multi-step prediction via the extended Chapman-Kolmogorov relation.
+  contents:
+  - ckequations
+
+- title: Does the previous time matter?
+  desc: >
+    Compare trajectories across the states occupied at the previous time,
+    with evolution or bootstrap intervals.
+  contents:
+  - compare2
+  - overlap_step
+  - plot.msm2pred
+
+- title: Simulation
+  contents:
+  - simulate2
