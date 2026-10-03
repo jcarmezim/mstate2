@@ -67,11 +67,7 @@ Hinkley, 1997; Field and Welsh, 2007). The n-step predictions are
 non-linear (polynomial) functions of all the estimated probabilities, so
 a delta-method variance would be cumbersome; propagating each replicate
 and taking percentiles (Efron and Tibshirani, 1993) gives their
-intervals directly. The evolution intervals of the methods paper
-propagate the lower and upper one-step limits separately and are
-therefore conservative: in the package's simulation study, the 95%
-percentile intervals of n-step predictions had coverage 0.91-0.94, while
-the evolution intervals had coverage 1 and were up to five times wider.
+intervals directly.
 
 ## References
 
@@ -92,12 +88,15 @@ Field, C. A. and Welsh, A. H. (2007). Bootstrapping clustered data.
 ## Examples
 
 ``` r
-st   <- c("A", "B", "C")                                 # C is absorbing
+st <- c("A", "B", "C") # C is absorbing
 tens <- array(0, c(3, 3, 3), dimnames = list(st, st, st))
-tens["B", "B", "A"] <- 0.6; tens["B", "C", "A"] <- 0.4
-tens["B", "B", "B"] <- 0.3; tens["B", "C", "B"] <- 0.7
-tens["C", "C", ]    <- 1
-first <- matrix(0, 3, 3, dimnames = list(st, st)); first["A", "B"] <- 1
+tens["B", "B", "A"] <- 0.6
+tens["B", "C", "A"] <- 0.4
+tens["B", "B", "B"] <- 0.3
+tens["B", "C", "B"] <- 0.7
+tens["C", "C", ] <- 1
+first <- matrix(0, 3, 3, dimnames = list(st, st))
+first["A", "B"] <- 1
 
 set.seed(1)
 panel <- simulate2(500, tens, first, init = c(A = 1, B = 0, C = 0))

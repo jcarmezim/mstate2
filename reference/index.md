@@ -8,14 +8,15 @@
 
 ## Building the data
 
-Build a daily panel from the days spent in each state and compute the
+Turn raw data as collected into a daily panel, and compute the
 second-order counting processes.
 
+- [`msprep2()`](https://jcarmezim.github.io/mstate2/reference/msprep2.md)
+  : Prepare raw multistate data for the analysis
 - [`sojourn_to_panel()`](https://jcarmezim.github.io/mstate2/reference/sojourn_to_panel.md)
   : Convert sojourn-time data to discrete-time panel format
 - [`rnd()`](https://jcarmezim.github.io/mstate2/reference/rnd.md) :
-  Round half away from zero (the rounding of the paper's DIVINE
-  analysis)
+  Round half away from zero
 - [`prep2()`](https://jcarmezim.github.io/mstate2/reference/prep2.md) :
   Build second-order counting processes from panel data
 

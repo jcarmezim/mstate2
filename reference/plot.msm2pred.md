@@ -40,13 +40,11 @@ plot(
 
   Appearance of lines and interval shading. The colours are used in the
   order of `h` in
-  [`compare2`](https://jcarmezim.github.io/mstate2/reference/compare2.md);
-  the paper's figures use blue for NSP and red for SP.
+  [`compare2`](https://jcarmezim.github.io/mstate2/reference/compare2.md)
 
 - add:
 
-  Overlay on the current plot (e.g. bootstrap over evolution bands).
-  Default FALSE.
+  Overlay on the current plot. Default FALSE.
 
 - legend, dualaxis:
 
@@ -68,12 +66,15 @@ plot(
 ## Examples
 
 ``` r
-st   <- c("A", "B", "C")                                 # C is absorbing
+st <- c("A", "B", "C") # C is absorbing
 tens <- array(0, c(3, 3, 3), dimnames = list(st, st, st))
-tens["B", "B", "A"] <- 0.6; tens["B", "C", "A"] <- 0.4
-tens["B", "B", "B"] <- 0.3; tens["B", "C", "B"] <- 0.7
-tens["C", "C", ]    <- 1
-first <- matrix(0, 3, 3, dimnames = list(st, st)); first["A", "B"] <- 1
+tens["B", "B", "A"] <- 0.6
+tens["B", "C", "A"] <- 0.4
+tens["B", "B", "B"] <- 0.3
+tens["B", "C", "B"] <- 0.7
+tens["C", "C", ] <- 1
+first <- matrix(0, 3, 3, dimnames = list(st, st))
+first["A", "B"] <- 1
 
 set.seed(1)
 panel <- simulate2(500, tens, first, init = c(A = 1, B = 0, C = 0))

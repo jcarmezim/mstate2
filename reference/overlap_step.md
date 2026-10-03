@@ -4,14 +4,7 @@ Scans the two curves of a
 [`compare2`](https://jcarmezim.github.io/mstate2/reference/compare2.md)
 comparison forward from \\n = 1\\ and returns the first step at which
 their intervals overlap: before it, the state at the previous time
-changes the prediction. This is the criterion of the methods paper
-(Section 6.3), applied to evolution intervals
-([`P2est`](https://jcarmezim.github.io/mstate2/reference/P2est.md) fit)
-or to percentile bootstrap intervals
-([`P2boot`](https://jcarmezim.github.io/mstate2/reference/P2boot.md)
-fit). In DIVINE, the evolution intervals of the paper first overlap at
-step 5 for SP to NIMV ("around the fifth day") and at step 7 for SP to
-IMV ("between the sixth and seventh day").
+changes the prediction.
 
 ## Usage
 
@@ -35,12 +28,15 @@ separated-step count `separated_steps`; per-step `overlap` and signed
 ## Examples
 
 ``` r
-st   <- c("A", "B", "C")                                 # C is absorbing
+st <- c("A", "B", "C") # C is absorbing
 tens <- array(0, c(3, 3, 3), dimnames = list(st, st, st))
-tens["B", "B", "A"] <- 0.6; tens["B", "C", "A"] <- 0.4
-tens["B", "B", "B"] <- 0.3; tens["B", "C", "B"] <- 0.7
-tens["C", "C", ]    <- 1
-first <- matrix(0, 3, 3, dimnames = list(st, st)); first["A", "B"] <- 1
+tens["B", "B", "A"] <- 0.6
+tens["B", "C", "A"] <- 0.4
+tens["B", "B", "B"] <- 0.3
+tens["B", "C", "B"] <- 0.7
+tens["C", "C", ] <- 1
+first <- matrix(0, 3, 3, dimnames = list(st, st))
+first["A", "B"] <- 1
 
 set.seed(1)
 panel <- simulate2(500, tens, first, init = c(A = 1, B = 0, C = 0))

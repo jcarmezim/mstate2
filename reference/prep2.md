@@ -29,7 +29,11 @@ prep2(
   point), e.g. the output of
   [`sojourn_to_panel`](https://jcarmezim.github.io/mstate2/reference/sojourn_to_panel.md)
   or
-  [`simulate2`](https://jcarmezim.github.io/mstate2/reference/simulate2.md).
+  [`simulate2`](https://jcarmezim.github.io/mstate2/reference/simulate2.md),
+  or an `"msm2prep"` object from
+  [`msprep2`](https://jcarmezim.github.io/mstate2/reference/msprep2.md)
+  (its panel is used, with its states and absorbing states unless
+  `states` or `absorbing` are given).
 
 - id, time, state:
 
@@ -74,18 +78,15 @@ observations \\(X\_{s-2}, X\_{s-1}, X_s) = (h, j, \ell)\\ and tabulates:
 - \\\tilde Y\_{hj}(s-1)\\: number of subjects at risk, i.e. occupying
   \\h\\ at \\s-2\\ and \\j\\ at \\s-1\\.
 
-These are the counting processes of Section 2.2 of the methods paper
-(Najera-Zuloaga, Besalu and Gomez Melis, 2025), indexed by the time \\s
-\ge 2\\ of the destination state. The at-risk count is computed as
-\\\tilde Y\_{hj}(s-1) = \sum\_\ell \tilde N\_{hj\ell}(s)\\: with
-complete follow-up, as in the paper and in DIVINE, this is exactly the
-number of subjects in \\h\\ at \\s-2\\ and \\j\\ at \\s-1\\; a subject
-whose follow-up stops in \\j\\ at \\s-1\\ (right-censored) is not
-counted at risk at \\s\\, because the next state is not observed.
+These counting processes are indexed by the time \\s \ge 2\\ of the
+destination state. The at-risk count is computed as \\\tilde
+Y\_{hj}(s-1) = \sum\_\ell \tilde N\_{hj\ell}(s)\\: with complete
+follow-up, as in DIVINE, this is exactly the number of subjects in \\h\\
+at \\s-2\\ and \\j\\ at \\s-1\\; a subject whose follow-up stops in
+\\j\\ at \\s-1\\ (right-censored) is not counted at risk at \\s\\,
+because the next state is not observed.
 
-Consecutive *observations* are treated as consecutive time steps. Supply
-a regular integer time grid (e.g. days) for the counting-process indices
-to match the paper's definitions.
+Consecutive *observations* are treated as consecutive time steps.
 
 ## Why these counts
 
@@ -106,12 +107,15 @@ Manuscript submitted for publication.
 ## Examples
 
 ``` r
-st   <- c("A", "B", "C")                                 # C is absorbing
+st <- c("A", "B", "C")   # C is absorbing
 tens <- array(0, c(3, 3, 3), dimnames = list(st, st, st))
-tens["B", "B", "A"] <- 0.6; tens["B", "C", "A"] <- 0.4
-tens["B", "B", "B"] <- 0.3; tens["B", "C", "B"] <- 0.7
-tens["C", "C", ]    <- 1
-first <- matrix(0, 3, 3, dimnames = list(st, st)); first["A", "B"] <- 1
+tens["B", "B", "A"] <- 0.6
+tens["B", "C", "A"] <- 0.4
+tens["B", "B", "B"] <- 0.3
+tens["B", "C", "B"] <- 0.7
+tens["C", "C", ] <- 1
+first <- matrix(0, 3, 3, dimnames = list(st, st))
+first["A", "B"] <- 1
 
 set.seed(1)
 panel <- simulate2(500, tens, first, init = c(A = 1, B = 0, C = 0))

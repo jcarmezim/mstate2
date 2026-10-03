@@ -2,11 +2,11 @@
 
 Computes \\P\_{hj\ell}(1,n) = P(X\_{n+1} = \ell \mid X_1 = j, X_0 = h)\\
 for \\n = 1, \dots, nsteps\\ via the extension of the Chapman-Kolmogorov
-relation (Eq. 6 of the methods paper). The second-order chain is lifted
-to a first-order chain on ordered pairs of states, \\Q\_{(a,b)\to(b,c)}
-= P\_{abc}\\, and the initial pair distribution is propagated; this is
-exact, works for any number of states and any horizon, and is far
-cheaper than expanding the path sum.
+relation. The second-order chain is lifted to a first-order chain on
+ordered pairs of states, \\Q\_{(a,b)\to(b,c)} = P\_{abc}\\, and the
+initial pair distribution is propagated; this is exact, works for any
+number of states and any horizon, and is far cheaper than expanding the
+path sum.
 
 ## Usage
 
@@ -36,13 +36,12 @@ ckequations(x, h, j, l = NULL, nsteps = 9L, bounds = FALSE)
 
 - bounds:
 
-  If x is a "P2est" object and a single l is given, also propagate the
-  CI tensors to return evolution-interval bounds (Section 6.3 of the
-  paper; additionally clipped to \[0, 1\]). If x is a
+  If x is a "P2est" object and a single l is given, also the CI tensors
+  to return evolution-interval bounds. If x is a
   [`P2boot`](https://jcarmezim.github.io/mstate2/reference/P2boot.md)
-  object, the bounds are instead percentile bootstrap intervals of the
-  n-step probability (every replicate tensor is propagated), which have
-  the nominal coverage the evolution intervals lack.
+  object, the bounds are instead bootstrap intervals of the n-step
+  probability (every replicate tensor propagated), which have the
+  nominal coverage the evolution intervals lack.
 
 ## Value
 
@@ -54,12 +53,9 @@ TRUE: a tibble with columns n, estimate, lower, upper.
 ## Details
 
 Step \\n\\ is the probability of being in \\\ell\\ at time \\s = n +
-1\\; \\n = 1\\ is the one-step probability \\P\_{hj\ell}\\. With the
-default `nsteps = 9`, the result is the vector of nine values returned
-by the `Chapman.Kolmogorov(P, h, j, l)` function of the paper's code
-(steps 1-9, times 2-10, as in Figures 4-5). The evolution intervals of
-Section 6.3 are obtained by propagating the tensors of lower and upper
-confidence limits in the same way.
+1\\; \\n = 1\\ is the one-step probability \\P\_{hj\ell}\\. The
+evolution intervals are obtained by propagating the tensors of lower and
+upper confidence limits in the same way.
 
 ## Why the chain on pairs
 
@@ -80,12 +76,15 @@ walk: a stochastic process for higher-order data. *SIAM Review*, 59(2),
 ## Examples
 
 ``` r
-st   <- c("A", "B", "C")                                 # C is absorbing
+st <- c("A", "B", "C")                                 # C is absorbing
 tens <- array(0, c(3, 3, 3), dimnames = list(st, st, st))
-tens["B", "B", "A"] <- 0.6; tens["B", "C", "A"] <- 0.4
-tens["B", "B", "B"] <- 0.3; tens["B", "C", "B"] <- 0.7
-tens["C", "C", ]    <- 1
-first <- matrix(0, 3, 3, dimnames = list(st, st)); first["A", "B"] <- 1
+tens["B", "B", "A"] <- 0.6
+tens["B", "C", "A"] <- 0.4
+tens["B", "B", "B"] <- 0.3
+tens["B", "C", "B"] <- 0.7
+tens["C", "C", ] <- 1
+first <- matrix(0, 3, 3, dimnames = list(st, st))
+first["A", "B"] <- 1
 
 set.seed(1)
 panel <- simulate2(500, tens, first, init = c(A = 1, B = 0, C = 0))

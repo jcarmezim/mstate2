@@ -48,19 +48,8 @@ P2est(object, conf.level = 0.95, ci = c("wald", "logit"), clip = TRUE)
 An object of class "P2est": the `estimate` tibble (one row per observed
 transition \\h \to j \to \ell\\, with columns
 `h, j, l, p, se, lower, upper, n.trans, at.risk`), the point/CI/se
-tensors `P`, `P.lower`, `P.upper`, `P.se` (layout `P[j, l, h]`, the
-layout of the paper's code), and metadata.
-
-## Details
-
-The estimates, standard errors and Wald limits (clipped to \[0, 1\]) are
-those of the code of the paper's illustration, except that
-\\z\_{1-\alpha/2}\\ is computed exactly (1.959964 for 95%; the paper's
-code uses 1.96). Pairs \\(h, j)\\ with nobody at risk get probability 0,
-as in the paper. For an absorbing state \\a\\, \\P\_{haa} = 1\\ for
-every \\h\\, including pairs that never occur (the paper's code leaves
-those at 0; they have probability 0 of being reached, so predictions do
-not change).
+tensors `P`, `P.lower`, `P.upper`, `P.se` (layout `P[j, l, h]`), and
+metadata.
 
 ## Interval choice
 
@@ -83,12 +72,15 @@ Manuscript submitted for publication.
 ## Examples
 
 ``` r
-st   <- c("A", "B", "C")                                 # C is absorbing
+st <- c("A", "B", "C") # C is absorbing
 tens <- array(0, c(3, 3, 3), dimnames = list(st, st, st))
-tens["B", "B", "A"] <- 0.6; tens["B", "C", "A"] <- 0.4
-tens["B", "B", "B"] <- 0.3; tens["B", "C", "B"] <- 0.7
-tens["C", "C", ]    <- 1
-first <- matrix(0, 3, 3, dimnames = list(st, st)); first["A", "B"] <- 1
+tens["B", "B", "A"] <- 0.6
+tens["B", "C", "A"] <- 0.4
+tens["B", "B", "B"] <- 0.3
+tens["B", "C", "B"] <- 0.7
+tens["C", "C", ] <- 1
+first <- matrix(0, 3, 3, dimnames = list(st, st))
+first["A", "B"] <- 1
 
 set.seed(1)
 panel <- simulate2(500, tens, first, init = c(A = 1, B = 0, C = 0))

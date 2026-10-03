@@ -66,7 +66,7 @@ matrix.
 
 | Stage | Function | Output (class) |
 |----|----|----|
-| Data | [`sojourn_to_panel()`](https://jcarmezim.github.io/mstate2/reference/sojourn_to_panel.md), [`rnd()`](https://jcarmezim.github.io/mstate2/reference/rnd.md) | daily panel, a tibble `(id, time, state)` |
+| Data | [`msprep2()`](https://jcarmezim.github.io/mstate2/reference/msprep2.md), [`sojourn_to_panel()`](https://jcarmezim.github.io/mstate2/reference/sojourn_to_panel.md), [`rnd()`](https://jcarmezim.github.io/mstate2/reference/rnd.md) | daily panel, a tibble `(id, time, state)` (`msm2prep` with its report) |
 | Counting processes | [`prep2()`](https://jcarmezim.github.io/mstate2/reference/prep2.md) | `msm2data` |
 | Estimation | [`P2est()`](https://jcarmezim.github.io/mstate2/reference/P2est.md), [`P2boot()`](https://jcarmezim.github.io/mstate2/reference/P2boot.md) | `P2est`, `P2boot` |
 | Prediction | [`ckequations()`](https://jcarmezim.github.io/mstate2/reference/ckequations.md) | vector / matrix / tibble |
@@ -118,10 +118,14 @@ summarise(MSM, discharged = sum(disch.s), died = sum(death.s))
 All the functions of the package work on a **daily panel**: one row per
 patient and day, with columns `id`, `time` and `state`. Any data in that
 form can be passed to
-[`prep2()`](https://jcarmezim.github.io/mstate2/reference/prep2.md); for
-data like DIVINE, with the days spent in each state,
+[`prep2()`](https://jcarmezim.github.io/mstate2/reference/prep2.md).
+[`msprep2()`](https://jcarmezim.github.io/mstate2/reference/msprep2.md)
+builds it from raw data as they are collected (dates of each state, one
+column per state, days spent in each state, or an `mstate` object) and
+reports every record it has to change; for data like DIVINE, with the
+days spent in each state,
 [`sojourn_to_panel()`](https://jcarmezim.github.io/mstate2/reference/sojourn_to_panel.md)
-builds it.
+builds it too.
 
 ## `sojourn_to_panel()`: from days spent in each state
 
@@ -188,6 +192,106 @@ positive stay rounds to 0 days,
 [`sojourn_to_panel()`](https://jcarmezim.github.io/mstate2/reference/sojourn_to_panel.md)
 drops it and warns, because the transitions into and out of that state
 would be lost; this never happens in DIVINE.
+
+## `msprep2()`: from raw data as collected
+
+``` r
+
+msprep2(data, id = "id", format = "auto",
+        time = "time", state = "state",           # events: one row per state change
+        times = NULL, status = NULL,               # wide: one time column per state
+        durations = NULL, outcome = NULL,          # sojourn: days spent in each state
+        initial = NULL, start = NULL, end = NULL, unit = 1, round_fun = rnd,
+        recode = NULL, states = NULL, absorbing = NULL, trans = NULL,
+        ties = "last", check = "warn", keep = NULL)
+```
+
+[`msprep2()`](https://jcarmezim.github.io/mstate2/reference/msprep2.md)
+plays the role of
+[`mstate::msprep()`](https://rdrr.io/pkg/mstate/man/msprep.html), but
+returns the daily panel of second-order models and accepts the data in
+the layout in which they were collected:
+
+| Layout | One row per | Arguments |
+|----|----|----|
+| events | subject and recorded state, with the date or time it was entered | `time`, `state` |
+| wide (as `msprep()`) | subject, with one time column (and optionally one status column) per state | `times`, `status` |
+| sojourn (as DIVINE) | subject, with the days spent in each state | `durations`, `outcome` |
+| `msdata` | an object made by [`mstate::msprep()`](https://rdrr.io/pkg/mstate/man/msprep.html) | — |
+
+Times can be numbers or dates (also text such as `"15/03/2020"`),
+measured from each patient’s origin (`start`, e.g. the admission date)
+in units of `unit` (`"day"`, `"week"`, …). Codes can be relabelled with
+`recode`, and a matrix of allowed transitions (`trans`, as
+[`mstate::transMat()`](https://rdrr.io/pkg/mstate/man/transMat.html)) is
+checked. Every record that is dropped or changed (missing values,
+records before the origin, after the end of follow-up or after death,
+two states in the same day, transitions not allowed) is listed in
+`x$issues`, with one warning.
+
+With DIVINE, the sojourn layout gives the same panel as
+[`sojourn_to_panel()`](https://jcarmezim.github.io/mstate2/reference/sojourn_to_panel.md),
+plus the report:
+
+``` r
+
+x <- msprep2(MSM, durations = segs, outcome = absb,
+             states = c("NSP", "SP", "Recov", "NIMV", "IMV", "Disch", "Death"))
+x
+#> <msm2prep>  discrete-time panel ready for prep2()
+#>   layout          : sojourn
+#>   subjects        : 2076 (2076 absorbed, 0 censored)
+#>   panel rows      : 27736 (time 0 - 138)
+#>   states (7)      : NSP, SP, Recov, NIMV, IMV, Disch, Death
+#>   absorbing       : Disch, Death
+#>   transitions     : 14 types, 3433 in total
+#>   issues          : none
+all.equal(x$panel |> mutate(state = as.character(state)), panel)
+#> [1] TRUE
+```
+
+Raw records with dates, one row per change of state, are handled in the
+same way; here two invented patients, one of them with a record after
+death:
+
+``` r
+
+raw <- tibble(id    = c(1, 1, 1, 2, 2, 2),
+              date  = c("01/03/2020", "03/03/2020", "06/03/2020",
+                        "02/03/2020", "09/03/2020", "10/03/2020"),
+              state = c("1", "2", "D", "2", "D", "2"))
+y <- msprep2(raw, time = "date", state = "state",
+             recode = c("1" = "NSP", "2" = "SP", "D" = "Death"), absorbing = "Death")
+#> Warning: 1 record(s) were dropped or changed while building the panel (after_absorbing:
+#> 1); see the `issues` table of the result.
+y$panel
+#> # A tibble: 14 × 3
+#>       id  time state
+#>    <dbl> <int> <fct>
+#>  1     1     0 NSP  
+#>  2     1     1 NSP  
+#>  3     1     2 SP   
+#>  4     1     3 SP   
+#>  5     1     4 SP   
+#>  6     1     5 Death
+#>  7     2     0 SP   
+#>  8     2     1 SP   
+#>  9     2     2 SP   
+#> 10     2     3 SP   
+#> 11     2     4 SP   
+#> 12     2     5 SP   
+#> 13     2     6 SP   
+#> 14     2     7 Death
+y$issues
+#> # A tibble: 1 × 5
+#>      id issue           state time       detail                                 
+#>   <dbl> <chr>           <chr> <chr>      <chr>                                  
+#> 1     2 after_absorbing SP    2020-03-10 after the entry into an absorbing state
+```
+
+The result goes straight into
+[`prep2()`](https://jcarmezim.github.io/mstate2/reference/prep2.md),
+which takes the states and absorbing states from it.
 
 ## `prep2()`: the second-order counting processes
 
@@ -417,7 +521,7 @@ once, so replicates are cheap:
 
 system.time(bt <- P2boot(d, B = 500, seed = 1))
 #>    user  system elapsed 
-#>   0.210   0.008   0.225
+#>   0.311   0.008   0.322
 bt$estimate |>
   filter(j == "SP") |>
   select(h, l, p, se, se.boot)
@@ -662,7 +766,7 @@ round(c(DIVINE = fit$P["SP", "NIMV", "NSP"], simulated = fit_sim$P["SP", "NIMV",
 
 | Question | Function |
 |----|----|
-| How do I build the daily panel? | [`sojourn_to_panel()`](https://jcarmezim.github.io/mstate2/reference/sojourn_to_panel.md), [`rnd()`](https://jcarmezim.github.io/mstate2/reference/rnd.md) |
+| How do I build the daily panel from my raw data? | [`msprep2()`](https://jcarmezim.github.io/mstate2/reference/msprep2.md), [`sojourn_to_panel()`](https://jcarmezim.github.io/mstate2/reference/sojourn_to_panel.md), [`rnd()`](https://jcarmezim.github.io/mstate2/reference/rnd.md) |
 | What are the counts? | [`prep2()`](https://jcarmezim.github.io/mstate2/reference/prep2.md), [`summary()`](https://rdrr.io/r/base/summary.html) |
 | What is $`P_{hj\ell}`$? | [`P2est()`](https://jcarmezim.github.io/mstate2/reference/P2est.md), [`P2boot()`](https://jcarmezim.github.io/mstate2/reference/P2boot.md) |
 | Where will a patient be in $`n`$ days? | [`ckequations()`](https://jcarmezim.github.io/mstate2/reference/ckequations.md) |
@@ -710,14 +814,15 @@ Source Software*, 4(43), 1686.
 
 ## Building the data
 
-Build a daily panel from the days spent in each state and compute the
+Turn raw data as collected into a daily panel, and compute the
 second-order counting processes.
 
+- [`msprep2()`](https://jcarmezim.github.io/mstate2/reference/msprep2.md)
+  : Prepare raw multistate data for the analysis
 - [`sojourn_to_panel()`](https://jcarmezim.github.io/mstate2/reference/sojourn_to_panel.md)
   : Convert sojourn-time data to discrete-time panel format
 - [`rnd()`](https://jcarmezim.github.io/mstate2/reference/rnd.md) :
-  Round half away from zero (the rounding of the paper's DIVINE
-  analysis)
+  Round half away from zero
 - [`prep2()`](https://jcarmezim.github.io/mstate2/reference/prep2.md) :
   Build second-order counting processes from panel data
 

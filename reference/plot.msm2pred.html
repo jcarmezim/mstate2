@@ -73,18 +73,15 @@
 
 
 <dt id="arg-type">type<a class="anchor" aria-label="anchor" href="#arg-type"></a></dt>
-<dd><p>"interval" (shaded bands) or "curve" (lines only). Defaults to
-"interval" when bounds exist, else "curve".</p></dd>
+<dd><p>"interval" (shaded bands) or "curve" (lines only). Defaults to "interval" when bounds exist, else "curve".</p></dd>
 
 
 <dt id="arg-col-lty-lwd-alpha">col, lty, lwd, alpha<a class="anchor" aria-label="anchor" href="#arg-col-lty-lwd-alpha"></a></dt>
-<dd><p>Appearance of lines and interval shading. The
-colours are used in the order of <code>h</code> in <code><a href="compare2.html">compare2</a></code>;
-the paper's figures use blue for NSP and red for SP.</p></dd>
+<dd><p>Appearance of lines and interval shading. The colours are used in the order of <code>h</code> in <code><a href="compare2.html">compare2</a></code></p></dd>
 
 
 <dt id="arg-add">add<a class="anchor" aria-label="anchor" href="#arg-add"></a></dt>
-<dd><p>Overlay on the current plot (e.g. bootstrap over evolution bands). Default FALSE.</p></dd>
+<dd><p>Overlay on the current plot. Default FALSE.</p></dd>
 
 
 <dt id="arg-legend-dualaxis">legend, dualaxis<a class="anchor" aria-label="anchor" href="#arg-legend-dualaxis"></a></dt>
@@ -92,8 +89,7 @@ the paper's figures use blue for NSP and red for SP.</p></dd>
 
 
 <dt id="arg-mark-overlap">mark.overlap<a class="anchor" aria-label="anchor" href="#arg-mark-overlap"></a></dt>
-<dd><p>For a two-group interval plot, draw a vertical line at the
-first overlap step. Default TRUE.</p></dd>
+<dd><p>For a two-group interval plot, draw a vertical line at the first overlap step. Default TRUE.</p></dd>
 
 
 <dt id="arg-ylim-main-xlab-ylab">ylim, main, xlab, ylab<a class="anchor" aria-label="anchor" href="#arg-ylim-main-xlab-ylab"></a></dt>
@@ -107,12 +103,15 @@ first overlap step. Default TRUE.</p></dd>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">st</span>   <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"C"</span><span class="op">)</span>                                 <span class="co"># C is absorbing</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">st</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"C"</span><span class="op">)</span> <span class="co"># C is absorbing</span></span></span>
 <span class="r-in"><span><span class="va">tens</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/array.html" class="external-link">array</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">3</span>, <span class="fl">3</span><span class="op">)</span>, dimnames <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">st</span>, <span class="va">st</span>, <span class="va">st</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">tens</span><span class="op">[</span><span class="st">"B"</span>, <span class="st">"B"</span>, <span class="st">"A"</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">0.6</span>; <span class="va">tens</span><span class="op">[</span><span class="st">"B"</span>, <span class="st">"C"</span>, <span class="st">"A"</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">0.4</span></span></span>
-<span class="r-in"><span><span class="va">tens</span><span class="op">[</span><span class="st">"B"</span>, <span class="st">"B"</span>, <span class="st">"B"</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">0.3</span>; <span class="va">tens</span><span class="op">[</span><span class="st">"B"</span>, <span class="st">"C"</span>, <span class="st">"B"</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">0.7</span></span></span>
-<span class="r-in"><span><span class="va">tens</span><span class="op">[</span><span class="st">"C"</span>, <span class="st">"C"</span>, <span class="op">]</span>    <span class="op">&lt;-</span> <span class="fl">1</span></span></span>
-<span class="r-in"><span><span class="va">first</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">3</span>, <span class="fl">3</span>, dimnames <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">st</span>, <span class="va">st</span><span class="op">)</span><span class="op">)</span>; <span class="va">first</span><span class="op">[</span><span class="st">"A"</span>, <span class="st">"B"</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">1</span></span></span>
+<span class="r-in"><span><span class="va">tens</span><span class="op">[</span><span class="st">"B"</span>, <span class="st">"B"</span>, <span class="st">"A"</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">0.6</span></span></span>
+<span class="r-in"><span><span class="va">tens</span><span class="op">[</span><span class="st">"B"</span>, <span class="st">"C"</span>, <span class="st">"A"</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">0.4</span></span></span>
+<span class="r-in"><span><span class="va">tens</span><span class="op">[</span><span class="st">"B"</span>, <span class="st">"B"</span>, <span class="st">"B"</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">0.3</span></span></span>
+<span class="r-in"><span><span class="va">tens</span><span class="op">[</span><span class="st">"B"</span>, <span class="st">"C"</span>, <span class="st">"B"</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">0.7</span></span></span>
+<span class="r-in"><span><span class="va">tens</span><span class="op">[</span><span class="st">"C"</span>, <span class="st">"C"</span>, <span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">1</span></span></span>
+<span class="r-in"><span><span class="va">first</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">3</span>, <span class="fl">3</span>, dimnames <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">st</span>, <span class="va">st</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">first</span><span class="op">[</span><span class="st">"A"</span>, <span class="st">"B"</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">1</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">panel</span> <span class="op">&lt;-</span> <span class="fu"><a href="simulate2.html">simulate2</a></span><span class="op">(</span><span class="fl">500</span>, <span class="va">tens</span>, <span class="va">first</span>, init <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>A <span class="op">=</span> <span class="fl">1</span>, B <span class="op">=</span> <span class="fl">0</span>, C <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span></span></span>

@@ -16,8 +16,12 @@ multi-step predictions.
 ## Workflow
 
 1.  **Data.**
+    [`msprep2`](https://jcarmezim.github.io/mstate2/reference/msprep2.md)
+    turns raw data as collected (events, wide, sojourn or mstate
+    `msdata` layouts, with dates) into a daily panel and reports every
+    record it drops or changes;
     [`sojourn_to_panel`](https://jcarmezim.github.io/mstate2/reference/sojourn_to_panel.md)
-    builds a daily panel from sojourn times
+    builds the panel from sojourn times
     ([`rnd`](https://jcarmezim.github.io/mstate2/reference/rnd.md)
     discretises them);
     [`prep2`](https://jcarmezim.github.io/mstate2/reference/prep2.md)
@@ -50,11 +54,6 @@ multi-step predictions.
     (the simulation design of the paper).
 
 ## Implementation
-
-Data handling uses the tidyverse (dplyr, tidyr, purrr, tibble); tables
-are returned as tibbles. The transition-probability tensors and the
-Chapman-Kolmogorov propagation are plain R arrays and matrices, because
-they are linear algebra rather than data manipulation.
 
 See
 [`vignette("mstate2")`](https://jcarmezim.github.io/mstate2/articles/mstate2.md)

@@ -2,11 +2,7 @@
 
 Turns one row per subject, with the time spent in each transient state
 and an indicator of the absorbing state that ended follow-up, into one
-row per subject and time unit with the state occupied. This is the
-discretisation used in the illustration of the methods paper: each
-sojourn is rounded with
-[`rnd`](https://jcarmezim.github.io/mstate2/reference/rnd.md) and the
-states are visited in the order given in `segments`.
+row per subject and time unit with the state occupied.
 
 ## Usage
 
@@ -27,13 +23,12 @@ sojourn_to_panel(data, id, segments, absorbing, round_fun = rnd)
 - segments:
 
   Named character vector mapping transient state labels to their
-  duration columns, in visiting order, e.g.
-  `c(NSP = "t.nosp", SP = "t.sp", NIMV = "t.nimv", IMV = "t.mv", Recov = "t.recov")`.
+  duration columns, in visiting order.
 
 - absorbing:
 
   Named character vector mapping absorbing state labels to their 0/1
-  indicator columns, e.g. `c(Disch = "disch.s", Death = "death.s")`.
+  indicator columns.
 
 - round_fun:
 

@@ -2,10 +2,9 @@
 
 For a fixed current state \\j\\ and target \\\ell\\, computes the n-step
 transition probabilities for several preceding states \\h\\, with their
-evolution intervals. This is the construction of Section 6.3 of the
-methods paper (the RPE curves of Figure 4 and the evolution intervals of
-Figure 5): it assesses whether, and for how long, the state at the
-previous time affects the future trajectory.
+evolution intervals. This is the construction of the RPE curves: it
+assesses whether, and for how long, the state at the previous time
+affects the future trajectory.
 
 ## Usage
 
@@ -38,8 +37,7 @@ compare2(object, h, j, l, nsteps = 9L, bounds = TRUE)
 - bounds:
 
   If TRUE (default) also compute evolution-interval bounds; FALSE
-  returns curves only (e.g. Figure-4 overlays) and skips two thirds of
-  the work. If `object` is a
+  returns curves only and skips two thirds of the work. If `object` is a
   [`P2boot`](https://jcarmezim.github.io/mstate2/reference/P2boot.md)
   fit, the bounds are percentile bootstrap intervals instead of
   evolution intervals.
@@ -53,12 +51,15 @@ previous state, in the order given in `h`.
 ## Examples
 
 ``` r
-st   <- c("A", "B", "C")                                 # C is absorbing
+st <- c("A", "B", "C") # C is absorbing
 tens <- array(0, c(3, 3, 3), dimnames = list(st, st, st))
-tens["B", "B", "A"] <- 0.6; tens["B", "C", "A"] <- 0.4
-tens["B", "B", "B"] <- 0.3; tens["B", "C", "B"] <- 0.7
-tens["C", "C", ]    <- 1
-first <- matrix(0, 3, 3, dimnames = list(st, st)); first["A", "B"] <- 1
+tens["B", "B", "A"] <- 0.6
+tens["B", "C", "A"] <- 0.4
+tens["B", "B", "B"] <- 0.3
+tens["B", "C", "B"] <- 0.7
+tens["C", "C", ] <- 1
+first <- matrix(0, 3, 3, dimnames = list(st, st))
+first["A", "B"] <- 1
 
 set.seed(1)
 panel <- simulate2(500, tens, first, init = c(A = 1, B = 0, C = 0))
