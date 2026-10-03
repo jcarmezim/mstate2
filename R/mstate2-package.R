@@ -6,20 +6,12 @@
 #'
 #' @section Workflow:
 #' \enumerate{
-#'   \item \strong{Data.} \code{\link{sojourn_to_panel}} builds a daily panel
-#'     from sojourn times (\code{\link{rnd}} discretises them);
-#'     \code{\link{prep2}} computes the second-order counting processes.
-#'   \item \strong{Estimation.} \code{\link{P2est}} (relative probability
-#'     estimator with variances and confidence intervals).
-#'   \item \strong{Prediction.} \code{\link{ckequations}} (extended
-#'     Chapman-Kolmogorov relation, with evolution intervals).
-#'   \item \strong{Does the previous time matter, and for how long?}
-#'     \code{\link{compare2}} and \code{\link{overlap_step}}.
-#'   \item \strong{Bootstrap intervals.} \code{\link{P2boot}} resamples
-#'     patients; \code{ckequations()} and \code{compare2()} then report
-#'     percentile bootstrap intervals.
-#'   \item \strong{Simulation.} \code{\link{simulate2}} (the simulation
-#'     design of the paper).
+#'   \item \strong{Data.} \code{\link{sojourn_to_panel}} builds a daily panel from sojourn times (\code{\link{rnd}} discretises them); \code{\link{prep2}} computes the second-order counting processes.
+#'   \item \strong{Estimation.} \code{\link{P2est}} (relative probability estimator with variances and confidence intervals).
+#'   \item \strong{Prediction.} \code{\link{ckequations}} (extended Chapman-Kolmogorov relation, with evolution intervals).
+#'   \item \strong{Does the previous time matter, and for how long?} \code{\link{compare2}} and \code{\link{overlap_step}}.
+#'   \item \strong{Bootstrap intervals.} \code{\link{P2boot}} resamples patients; \code{ckequations()} and \code{compare2()} then report percentile bootstrap intervals.
+#'   \item \strong{Simulation.} \code{\link{simulate2}} (the simulation design of the paper).
 #' }
 #'
 #' @section Implementation:
