@@ -1,14 +1,8 @@
 #' mstate2: Second-Order Markov Multistate Models
 #'
-#' Nonparametric estimation and inference for second-order Markov multistate
-#' models in discrete time, in which the next state depends on the state
-#' occupied at the current time \emph{and} at the previous time. Complements
-#' the first-order \pkg{mstate} framework and follows its conventions.
+#' Nonparametric estimation and inference for second-order Markov multistate models in discrete time, in which the next state depends on the state occupied at the current time \emph{and} at the previous time. Complements the first-order \pkg{mstate} framework and follows its conventions.
 #'
-#' The package implements the methods of Najera-Zuloaga, Besalu and Gomez
-#' Melis (2025), so that their analysis of the DIVINE cohort can be
-#' reproduced, and adds subject-level bootstrap intervals for the multi-step
-#' predictions.
+#' The package implements the methods of Najera-Zuloaga, Besalu and Gomez Melis (2025), so that their analysis of the DIVINE cohort can be reproduced, and adds subject-level bootstrap intervals for the multi-step predictions.
 #'
 #' @section Workflow:
 #' \enumerate{
@@ -29,14 +23,8 @@
 #' }
 #'
 #' @section Implementation:
-#' Data handling uses the tidyverse (\pkg{dplyr}, \pkg{tidyr}, \pkg{purrr},
-#' \pkg{tibble}); tables are returned as tibbles. The transition-probability
-#' tensors and the Chapman-Kolmogorov propagation are plain R arrays and
-#' matrices, because they are linear algebra rather than data manipulation.
 #'
-#' See \code{vignette("mstate2")} for a guided analysis,
-#' \code{vignette("paper")} for the reproduction of the methods paper and
-#' \code{vignette("reference")} for the complete function reference.
+#' See \code{vignette("mstate2")} for a guided analysis, \code{vignette("paper")} for the reproduction of the methods paper and \code{vignette("reference")} for the complete function reference.
 #'
 #' @keywords internal
 #' @importFrom stats qnorm runif plogis qlogis setNames
@@ -45,9 +33,6 @@
 #' @importFrom utils globalVariables
 "_PACKAGE"
 
-## Column names used unquoted inside dplyr/tidyr verbs (data masking). They
-## are declared here so that R CMD check does not report them as undefined
-## global variables.
 utils::globalVariables(c(
   "h", "j", "l", "s", "N", "Y", "state", "time", "id",
   "n.trans", "at.risk", "p", "se", "lower", "upper", "se_logit", "inside",
