@@ -14,7 +14,7 @@
 #'
 #' Consecutive \emph{observations} are treated as consecutive time steps.
 #'
-#' @param data A data frame in long/panel format (one row per subject and time point), e.g. the output of \code{\link{sojourn_to_panel}} or \code{\link{simulate2}}.
+#' @param data A data frame in long/panel format (one row per subject and time point), e.g. the output of \code{\link{sojourn_to_panel}} or \code{\link{simulate2}}, or an \code{"msm2prep"} object from \code{\link{msprep2}} (its panel is used, with its states and absorbing states unless \code{states} or \code{absorbing} are given).
 #' @param id,time,state Column names for subject id, discrete time, and state.
 #' @param states Optional state space / ordering. Defaults to sorted observed states.
 #' @param absorbing Optional absorbing states; inferred if NULL.
@@ -47,6 +47,13 @@
 #' d
 #' @export
 prep2 <- function(data, id = "id", time = "time", state = "state", states = NULL, absorbing = NULL, drop.na = FALSE, check.consecutive = TRUE) {
+
+  # Data prepared by msprep2(): use its panel, and its state space and absorbing states unless given.
+  if (inherits(data, "msm2prep")) {
+    if (is.null(states)) states <- data$states
+    if (is.null(absorbing)) absorbing <- data$absorbing
+    data <- data$panel
+  }
 
   # Check the input and keep only the three columns that are needed, renamed to the canonical names id, time and state.
 

@@ -28,7 +28,7 @@ Encoding: UTF-8
 Depends: R (>= 4.1.0)
 Imports: dplyr (>= 1.1.0), tidyr, purrr (>= 1.0.0), tibble, stats, graphics,
     grDevices, utils
-Suggests: testthat (>= 3.0.0), knitr, rmarkdown
+Suggests: testthat (>= 3.0.0), knitr, rmarkdown, mstate
 Config/testthat/edition: 3
 VignetteBuilder: knitr
 URL: https://jcarmezim.github.io/mstate2/, https://github.com/jcarmezim/mstate2

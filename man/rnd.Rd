@@ -2,7 +2,7 @@
 % Please edit documentation in R/convert.R
 \name{rnd}
 \alias{rnd}
-\title{Round half away from zero (the rounding of the paper's DIVINE analysis)}
+\title{Round half away from zero}
 \usage{
 rnd(x)
 }
@@ -13,14 +13,8 @@ rnd(x)
 \code{trunc(x + sign(x) * 0.5)}.
 }
 \description{
-The function used in the code of the methods paper (Najera-Zuloaga, Besalu
-and Gomez Melis, 2025) to turn the sojourn times of the DIVINE cohort into
-whole days. Unlike \code{\link{round}}, which rounds halves to the even
-number (\code{round(0.5) = 0}, \code{round(2.5) = 2}), \code{rnd} always
-rounds halves away from zero (\code{rnd(0.5) = 1}, \code{rnd(2.5) = 3}).
-Only this convention reproduces Table 2 of the paper.
+Function to turn the sojourn times into whole days. Unlike \code{\link{round}}, which rounds halves to the even number (\code{round(0.5) = 0}, \code{round(2.5) = 2}), \code{rnd} always rounds halves away from zero (\code{rnd(0.5) = 1}, \code{rnd(2.5) = 3}).
 }
 \examples{
 rnd(c(-2.5, -0.4, 0.4, 0.5, 2.5))
-round(c(-2.5, -0.4, 0.4, 0.5, 2.5))   # base R: halves to even
 }

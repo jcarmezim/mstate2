@@ -17,31 +17,24 @@ compare2(object, h, j, l, nsteps = 9L, bounds = TRUE)
 
 \item{nsteps}{Number of steps (default 9).}
 
-\item{bounds}{If TRUE (default) also compute evolution-interval bounds; FALSE
-returns curves only (e.g. Figure-4 overlays) and skips two thirds of the work.
-If \code{object} is a \code{\link{P2boot}} fit, the bounds are percentile
-bootstrap intervals instead of evolution intervals.}
+\item{bounds}{If TRUE (default) also compute evolution-interval bounds; FALSE returns curves only and skips two thirds of the work. If \code{object} is a \code{\link{P2boot}} fit, the bounds are percentile bootstrap intervals instead of evolution intervals.}
 }
 \value{
-An object of class "msm2pred" (a data frame): columns h, n, estimate
-  and, when bounds = TRUE, lower and upper; one block of \code{nsteps}
-  rows per previous state, in the order given in \code{h}.
+An object of class "msm2pred" (a data frame): columns h, n, estimate and, when bounds = TRUE, lower and upper; one block of \code{nsteps} rows per previous state, in the order given in \code{h}.
 }
 \description{
-For a fixed current state \eqn{j} and target \eqn{\ell}, computes the n-step
-transition probabilities for several preceding states \eqn{h}, with their
-evolution intervals. This is the construction of Section 6.3 of the methods
-paper (the RPE curves of Figure 4 and the evolution intervals of Figure 5):
-it assesses whether, and for how long, the state at the previous time
-affects the future trajectory.
+For a fixed current state \eqn{j} and target \eqn{\ell}, computes the n-step transition probabilities for several preceding states \eqn{h}, with their evolution intervals. This is the construction of the RPE curves: it assesses whether, and for how long, the state at the previous time affects the future trajectory.
 }
 \examples{
-st   <- c("A", "B", "C")                                 # C is absorbing
+st <- c("A", "B", "C") # C is absorbing
 tens <- array(0, c(3, 3, 3), dimnames = list(st, st, st))
-tens["B", "B", "A"] <- 0.6; tens["B", "C", "A"] <- 0.4
-tens["B", "B", "B"] <- 0.3; tens["B", "C", "B"] <- 0.7
-tens["C", "C", ]    <- 1
-first <- matrix(0, 3, 3, dimnames = list(st, st)); first["A", "B"] <- 1
+tens["B", "B", "A"] <- 0.6
+tens["B", "C", "A"] <- 0.4
+tens["B", "B", "B"] <- 0.3
+tens["B", "C", "B"] <- 0.7
+tens["C", "C", ] <- 1
+first <- matrix(0, 3, 3, dimnames = list(st, st))
+first["A", "B"] <- 1
 
 set.seed(1)
 panel <- simulate2(500, tens, first, init = c(A = 1, B = 0, C = 0))

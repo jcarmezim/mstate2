@@ -72,7 +72,7 @@ ordinary transition matrix.
 
 | Stage | Function | Output (class) |
 |---|---|---|
-| Data | `sojourn_to_panel()`, `rnd()` | daily panel, a tibble `(id, time, state)` |
+| Data | `msprep2()`, `sojourn_to_panel()`, `rnd()` | daily panel, a tibble `(id, time, state)` (`msm2prep` with its report) |
 | Counting processes | `prep2()` | `msm2data` |
 | Estimation | `P2est()`, `P2boot()` | `P2est`, `P2boot` |
 | Prediction | `ckequations()` | vector / matrix / tibble |
@@ -120,8 +120,11 @@ summarise(MSM, discharged = sum(disch.s), died = sum(death.s))
 
 All the functions of the package work on a **daily panel**: one row per
 patient and day, with columns `id`, `time` and `state`. Any data in that form
-can be passed to `prep2()`; for data like DIVINE, with the days spent in each
-state, `sojourn_to_panel()` builds it.
+can be passed to `prep2()`. `msprep2()` builds it from raw data as they are
+collected (dates of each state, one column per state, days spent in each
+state, or an `mstate` object) and reports every record it has to change; for
+data like DIVINE, with the days spent in each state, `sojourn_to_panel()`
+builds it too.
 
 ## `sojourn_to_panel()`: from days spent in each state
 
@@ -167,6 +170,64 @@ In DIVINE, `r MSM |> filter(t.sp %% 1 == 0.5) |> nrow()` severe-pneumonia
 stays last a whole number of days plus one half. If a positive stay rounds
 to 0 days, `sojourn_to_panel()` drops it and warns, because the transitions
 into and out of that state would be lost; this never happens in DIVINE.
+
+## `msprep2()`: from raw data as collected
+
+```r
+msprep2(data, id = "id", format = "auto",
+        time = "time", state = "state",           # events: one row per state change
+        times = NULL, status = NULL,               # wide: one time column per state
+        durations = NULL, outcome = NULL,          # sojourn: days spent in each state
+        initial = NULL, start = NULL, end = NULL, unit = 1, round_fun = rnd,
+        recode = NULL, states = NULL, absorbing = NULL, trans = NULL,
+        ties = "last", check = "warn", keep = NULL)
+```
+
+`msprep2()` plays the role of `mstate::msprep()`, but returns the daily panel
+of second-order models and accepts the data in the layout in which they were
+collected:
+
+| Layout | One row per | Arguments |
+|---|---|---|
+| events | subject and recorded state, with the date or time it was entered | `time`, `state` |
+| wide (as `msprep()`) | subject, with one time column (and optionally one status column) per state | `times`, `status` |
+| sojourn (as DIVINE) | subject, with the days spent in each state | `durations`, `outcome` |
+| `msdata` | an object made by `mstate::msprep()` | — |
+
+Times can be numbers or dates (also text such as `"15/03/2020"`), measured
+from each patient's origin (`start`, e.g. the admission date) in units of
+`unit` (`"day"`, `"week"`, …). Codes can be relabelled with `recode`, and a
+matrix of allowed transitions (`trans`, as `mstate::transMat()`) is checked.
+Every record that is dropped or changed (missing values, records before the
+origin, after the end of follow-up or after death, two states in the same
+day, transitions not allowed) is listed in `x$issues`, with one warning.
+
+With DIVINE, the sojourn layout gives the same panel as `sojourn_to_panel()`,
+plus the report:
+
+```{r msprep2}
+x <- msprep2(MSM, durations = segs, outcome = absb,
+             states = c("NSP", "SP", "Recov", "NIMV", "IMV", "Disch", "Death"))
+x
+all.equal(x$panel |> mutate(state = as.character(state)), panel)
+```
+
+Raw records with dates, one row per change of state, are handled in the same
+way; here two invented patients, one of them with a record after death:
+
+```{r msprep2-events}
+raw <- tibble(id    = c(1, 1, 1, 2, 2, 2),
+              date  = c("01/03/2020", "03/03/2020", "06/03/2020",
+                        "02/03/2020", "09/03/2020", "10/03/2020"),
+              state = c("1", "2", "D", "2", "D", "2"))
+y <- msprep2(raw, time = "date", state = "state",
+             recode = c("1" = "NSP", "2" = "SP", "D" = "Death"), absorbing = "Death")
+y$panel
+y$issues
+```
+
+The result goes straight into `prep2()`, which takes the states and absorbing
+states from it.
 
 ## `prep2()`: the second-order counting processes
 
@@ -460,7 +521,7 @@ round(c(DIVINE = fit$P["SP", "NIMV", "NSP"], simulated = fit_sim$P["SP", "NIMV",
 
 | Question | Function |
 |---|---|
-| How do I build the daily panel? | `sojourn_to_panel()`, `rnd()` |
+| How do I build the daily panel from my raw data? | `msprep2()`, `sojourn_to_panel()`, `rnd()` |
 | What are the counts? | `prep2()`, `summary()` |
 | What is $P_{hj\ell}$? | `P2est()`, `P2boot()` |
 | Where will a patient be in $n$ days? | `ckequations()` |

@@ -17,9 +17,10 @@ reference:
 
 - title: Building the data
   desc: >
-    Build a daily panel from the days spent in each state and compute the
+    Turn raw data as collected into a daily panel, and compute the
     second-order counting processes.
   contents:
+  - msprep2
   - sojourn_to_panel
   - rnd
   - prep2

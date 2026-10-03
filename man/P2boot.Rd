@@ -16,56 +16,31 @@ P2boot(object, B = 200, conf.level = 0.95, seed = NULL)
 \item{seed}{Optional integer seed, for reproducible replicates.}
 }
 \value{
-An object of class \code{c("P2boot", "P2est")}: all the components
-  of \code{P2est(object, conf.level)} plus \code{boot}, an
-  \eqn{M \times M \times M \times B} array of replicate tensors (layout
-  \code{[j, l, h, b]}), and \code{B}. The \code{estimate} table gains a
-  column \code{se.boot} (bootstrap standard deviation).
+An object of class \code{c("P2boot", "P2est")}: all the components of \code{P2est(object, conf.level)} plus \code{boot}, an \eqn{M \times M \times M \times B} array of replicate tensors (layout \code{[j, l, h, b]}), and \code{B}. The \code{estimate} table gains a column \code{se.boot} (bootstrap standard deviation).
 }
 \description{
-Resamples subjects with replacement and recomputes the RPE of every
-1-step second-order transition probability in each replicate. The
-resulting object behaves like a \code{\link{P2est}} fit, but carries the
-bootstrap tensors, so that \code{\link{ckequations}} and
-\code{\link{compare2}} report \strong{percentile bootstrap intervals} for
-the \eqn{n}-step probabilities instead of the evolution intervals obtained
-by propagating the one-step confidence limits.
+Resamples subjects with replacement and recomputes the RPE of every 1-step second-order transition probability in each replicate. The resulting object behaves like a \code{\link{P2est}} fit, but carries the bootstrap tensors, so that \code{\link{ckequations}} and \code{\link{compare2}} report \strong{percentile bootstrap intervals} for the \eqn{n}-step probabilities instead of the evolution intervals obtained by propagating the one-step confidence limits.
 }
 \details{
-Resampling whole subjects keeps the dependence between the several
-instants a subject contributes to the same or to different \eqn{(h, j)}
-risk sets. The implementation never re-reads the data: the per-subject
-counts of every observed \eqn{(h, j, \ell)} triple are tabulated once, and
-each replicate is a weighted sum of those counts, so thousands of
-replicates are cheap even for large cohorts.
+Resampling whole subjects keeps the dependence between the several instants a subject contributes to the same or to different \eqn{(h, j)} risk sets. The implementation never re-reads the data: the per-subject counts of every observed \eqn{(h, j, \ell)} triple are tabulated once, and each replicate is a weighted sum of those counts, so thousands of replicates are cheap even for large cohorts.
 
-In a replicate where an observed \eqn{(h, j)} pair happens to have no
-subject at risk, its row is taken from the point estimate, so that the
-replicate tensor stays a proper set of transition probabilities.
+In a replicate where an observed \eqn{(h, j)} pair happens to have no subject at risk, its row is taken from the point estimate, so that the replicate tensor stays a proper set of transition probabilities.
 }
 \section{Why a bootstrap of subjects}{
 
-Patients are the independent units; the days of one patient are not.
-Resampling whole patients keeps that within-patient dependence, which is
-the standard non-parametric bootstrap for clustered data (Davison and
-Hinkley, 1997; Field and Welsh, 2007). The n-step predictions are
-non-linear (polynomial) functions of all the estimated probabilities, so a
-delta-method variance would be cumbersome; propagating each replicate and
-taking percentiles (Efron and Tibshirani, 1993) gives their intervals
-directly. The evolution intervals of the methods paper propagate the lower
-and upper one-step limits separately and are therefore conservative: in
-the package's simulation study, the 95\% percentile
-intervals of n-step predictions had coverage 0.91-0.94, while the evolution
-intervals had coverage 1 and were up to five times wider.
+Patients are the independent units; the days of one patient are not. Resampling whole patients keeps that within-patient dependence, which is the standard non-parametric bootstrap for clustered data (Davison and Hinkley, 1997; Field and Welsh, 2007). The n-step predictions are non-linear (polynomial) functions of all the estimated probabilities, so a delta-method variance would be cumbersome; propagating each replicate and taking percentiles (Efron and Tibshirani, 1993) gives their intervals directly.
 }
 
 \examples{
-st   <- c("A", "B", "C")                                 # C is absorbing
+st <- c("A", "B", "C") # C is absorbing
 tens <- array(0, c(3, 3, 3), dimnames = list(st, st, st))
-tens["B", "B", "A"] <- 0.6; tens["B", "C", "A"] <- 0.4
-tens["B", "B", "B"] <- 0.3; tens["B", "C", "B"] <- 0.7
-tens["C", "C", ]    <- 1
-first <- matrix(0, 3, 3, dimnames = list(st, st)); first["A", "B"] <- 1
+tens["B", "B", "A"] <- 0.6
+tens["B", "C", "A"] <- 0.4
+tens["B", "B", "B"] <- 0.3
+tens["B", "C", "B"] <- 0.7
+tens["C", "C", ] <- 1
+first <- matrix(0, 3, 3, dimnames = list(st, st))
+first["A", "B"] <- 1
 
 set.seed(1)
 panel <- simulate2(500, tens, first, init = c(A = 1, B = 0, C = 0))

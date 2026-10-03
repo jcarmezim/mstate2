@@ -11,43 +11,15 @@ P2est(object, conf.level = 0.95, ci = c("wald", "logit"), clip = TRUE)
 
 \item{conf.level}{Confidence level. Default 0.95.}
 
-\item{ci}{Confidence-interval type: "wald" (default) or "logit". The logit
-interval is built on the log-odds scale (delta method) and stays inside
-(0, 1), behaving better for probabilities near 0 or 1. At the boundary
-(p = 0 or p = 1, e.g. an absorbing-state row) the logit transform is
-undefined and the interval degenerates to the point estimate [p, p]
-rather than [0, 1].}
+\item{ci}{Confidence-interval type: "wald" (default) or "logit". The logit interval is built on the log-odds scale (delta method) and stays inside (0, 1), behaving better for probabilities near 0 or 1. At the boundary (p = 0 or p = 1, e.g. an absorbing-state row) the logit transform is undefined and the interval degenerates to the point estimate [p, p] rather than [0, 1].}
 
 \item{clip}{For ci = "wald", clip the interval to [0, 1] (default TRUE).}
 }
 \value{
-An object of class "P2est": the \code{estimate} tibble (one row
-  per observed transition \eqn{h \to j \to \ell}, with columns
-  \code{h, j, l, p, se, lower, upper, n.trans, at.risk}), the
-  point/CI/se tensors \code{P}, \code{P.lower}, \code{P.upper}, \code{P.se}
-  (layout \code{P[j, l, h]}, the layout of the paper's code), and metadata.
+An object of class "P2est": the \code{estimate} tibble (one row per observed transition \eqn{h \to j \to \ell}, with columns \code{h, j, l, p, se, lower, upper, n.trans, at.risk}), the point/CI/se tensors \code{P}, \code{P.lower}, \code{P.upper}, \code{P.se} (layout \code{P[j, l, h]}), and metadata.
 }
 \description{
-Estimates \eqn{P_{hj\ell} = P(X_s = \ell \mid X_{s-1} = j, X_{s-2} = h)} from
-an \code{\link{prep2}} object with the relative probability estimator (RPE)
-of the methods paper (Najera-Zuloaga, Besalu and Gomez Melis, 2025), with
-its standard error and confidence interval. The RPE (Eq. 9) pools all
-transitions and all subject-instants at risk of each pair \eqn{(h, j)}:
-\deqn{\tilde P_{hj\ell} = \sum_s \tilde N_{hj\ell}(s) / \sum_s \tilde Y_{hj}(s-1).}
-Its estimated asymptotic variance (Theorems 4-5, Eqs. 13-14) gives the
-standard error
-\deqn{se = \sqrt{\tilde P_{hj\ell}(1 - \tilde P_{hj\ell}) / \sum_s \tilde Y_{hj}(s-1)},}
-and the Wald interval \eqn{\tilde P_{hj\ell} \pm z_{1-\alpha/2}\, se} is
-that of Corollary 2.
-}
-\details{
-The estimates, standard errors and Wald limits (clipped to [0, 1]) are those
-of the code of the paper's illustration, except that \eqn{z_{1-\alpha/2}}
-is computed exactly (1.959964 for 95\%; the paper's code uses 1.96). Pairs
-\eqn{(h, j)} with nobody at risk get probability 0, as in the paper. For an
-absorbing state \eqn{a}, \eqn{P_{haa} = 1} for every \eqn{h}, including
-pairs that never occur (the paper's code leaves those at 0; they have
-probability 0 of being reached, so predictions do not change).
+Estimates \eqn{P_{hj\ell} = P(X_s = \ell \mid X_{s-1} = j, X_{s-2} = h)} from an \code{\link{prep2}} object with the relative probability estimator (RPE) of the methods paper (Najera-Zuloaga, Besalu and Gomez Melis, 2025), with its standard error and confidence interval. The RPE (Eq. 9) pools all transitions and all subject-instants at risk of each pair \eqn{(h, j)}: \deqn{\tilde P_{hj\ell} = \sum_s \tilde N_{hj\ell}(s) / \sum_s \tilde Y_{hj}(s-1).} Its estimated asymptotic variance (Theorems 4-5, Eqs. 13-14) gives the standard error \deqn{se = \sqrt{\tilde P_{hj\ell}(1 - \tilde P_{hj\ell}) / \sum_s \tilde Y_{hj}(s-1)},} and the Wald interval \eqn{\tilde P_{hj\ell} \pm z_{1-\alpha/2}\, se} is that of Corollary 2.
 }
 \section{Interval choice}{
 
@@ -60,12 +32,15 @@ is therefore the only one implemented.
 }
 
 \examples{
-st   <- c("A", "B", "C")                                 # C is absorbing
+st <- c("A", "B", "C") # C is absorbing
 tens <- array(0, c(3, 3, 3), dimnames = list(st, st, st))
-tens["B", "B", "A"] <- 0.6; tens["B", "C", "A"] <- 0.4
-tens["B", "B", "B"] <- 0.3; tens["B", "C", "B"] <- 0.7
-tens["C", "C", ]    <- 1
-first <- matrix(0, 3, 3, dimnames = list(st, st)); first["A", "B"] <- 1
+tens["B", "B", "A"] <- 0.6
+tens["B", "C", "A"] <- 0.4
+tens["B", "B", "B"] <- 0.3
+tens["B", "C", "B"] <- 0.7
+tens["C", "C", ] <- 1
+first <- matrix(0, 3, 3, dimnames = list(st, st))
+first["A", "B"] <- 1
 
 set.seed(1)
 panel <- simulate2(500, tens, first, init = c(A = 1, B = 0, C = 0))

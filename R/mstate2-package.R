@@ -6,7 +6,7 @@
 #'
 #' @section Workflow:
 #' \enumerate{
-#'   \item \strong{Data.} \code{\link{sojourn_to_panel}} builds a daily panel from sojourn times (\code{\link{rnd}} discretises them); \code{\link{prep2}} computes the second-order counting processes.
+#'   \item \strong{Data.} \code{\link{msprep2}} turns raw data as collected (events, wide, sojourn or \pkg{mstate} \code{msdata} layouts, with dates) into a daily panel and reports every record it drops or changes; \code{\link{sojourn_to_panel}} builds the panel from sojourn times (\code{\link{rnd}} discretises them); \code{\link{prep2}} computes the second-order counting processes.
 #'   \item \strong{Estimation.} \code{\link{P2est}} (relative probability estimator with variances and confidence intervals).
 #'   \item \strong{Prediction.} \code{\link{ckequations}} (extended Chapman-Kolmogorov relation, with evolution intervals).
 #'   \item \strong{Does the previous time matter, and for how long?} \code{\link{compare2}} and \code{\link{overlap_step}}.
@@ -29,5 +29,9 @@ utils::globalVariables(c(
   "h", "j", "l", "s", "N", "Y", "state", "time", "id",
   "n.trans", "at.risk", "p", "se", "lower", "upper", "se_logit", "inside",
   "n", "ok", "total_at_risk", "s_min", "s_max",
-  ".row", ".pos", "raw", "dur", "ind"
+  ".row", ".pos", "raw", "dur", "ind",
+  "from", "to", "issue", "exit", "first", "last", "initial", "origin", "t0",
+  "t_max", ".col", ".scol", ".ord", ".t", "tval", "step", "end_step",
+  ".first", ".k", ".n", "prev", "kept_state", ".abs", ".next", ".len", ".i",
+  "total", "Tstart", "Tstop", "status", ".seen", "end"
 ))

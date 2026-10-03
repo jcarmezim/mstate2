@@ -25,19 +25,15 @@
 \arguments{
 \item{x}{A "msm2pred" object.}
 
-\item{type}{"interval" (shaded bands) or "curve" (lines only). Defaults to
-"interval" when bounds exist, else "curve".}
+\item{type}{"interval" (shaded bands) or "curve" (lines only). Defaults to "interval" when bounds exist, else "curve".}
 
-\item{col, lty, lwd, alpha}{Appearance of lines and interval shading. The
-colours are used in the order of \code{h} in \code{\link{compare2}};
-the paper's figures use blue for NSP and red for SP.}
+\item{col, lty, lwd, alpha}{Appearance of lines and interval shading. The colours are used in the order of \code{h} in \code{\link{compare2}}}
 
-\item{add}{Overlay on the current plot (e.g. bootstrap over evolution bands). Default FALSE.}
+\item{add}{Overlay on the current plot. Default FALSE.}
 
 \item{legend, dualaxis}{Draw the legend / the dual step-and-time axis.}
 
-\item{mark.overlap}{For a two-group interval plot, draw a vertical line at the
-first overlap step. Default TRUE.}
+\item{mark.overlap}{For a two-group interval plot, draw a vertical line at the first overlap step. Default TRUE.}
 
 \item{ylim, main, xlab, ylab}{Standard graphical parameters.}
 
@@ -47,12 +43,15 @@ first overlap step. Default TRUE.}
 Plot n-step evolution curves or evolution intervals
 }
 \examples{
-st   <- c("A", "B", "C")                                 # C is absorbing
+st <- c("A", "B", "C") # C is absorbing
 tens <- array(0, c(3, 3, 3), dimnames = list(st, st, st))
-tens["B", "B", "A"] <- 0.6; tens["B", "C", "A"] <- 0.4
-tens["B", "B", "B"] <- 0.3; tens["B", "C", "B"] <- 0.7
-tens["C", "C", ]    <- 1
-first <- matrix(0, 3, 3, dimnames = list(st, st)); first["A", "B"] <- 1
+tens["B", "B", "A"] <- 0.6
+tens["B", "C", "A"] <- 0.4
+tens["B", "B", "B"] <- 0.3
+tens["B", "C", "B"] <- 0.7
+tens["C", "C", ] <- 1
+first <- matrix(0, 3, 3, dimnames = list(st, st))
+first["A", "B"] <- 1
 
 set.seed(1)
 panel <- simulate2(500, tens, first, init = c(A = 1, B = 0, C = 0))

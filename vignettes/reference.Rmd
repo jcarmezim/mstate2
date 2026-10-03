@@ -209,6 +209,153 @@ count(panel, state)         # patient-days in each state
 
 Every DIVINE patient ends in `Disch` or `Death`, so no follow-up is censored.
 
+## `msprep2()`
+
+**Definition**
+
+```r
+msprep2(data, id = "id", format = c("auto", "events", "wide", "sojourn", "msdata"),
+        time = "time", state = "state", times = NULL, status = NULL,
+        durations = NULL, outcome = NULL, initial = NULL, start = NULL, end = NULL,
+        unit = 1, round_fun = rnd, recode = NULL, states = NULL, absorbing = NULL,
+        trans = NULL, ties = c("last", "first"), check = c("warn", "error"), keep = NULL)
+```
+
+**What it does.** Turns multistate data **as they are collected** into the
+daily panel of `prep2()`, and reports every record it had to drop or change.
+It plays the role of `mstate::msprep()`, which only takes the wide layout,
+needs the transition matrix, works with numeric times and returns the
+counting-process format of the Cox model.
+
+**Arguments**
+
+| Argument | Default | Meaning |
+|---|---|---|
+| `data` | — | raw data (a data frame, or an `msdata` object) |
+| `id` | `"id"` | subject id column |
+| `format` | `"auto"` | input layout (below); `"auto"` chooses it from the arguments given |
+| `time`, `state` | `"time"`, `"state"` | events layout: time (or date) and state columns |
+| `times` | `NULL` | wide layout: named vector `c(state = "time column")` |
+| `status` | `NULL` | wide layout: named vector `c(state = "0/1 status column")`; times with status 0 are censoring times, as in `msprep()` |
+| `durations` | `NULL` | sojourn layout: named vector `c(state = "duration column")`, in visiting order |
+| `outcome` | `NULL` | sojourn layout: named vector `c(state = "0/1 indicator")` of the absorbing states |
+| `initial` | `NULL` | state entered at the origin: a column or a single label |
+| `start` | `NULL` | origin of time: a column (e.g. admission date) or a value; default the first record (0 for a numeric wide layout) |
+| `end` | `NULL` | end of follow-up of subjects not absorbed: a column or a value |
+| `unit` | `1` | length of a time unit: a number, or `"hour"`, `"day"`, `"week"`, `"month"`, `"year"` for dates |
+| `round_fun` | `rnd` | discretisation of the elapsed times |
+| `recode` | `NULL` | relabelling of the recorded states, `c(old = "new")` |
+| `states` | `NULL` | state space and order; default from `trans`, the layout, or the observed states |
+| `absorbing` | `NULL` | absorbing states; default from `trans`, `outcome`, or the states nobody leaves |
+| `trans` | `NULL` | allowed transitions: `mstate::transMat()` matrix (`NA` = not allowed) or a logical/0-1 matrix |
+| `ties` | `"last"` | state kept when several fall in the same unit (an absorbing state always wins) |
+| `check` | `"warn"` | `"error"` stops at a transition not allowed by `trans` |
+| `keep` | `NULL` | baseline covariates carried into the panel |
+
+**Input layouts**
+
+| Layout | One row per | Arguments |
+|---|---|---|
+| `events` | subject and recorded state (state changes or repeated observations) | `time`, `state` |
+| `wide` | subject, one time (and status) column per state | `times`, `status` |
+| `sojourn` | subject, days spent in each state and indicators of the outcome | `durations`, `outcome` |
+| `msdata` | subject and possible transition (`mstate::msprep()`) | — |
+
+**Value.** An object of class **`msm2prep`**, a list with:
+
+| Component | Content |
+|---|---|
+| `panel` | tibble `(id, time, state, keep…)`: one row per subject and unit, `time` from the origin, `state` a factor with levels `states` |
+| `states`, `absorbing` | state space and absorbing states |
+| `trans` | logical matrix of allowed transitions, or `NULL` |
+| `transitions` | tibble `(from, to, n, allowed)` with the observed transitions |
+| `subjects` | tibble with first and last unit, entry and exit state and `status` (`"absorbed"` or `"censored"`) of each subject |
+| `issues` | tibble `(id, issue, state, time, detail)`: every record dropped or changed |
+| `settings` | layout, unit and tie rule |
+
+`print()` shows a short report and `summary()` the table of transitions
+(from × to, as `mstate::events()`), the follow-up and the issues by type.
+`prep2()` accepts the object directly.
+
+**How it works.**
+
+1. Each layout is read into the same intermediate form: one record per
+   subject and recorded state, with its time. Text dates are read with the
+   formats `2020-03-15`, `15/03/2020`, `15-03-2020` and `2020/03/15`;
+   states are relabelled with `recode`; the `initial` state is added at the
+   origin.
+2. Times are measured from the subject's origin in units of `unit` and
+   rounded with `round_fun`.
+3. Records before the origin or after the end of follow-up are dropped.
+4. In time order, the first absorbing state ends follow-up; later records are
+   dropped.
+5. When several records fall in the same unit, the last (or first) is kept;
+   an absorbing state is always kept. A different state that loses this way
+   occupies no unit and its transitions are lost.
+6. Repeated records of the same state are merged (they are observations, not
+   transitions), but still extend follow-up.
+7. Each state is expanded over the units it occupies: until the unit before
+   the next state; the last state until the end of follow-up (`end`, the last
+   record, or one unit if absorbing).
+8. The observed transitions are counted and checked against `trans`.
+
+**Errors and warnings.** Error if a column is missing, if a recorded state is
+not in `states`, if the wide or sojourn layout has duplicated ids, if text
+times cannot be read as dates, if `unit` is a name with numeric times, or if
+`check = "error"` and a transition is not allowed. One warning gives the
+number of records dropped or changed, by type:
+
+| Issue | Meaning |
+|---|---|
+| `missing` | missing id, time or state (events layout) |
+| `before_start` | record before the origin |
+| `after_end` | record after the end of follow-up |
+| `after_absorbing` | record after the entry into an absorbing state |
+| `same_unit` | another state was kept in the same time unit |
+| `rounded_to_zero` | a positive duration rounds to 0 units (sojourn layout) |
+| `not_allowed` | transition not allowed by `trans` (kept) |
+| `no_data` | subject with no usable record |
+
+**Example**
+
+
+```r
+x <- msprep2(MSM, durations = segs, outcome = absb, states = estados)
+x
+#> <msm2prep>  discrete-time panel ready for prep2()
+#>   layout          : sojourn
+#>   subjects        : 2076 (2076 absorbed, 0 censored)
+#>   panel rows      : 27736 (time 0 - 138)
+#>   states (7)      : NSP, SP, Recov, NIMV, IMV, Disch, Death
+#>   absorbing       : Disch, Death
+#>   transitions     : 14 types, 3433 in total
+#>   issues          : none
+summary(x)
+#> <msm2prep summary>
+#> 
+#> Observed transitions (from rows to columns):
+#>        to
+#> from     NSP   SP Recov NIMV  IMV Disch Death
+#>   NSP      0  411     0    0    0  1406    38
+#>   SP       0    0   223  214  166     0    29
+#>   Recov    0    0     0    0    0   452    12
+#>   NIMV     0    0   101    0  102     0    11
+#>   IMV      0    0   140    0    0     0   128
+#>   Disch    0    0     0    0    0     0     0
+#>   Death    0    0     0    0    0     0     0
+#> 
+#> Time units of follow-up by status:
+#> # A tibble: 1 × 5
+#>   status   subjects   min median   max
+#>   <chr>       <int> <dbl>  <dbl> <dbl>
+#> 1 absorbed     2076     2      9   139
+#> 
+#> Records dropped or changed:
+#>   none
+all.equal(x$panel |> mutate(state = as.character(state)), panel)   # = sojourn_to_panel()
+#> [1] TRUE
+```
+
 ## `prep2()`
 
 **Definition**
@@ -227,7 +374,7 @@ individual-level table of second-order triples. Its output is the input of
 
 | Argument | Default | Meaning |
 |---|---|---|
-| `data` | — | panel data frame (one row per subject and time) |
+| `data` | — | panel data frame (one row per subject and time), or an `msm2prep` object from `msprep2()` (its panel, states and absorbing states are used) |
 | `id`, `time`, `state` | `"id"`, `"time"`, `"state"` | column names |
 | `states` | `NULL` | state space **and order**; default: observed states (factor levels, or sorted values) |
 | `absorbing` | `NULL` | absorbing states; default: inferred |
@@ -970,6 +1117,7 @@ head(simulate2(3, fit$P, first = first_mat, entry = c(NSP = 0.3)), 8)   # stagge
 
 | Class | Created by | Main components | Methods |
 |---|---|---|---|
+| `msm2prep` | `msprep2()` | `panel`, `states`, `absorbing`, `trans`, `transitions`, `subjects`, `issues`, `settings` | `print`, `summary` (and `prep2()` accepts it) |
 | `msm2data` | `prep2()` | `N`, `Y`, `triples`, `states`, `absorbing`, `n`, `ntriples`, `time.range` | `print`, `summary` |
 | `P2est` | `P2est()` | `estimate`, `P`, `P.lower`, `P.upper`, `P.se`, settings | `print` |
 | `P2boot` | `P2boot()` | a `P2est` plus `boot`, `B` | `print` (and every `P2est` use) |
