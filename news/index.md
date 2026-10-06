@@ -6,10 +6,13 @@ First release. Implements the methods of Najera-Zuloaga, Besalú and
 Gómez Melis (2025) and reproduces their analysis of the DIVINE cohort
 ([`vignette("paper")`](https://jcarmezim.github.io/mstate2/articles/paper.md)).
 
-- [`sojourn_to_panel()`](https://jcarmezim.github.io/mstate2/reference/sojourn_to_panel.md)
+- [`msprep2()`](https://jcarmezim.github.io/mstate2/reference/msprep2.md)
   and [`rnd()`](https://jcarmezim.github.io/mstate2/reference/rnd.md):
-  build the daily panel from the days spent in each state, rounding half
-  days up.
+  build the daily panel from the data as collected (the days spent in
+  each state, as in DIVINE; one time and status column per state, as for
+  [`mstate::msprep()`](https://rdrr.io/pkg/mstate/man/msprep.html); an
+  `msdata` object; or one row per change of state, with dates), rounding
+  half days up and reporting every record dropped or changed.
 - [`prep2()`](https://jcarmezim.github.io/mstate2/reference/prep2.md):
   second-order counting processes $`\tilde N_{hj\ell}(s)`$ and
   $`\tilde Y_{hj}(s-1)`$.

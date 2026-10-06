@@ -14,7 +14,7 @@ of every function is explained in
 
 | Paper | What it shows | Function | Section here |
 |----|----|----|----|
-| Data | daily panel of the DIVINE cohort | [`sojourn_to_panel()`](https://jcarmezim.github.io/mstate2/reference/sojourn_to_panel.md), [`rnd()`](https://jcarmezim.github.io/mstate2/reference/rnd.md) | 2 |
+| Data | daily panel of the DIVINE cohort | [`msprep2()`](https://jcarmezim.github.io/mstate2/reference/msprep2.md), [`rnd()`](https://jcarmezim.github.io/mstate2/reference/rnd.md) | 2 |
 | Counting processes | $`\tilde N_{hj\ell}(s)`$, $`\tilde Y_{hj}(s-1)`$ | [`prep2()`](https://jcarmezim.github.io/mstate2/reference/prep2.md) | 3 |
 | Eq. 9, Theorems 4–5 (Eqs. 13–14), Corollary 2 | relative probability estimator (RPE), variance, CI | [`P2est()`](https://jcarmezim.github.io/mstate2/reference/P2est.md) | 4 |
 | Table 2 | 1-step probabilities from severe pneumonia | [`P2est()`](https://jcarmezim.github.io/mstate2/reference/P2est.md) | 4 |
@@ -58,17 +58,28 @@ ended (`disch.s`, `death.s`).
 
 The methods of the paper are in discrete time: one observation per
 patient and day.
-[`sojourn_to_panel()`](https://jcarmezim.github.io/mstate2/reference/sojourn_to_panel.md)
-expands the days spent in each state into one row per day, in the
-visiting order NSP → SP → NIMV → IMV → Recov, and appends the final
-state.
+[`msprep2()`](https://jcarmezim.github.io/mstate2/reference/msprep2.md)
+expands the days spent in each state (`durations`) into one row per day,
+in the visiting order NSP → SP → NIMV → IMV → Recov, and appends the
+final state (`outcome`).
 
 ``` r
 
 estados <- c("NSP", "SP", "Recov", "NIMV", "IMV", "Disch", "Death")
-panel <- sojourn_to_panel(MSM, id = "id",
-  segments  = c(NSP = "t.nosp", SP = "t.sp", NIMV = "t.nimv", IMV = "t.mv", Recov = "t.recov"),
-  absorbing = c(Disch = "disch.s", Death = "death.s"))
+x <- msprep2(MSM,
+  durations = c(NSP = "t.nosp", SP = "t.sp", NIMV = "t.nimv", IMV = "t.mv", Recov = "t.recov"),
+  outcome   = c(Disch = "disch.s", Death = "death.s"),
+  states    = estados)
+x
+#> <msm2prep>  discrete-time panel ready for prep2()
+#>   layout          : sojourn
+#>   subjects        : 2076 (2076 absorbed, 0 censored)
+#>   panel rows      : 27736 (time 0 - 138)
+#>   states (7)      : NSP, SP, Recov, NIMV, IMV, Disch, Death
+#>   absorbing       : Disch, Death
+#>   transitions     : 14 types, 3433 in total
+#>   issues          : none
+panel <- x$panel
 dim(panel)
 #> [1] 27736     3
 ```

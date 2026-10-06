@@ -26,9 +26,9 @@ prep2(
 - data:
 
   A data frame in long/panel format (one row per subject and time
-  point), e.g. the output of
-  [`sojourn_to_panel`](https://jcarmezim.github.io/mstate2/reference/sojourn_to_panel.md)
-  or
+  point), e.g. the panel of
+  [`msprep2`](https://jcarmezim.github.io/mstate2/reference/msprep2.md)
+  or the output of
   [`simulate2`](https://jcarmezim.github.io/mstate2/reference/simulate2.md),
   or an `"msm2prep"` object from
   [`msprep2`](https://jcarmezim.github.io/mstate2/reference/msprep2.md)

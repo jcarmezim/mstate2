@@ -88,7 +88,7 @@ rnd(x)
 **What it does.** Rounds numbers to the nearest integer, sending halves
 **away from zero** (0.5 → 1, 2.5 → 3, −0.5 → −1). It is the default
 discretisation of
-[`sojourn_to_panel()`](https://jcarmezim.github.io/mstate2/reference/sojourn_to_panel.md)
+[`msprep2()`](https://jcarmezim.github.io/mstate2/reference/msprep2.md)
 and the same function, with the same name, that the code of the methods
 paper uses to turn the DIVINE sojourn times into days.
 
@@ -122,87 +122,6 @@ round(c(-2.5, -0.5, 0.4, 0.5, 1.5, 2.5))
 MSM |> filter(t.sp %% 1 == 0.5) |> nrow()   # half-day stays in severe pneumonia
 #> [1] 146
 ```
-
-### `sojourn_to_panel()`
-
-**Definition**
-
-``` r
-
-sojourn_to_panel(data, id, segments, absorbing, round_fun = rnd)
-```
-
-**What it does.** Converts **sojourn-time data** (one row per subject,
-with the total time spent in each state and indicators of how follow-up
-ended) into a discrete-time **panel** (one row per subject and time
-unit, with the state occupied).
-
-**Arguments**
-
-| Argument | Default | Meaning |
-|----|----|----|
-| `data` | — | data frame, one row per subject |
-| `id` | — | name of the subject id column |
-| `segments` | — | named character vector, `c(state = "duration column", ...)`, **in visiting order** |
-| `absorbing` | — | named character vector, `c(state = "0/1 indicator column", ...)` |
-| `round_fun` | `rnd` | function used to discretise durations |
-
-**Value.** A tibble with columns `id`, `time` (0, 1, 2, …) and `state`
-(character).
-
-**How it works.** For each subject:
-
-1.  The duration columns are put in long format (one row per subject and
-    state,
-    [`tidyr::pivot_longer()`](https://tidyr.tidyverse.org/reference/pivot_longer.html))
-    and discretised with `round_fun`; negative or `NA` durations become
-    0 (“not visited”).
-2.  Each state is repeated as many times as its duration
-    ([`tidyr::uncount()`](https://tidyr.tidyverse.org/reference/uncount.html)),
-    in the order of `segments`.
-3.  The first absorbing state whose indicator equals 1 is appended. If
-    none equals 1, the subject is right-censored and has no final
-    absorbing row.
-4.  Times are numbered from 0. Subjects with no duration and no event
-    contribute no rows. Subjects keep the row order of `data`.
-
-This is the discretisation of the paper’s code, which also rounds each
-sojourn separately with
-[`rnd()`](https://jcarmezim.github.io/mstate2/reference/rnd.md).
-
-**Errors and warnings.** Error if `data` is not a data frame, or if any
-column named in `id`, `segments` or `absorbing` is missing. Warning if a
-positive duration rounds to 0 time units: that visit is dropped, and
-with it the transitions into and out of it (A → B → C would become A →
-C). The warning gives the number of visits lost by state. It never
-happens in DIVINE, whose durations are whole or half days.
-
-**Caveat.** The order of visits and repeated visits cannot be recovered
-from sojourn times: the order is imposed by `segments` and each state is
-visited at most once.
-
-**Example**
-
-``` r
-
-panel <- sojourn_to_panel(MSM, id = "id", segments = segs, absorbing = absb)
-dim(panel)
-#> [1] 27736     3
-count(panel, state)         # patient-days in each state
-#> # A tibble: 7 × 2
-#>   state     n
-#>   <chr> <int>
-#> 1 Death   218
-#> 2 Disch  1858
-#> 3 IMV    4681
-#> 4 NIMV   1019
-#> 5 NSP   12432
-#> 6 Recov  4228
-#> 7 SP     3300
-```
-
-Every DIVINE patient ends in `Disch` or `Death`, so no follow-up is
-censored.
 
 ### `msprep2()`
 
@@ -373,9 +292,27 @@ summary(x)
 #> 
 #> Records dropped or changed:
 #>   none
-all.equal(x$panel |> mutate(state = as.character(state)), panel)   # = sojourn_to_panel()
-#> [1] TRUE
+panel <- x$panel
+count(panel, state)         # patient-days in each state
+#> # A tibble: 7 × 2
+#>   state     n
+#>   <fct> <int>
+#> 1 NSP   12432
+#> 2 SP     3300
+#> 3 Recov  4228
+#> 4 NIMV   1019
+#> 5 IMV    4681
+#> 6 Disch  1858
+#> 7 Death   218
 ```
+
+Every DIVINE patient ends in `Disch` or `Death`, so no follow-up is
+censored. In the sojourn layout the order of the visits and repeated
+visits cannot be recovered from the durations: the order is that of
+`durations` and each state is visited at most once. Each sojourn is
+rounded separately with
+[`rnd()`](https://jcarmezim.github.io/mstate2/reference/rnd.md), as in
+the paper’s code.
 
 ### `prep2()`
 

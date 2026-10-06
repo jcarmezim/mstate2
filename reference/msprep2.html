@@ -184,7 +184,7 @@
 <dd><p>One row per subject, with one time column per state (<code>times</code>), as in <code><a href="https://rdrr.io/pkg/mstate/man/msprep.html" class="external-link">mstate::msprep()</a></code>: the time the state was entered, or <code>NA</code> if it was never visited. With <code>status</code>, a state is visited when its status is 1, and the times with status 0 are censoring times, as in <code>msprep()</code>.</p></dd>
 
   <dt><code>"sojourn"</code></dt>
-<dd><p>One row per subject, with the time spent in each transient state (<code>durations</code>, in visiting order) and 0/1 indicators of the absorbing state that ended follow-up (<code>outcome</code>), as in the DIVINE data. Gives the same panel as <code><a href="sojourn_to_panel.html">sojourn_to_panel</a></code>.</p></dd>
+<dd><p>One row per subject, with the time spent in each transient state (<code>durations</code>, in visiting order) and 0/1 indicators of the absorbing state that ended follow-up (<code>outcome</code>), as in the DIVINE data. Each sojourn is rounded separately, as in the code of the methods paper.</p></dd>
 
   <dt><code>"msdata"</code></dt>
 <dd><p>An object of class <code>"msdata"</code> made by <code><a href="https://rdrr.io/pkg/mstate/man/msprep.html" class="external-link">mstate::msprep()</a></code>; its transition matrix is used as <code>trans</code>.</p></dd>
@@ -246,7 +246,7 @@ Each element can also be <code>c("t_ill" = "ill")</code> (time column = status c
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="prep2.html">prep2</a></code>, <code><a href="sojourn_to_panel.html">sojourn_to_panel</a></code></p></div>
+    <div class="dont-index"><p><code><a href="prep2.html">prep2</a></code>, <code><a href="rnd.html">rnd</a></code></p></div>
     </div>
 
     <div class="section level2">

@@ -241,9 +241,9 @@ invasive ventilation (<code>NIMV</code>, <code>IMV</code>), recovery
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rnd.html">rnd</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></code></pre></div>
 <p><strong>What it does.</strong> Rounds numbers to the nearest integer,
 sending halves <strong>away from zero</strong> (0.5 → 1, 2.5 → 3, −0.5 →
-−1). It is the default discretisation of <code><a href="../reference/sojourn_to_panel.html">sojourn_to_panel()</a></code>
-and the same function, with the same name, that the code of the methods
-paper uses to turn the DIVINE sojourn times into days.</p>
+−1). It is the default discretisation of <code><a href="../reference/msprep2.html">msprep2()</a></code> and the
+same function, with the same name, that the code of the methods paper
+uses to turn the DIVINE sojourn times into days.</p>
 <p><strong>Arguments</strong></p>
 <table class="table">
 <thead><tr class="header">
@@ -277,117 +277,11 @@ paper.</p>
 <span><span class="co">#&gt; [1] 146</span></span></code></pre></div>
 </div>
 <div class="section level3">
-<h3 id="sojourn_to_panel">
-<code>sojourn_to_panel()</code><a class="anchor" aria-label="anchor" href="#sojourn_to_panel"></a>
-</h3>
-<p><strong>Definition</strong></p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/sojourn_to_panel.html">sojourn_to_panel</a></span><span class="op">(</span><span class="va">data</span>, <span class="va">id</span>, <span class="va">segments</span>, <span class="va">absorbing</span>, round_fun <span class="op">=</span> <span class="va">rnd</span><span class="op">)</span></span></code></pre></div>
-<p><strong>What it does.</strong> Converts <strong>sojourn-time
-data</strong> (one row per subject, with the total time spent in each
-state and indicators of how follow-up ended) into a discrete-time
-<strong>panel</strong> (one row per subject and time unit, with the
-state occupied).</p>
-<p><strong>Arguments</strong></p>
-<table class="table">
-<colgroup>
-<col width="33%">
-<col width="33%">
-<col width="33%">
-</colgroup>
-<thead><tr class="header">
-<th>Argument</th>
-<th>Default</th>
-<th>Meaning</th>
-</tr></thead>
-<tbody>
-<tr class="odd">
-<td><code>data</code></td>
-<td>—</td>
-<td>data frame, one row per subject</td>
-</tr>
-<tr class="even">
-<td><code>id</code></td>
-<td>—</td>
-<td>name of the subject id column</td>
-</tr>
-<tr class="odd">
-<td><code>segments</code></td>
-<td>—</td>
-<td>named character vector,
-<code>c(state = "duration column", ...)</code>, <strong>in visiting
-order</strong>
-</td>
-</tr>
-<tr class="even">
-<td><code>absorbing</code></td>
-<td>—</td>
-<td>named character vector,
-<code>c(state = "0/1 indicator column", ...)</code>
-</td>
-</tr>
-<tr class="odd">
-<td><code>round_fun</code></td>
-<td><code>rnd</code></td>
-<td>function used to discretise durations</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Value.</strong> A tibble with columns <code>id</code>,
-<code>time</code> (0, 1, 2, …) and <code>state</code> (character).</p>
-<p><strong>How it works.</strong> For each subject:</p>
-<ol style="list-style-type: decimal">
-<li>The duration columns are put in long format (one row per subject and
-state, <code><a href="https://tidyr.tidyverse.org/reference/pivot_longer.html" class="external-link">tidyr::pivot_longer()</a></code>) and discretised with
-<code>round_fun</code>; negative or <code>NA</code> durations become 0
-(“not visited”).</li>
-<li>Each state is repeated as many times as its duration
-(<code><a href="https://tidyr.tidyverse.org/reference/uncount.html" class="external-link">tidyr::uncount()</a></code>), in the order of
-<code>segments</code>.</li>
-<li>The first absorbing state whose indicator equals 1 is appended. If
-none equals 1, the subject is right-censored and has no final absorbing
-row.</li>
-<li>Times are numbered from 0. Subjects with no duration and no event
-contribute no rows. Subjects keep the row order of
-<code>data</code>.</li>
-</ol>
-<p>This is the discretisation of the paper’s code, which also rounds
-each sojourn separately with <code><a href="../reference/rnd.html">rnd()</a></code>.</p>
-<p><strong>Errors and warnings.</strong> Error if <code>data</code> is
-not a data frame, or if any column named in <code>id</code>,
-<code>segments</code> or <code>absorbing</code> is missing. Warning if a
-positive duration rounds to 0 time units: that visit is dropped, and
-with it the transitions into and out of it (A → B → C would become A →
-C). The warning gives the number of visits lost by state. It never
-happens in DIVINE, whose durations are whole or half days.</p>
-<p><strong>Caveat.</strong> The order of visits and repeated visits
-cannot be recovered from sojourn times: the order is imposed by
-<code>segments</code> and each state is visited at most once.</p>
-<p><strong>Example</strong></p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">panel</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/sojourn_to_panel.html">sojourn_to_panel</a></span><span class="op">(</span><span class="va">MSM</span>, id <span class="op">=</span> <span class="st">"id"</span>, segments <span class="op">=</span> <span class="va">segs</span>, absorbing <span class="op">=</span> <span class="va">absb</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">panel</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 27736     3</span></span>
-<span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">panel</span>, <span class="va">state</span><span class="op">)</span>         <span class="co"># patient-days in each state</span></span>
-<span><span class="co">#&gt; # A tibble: 7 × 2</span></span>
-<span><span class="co">#&gt;   state     n</span></span>
-<span><span class="co">#&gt;   &lt;chr&gt; &lt;int&gt;</span></span>
-<span><span class="co">#&gt; 1 Death   218</span></span>
-<span><span class="co">#&gt; 2 Disch  1858</span></span>
-<span><span class="co">#&gt; 3 IMV    4681</span></span>
-<span><span class="co">#&gt; 4 NIMV   1019</span></span>
-<span><span class="co">#&gt; 5 NSP   12432</span></span>
-<span><span class="co">#&gt; 6 Recov  4228</span></span>
-<span><span class="co">#&gt; 7 SP     3300</span></span></code></pre></div>
-<p>Every DIVINE patient ends in <code>Disch</code> or
-<code>Death</code>, so no follow-up is censored.</p>
-</div>
-<div class="section level3">
 <h3 id="msprep2">
 <code>msprep2()</code><a class="anchor" aria-label="anchor" href="#msprep2"></a>
 </h3>
 <p><strong>Definition</strong></p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/msprep2.html">msprep2</a></span><span class="op">(</span><span class="va">data</span>, id <span class="op">=</span> <span class="st">"id"</span>, format <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"events"</span>, <span class="st">"wide"</span>, <span class="st">"sojourn"</span>, <span class="st">"msdata"</span><span class="op">)</span>,</span>
 <span>        time <span class="op">=</span> <span class="st">"time"</span>, state <span class="op">=</span> <span class="st">"state"</span>, times <span class="op">=</span> <span class="cn">NULL</span>, status <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>        durations <span class="op">=</span> <span class="cn">NULL</span>, outcome <span class="op">=</span> <span class="cn">NULL</span>, initial <span class="op">=</span> <span class="cn">NULL</span>, start <span class="op">=</span> <span class="cn">NULL</span>, end <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -737,7 +631,7 @@ warning gives the number of records dropped or changed, by type:</p>
 </tbody>
 </table>
 <p><strong>Example</strong></p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/msprep2.html">msprep2</a></span><span class="op">(</span><span class="va">MSM</span>, durations <span class="op">=</span> <span class="va">segs</span>, outcome <span class="op">=</span> <span class="va">absb</span>, states <span class="op">=</span> <span class="va">estados</span><span class="op">)</span></span>
 <span><span class="va">x</span></span>
 <span><span class="co">#&gt; &lt;msm2prep&gt;  discrete-time panel ready for prep2()</span></span>
@@ -770,15 +664,31 @@ warning gives the number of records dropped or changed, by type:</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Records dropped or changed:</span></span>
 <span><span class="co">#&gt;   none</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">panel</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>state <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character</a></span><span class="op">(</span><span class="va">state</span><span class="op">)</span><span class="op">)</span>, <span class="va">panel</span><span class="op">)</span>   <span class="co"># = sojourn_to_panel()</span></span>
-<span><span class="co">#&gt; [1] TRUE</span></span></code></pre></div>
+<span><span class="va">panel</span> <span class="op">&lt;-</span> <span class="va">x</span><span class="op">$</span><span class="va">panel</span></span>
+<span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">panel</span>, <span class="va">state</span><span class="op">)</span>         <span class="co"># patient-days in each state</span></span>
+<span><span class="co">#&gt; # A tibble: 7 × 2</span></span>
+<span><span class="co">#&gt;   state     n</span></span>
+<span><span class="co">#&gt;   &lt;fct&gt; &lt;int&gt;</span></span>
+<span><span class="co">#&gt; 1 NSP   12432</span></span>
+<span><span class="co">#&gt; 2 SP     3300</span></span>
+<span><span class="co">#&gt; 3 Recov  4228</span></span>
+<span><span class="co">#&gt; 4 NIMV   1019</span></span>
+<span><span class="co">#&gt; 5 IMV    4681</span></span>
+<span><span class="co">#&gt; 6 Disch  1858</span></span>
+<span><span class="co">#&gt; 7 Death   218</span></span></code></pre></div>
+<p>Every DIVINE patient ends in <code>Disch</code> or
+<code>Death</code>, so no follow-up is censored. In the sojourn layout
+the order of the visits and repeated visits cannot be recovered from the
+durations: the order is that of <code>durations</code> and each state is
+visited at most once. Each sojourn is rounded separately with
+<code><a href="../reference/rnd.html">rnd()</a></code>, as in the paper’s code.</p>
 </div>
 <div class="section level3">
 <h3 id="prep2">
 <code>prep2()</code><a class="anchor" aria-label="anchor" href="#prep2"></a>
 </h3>
 <p><strong>Definition</strong></p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/prep2.html">prep2</a></span><span class="op">(</span><span class="va">data</span>, id <span class="op">=</span> <span class="st">"id"</span>, time <span class="op">=</span> <span class="st">"time"</span>, state <span class="op">=</span> <span class="st">"state"</span>,</span>
 <span>      states <span class="op">=</span> <span class="cn">NULL</span>, absorbing <span class="op">=</span> <span class="cn">NULL</span>, drop.na <span class="op">=</span> <span class="cn">FALSE</span>, check.consecutive <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <p><strong>What it does.</strong> Builds the <strong>second-order
@@ -955,7 +865,7 @@ observations).</li>
 consecutive <strong>rows</strong>).</li>
 </ul>
 <p><strong>Example</strong></p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">d</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prep2.html">prep2</a></span><span class="op">(</span><span class="va">panel</span>, states <span class="op">=</span> <span class="va">estados</span><span class="op">)</span></span>
 <span><span class="va">d</span></span>
 <span><span class="co">#&gt; &lt;msm2data&gt;  second-order counting processes</span></span>
@@ -994,7 +904,7 @@ consecutive <strong>rows</strong>).</li>
 <code>summary.msm2data()</code><a class="anchor" aria-label="anchor" href="#print-msm2data-and-summary-msm2data"></a>
 </h3>
 <p><strong>Definition</strong></p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co">## S3 method for class 'msm2data'</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span>
 <span><span class="co">## S3 method for class 'msm2data'</span></span>
@@ -1016,7 +926,7 @@ and columns <code>total_at_risk</code>
 the RPE denominator, in subject-instants), <code>s_min</code> and
 <code>s_max</code>.</p>
 <p><strong>Example</strong></p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">expo</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">d</span><span class="op">)</span></span>
 <span><span class="co">#&gt; &lt;msm2data summary&gt;</span></span>
 <span><span class="co">#&gt;   2076 subjects, 23584 triples, time 0-138</span></span>
@@ -1046,7 +956,7 @@ the RPE denominator, in subject-instants), <code>s_min</code> and
 <code>P2est()</code><a class="anchor" aria-label="anchor" href="#p2est"></a>
 </h3>
 <p><strong>Definition</strong></p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/P2est.html">P2est</a></span><span class="op">(</span><span class="va">object</span>, conf.level <span class="op">=</span> <span class="fl">0.95</span>, ci <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"wald"</span>, <span class="st">"logit"</span><span class="op">)</span>, clip <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <p><strong>What it does.</strong> Estimates every observed 1-step
 second-order transition probability
@@ -1191,7 +1101,7 @@ changes.</p>
 not an <code>msm2data</code> or if <code>conf.level</code> is not a
 single number strictly between 0 and 1.</p>
 <p><strong>Example</strong></p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/P2est.html">P2est</a></span><span class="op">(</span><span class="va">d</span><span class="op">)</span></span>
 <span><span class="va">fit</span></span>
 <span><span class="co">#&gt; &lt;P2est&gt;  RPE estimates of 1-step second-order transition probabilities</span></span>
@@ -1227,7 +1137,7 @@ single number strictly between 0 and 1.</p>
 <code>print.P2est()</code><a class="anchor" aria-label="anchor" href="#print-p2est"></a>
 </h3>
 <p><strong>Definition</strong></p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co">## S3 method for class 'P2est'</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
 <p><strong>What it does.</strong> Prints the estimator, states, interval
@@ -1240,7 +1150,7 @@ themselves are in <code>x$estimate</code>.</p>
 <code>P2boot()</code><a class="anchor" aria-label="anchor" href="#p2boot"></a>
 </h3>
 <p><strong>Definition</strong></p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/P2boot.html">P2boot</a></span><span class="op">(</span><span class="va">object</span>, B <span class="op">=</span> <span class="fl">200</span>, conf.level <span class="op">=</span> <span class="fl">0.95</span>, seed <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
 <p><strong>What it does.</strong> Subject-level bootstrap of the RPE:
 resamples subjects with replacement and recomputes every
@@ -1323,7 +1233,7 @@ coverage 1 and were up to five times wider.</p>
 not an <code>msm2data</code>, if <code>B &lt; 2</code> or if
 <code>conf.level</code> is not in (0, 1).</p>
 <p><strong>Example</strong></p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">bt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/P2boot.html">P2boot</a></span><span class="op">(</span><span class="va">d</span>, B <span class="op">=</span> <span class="fl">500</span>, seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="va">bt</span></span>
 <span><span class="co">#&gt; &lt;P2boot&gt;  RPE estimates with 500 subject-level bootstrap replicates</span></span>
@@ -1363,7 +1273,7 @@ not an <code>msm2data</code>, if <code>B &lt; 2</code> or if
 <code>ckequations()</code><a class="anchor" aria-label="anchor" href="#ckequations"></a>
 </h3>
 <p><strong>Definition</strong></p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ckequations.html">ckequations</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">h</span>, <span class="va">j</span>, l <span class="op">=</span> <span class="cn">NULL</span>, nsteps <span class="op">=</span> <span class="fl">9L</span>, bounds <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
 <p><strong>What it does.</strong> Computes the
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math>-step
@@ -1503,7 +1413,7 @@ the state space.</li>
 are no limits to propagate).</li>
 </ul>
 <p><strong>Example</strong></p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ckequations.html">ckequations</a></span><span class="op">(</span><span class="va">fit</span>, h <span class="op">=</span> <span class="st">"NSP"</span>, j <span class="op">=</span> <span class="st">"SP"</span>, l <span class="op">=</span> <span class="st">"NIMV"</span>, nsteps <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 0.2238 0.1820 0.1587 0.1383 0.1204</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="../reference/ckequations.html">ckequations</a></span><span class="op">(</span><span class="va">fit</span>, h <span class="op">=</span> <span class="st">"NSP"</span>, j <span class="op">=</span> <span class="st">"SP"</span>, nsteps <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span>            <span class="co"># full distribution</span></span>
@@ -1534,7 +1444,7 @@ are no limits to propagate).</li>
 <code>compare2()</code><a class="anchor" aria-label="anchor" href="#compare2"></a>
 </h3>
 <p><strong>Definition</strong></p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/compare2.html">compare2</a></span><span class="op">(</span><span class="va">object</span>, <span class="va">h</span>, <span class="va">j</span>, <span class="va">l</span>, nsteps <span class="op">=</span> <span class="fl">9L</span>, bounds <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <p><strong>What it does.</strong> For a common current state
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math>
@@ -1619,7 +1529,7 @@ are stacked in long format (<code><a href="https://purrr.tidyverse.org/reference
 not a <code>P2est</code>, or if <code>j</code>, <code>l</code> or any
 <code>h</code> is not in the state space.</p>
 <p><strong>Example</strong></p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cmp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compare2.html">compare2</a></span><span class="op">(</span><span class="va">fit</span>, h <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"NSP"</span>, <span class="st">"SP"</span><span class="op">)</span>, j <span class="op">=</span> <span class="st">"SP"</span>, l <span class="op">=</span> <span class="st">"NIMV"</span><span class="op">)</span></span>
 <span><span class="va">cmp</span></span>
 <span><span class="co">#&gt; &lt;msm2pred&gt;  RPE n-step transitions to 'NIMV' via current state 'SP'</span></span>
@@ -1649,7 +1559,7 @@ not a <code>P2est</code>, or if <code>j</code>, <code>l</code> or any
 <code>overlap_step()</code><a class="anchor" aria-label="anchor" href="#overlap_step"></a>
 </h3>
 <p><strong>Definition</strong></p>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/overlap_step.html">overlap_step</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></code></pre></div>
 <p><strong>What it does.</strong> For a two-group comparison with
 bounds, finds the <strong>first step at which the two intervals
@@ -1726,7 +1636,7 @@ seventh day” of the paper.</p>
 <p><strong>Errors and warnings.</strong> Error if <code>x</code> has no
 bounds, or does not have exactly two groups.</p>
 <p><strong>Example</strong></p>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/overlap_step.html">overlap_step</a></span><span class="op">(</span><span class="va">cmp</span><span class="op">)</span></span>
 <span><span class="co">#&gt; $n</span></span>
 <span><span class="co">#&gt; [1] 5</span></span>
@@ -1756,7 +1666,7 @@ bounds, or does not have exactly two groups.</p>
 <code>plot.msm2pred()</code><a class="anchor" aria-label="anchor" href="#print-msm2pred-summary-msm2pred-and-plot-msm2pred"></a>
 </h3>
 <p><strong>Definition</strong></p>
-<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co">## S3 method for class 'msm2pred'</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span>
 <span><span class="co">## S3 method for class 'msm2pred'</span></span>
@@ -1863,7 +1773,7 @@ and the time
 <p>A warning is issued if <code>type = "interval"</code> is requested
 without bounds (lines are drawn instead).</p>
 <p><strong>Example</strong></p>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">cmp</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Trajectory comparison (RPE, 95% evolution intervals)</span></span>
 <span><span class="co">#&gt;   target 'NIMV' via current state 'SP'; preceding: NSP, SP</span></span>
@@ -1884,7 +1794,7 @@ plot of chunk plot
 <code>simulate2()</code><a class="anchor" aria-label="anchor" href="#simulate2"></a>
 </h3>
 <p><strong>Definition</strong></p>
-<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/simulate2.html">simulate2</a></span><span class="op">(</span><span class="va">n</span>, <span class="va">tensor</span>, <span class="va">first</span>, init <span class="op">=</span> <span class="cn">NULL</span>, entry <span class="op">=</span> <span class="cn">NULL</span>, states <span class="op">=</span> <span class="cn">NULL</span>, maxT <span class="op">=</span> <span class="fl">1000</span><span class="op">)</span></span></code></pre></div>
 <p><strong>What it does.</strong> Simulates discrete-time panel data
 from a second-order Markov multistate model, defined by a second-order
@@ -1995,7 +1905,7 @@ unnamed or names states not in <code>states</code>. Warning if
 <code>maxT</code> is reached with individuals still active (usually a
 zero-probability or non-absorbing cycle in <code>tensor</code>).</p>
 <p><strong>Example</strong></p>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co">## simulate from the model fitted to DIVINE; the first move (no previous</span></span>
 <span><span class="co">## time) uses the empirical matrix of day 0 -&gt; day 1</span></span>
 <span><span class="va">first_moves</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">inner_join</a></span><span class="op">(</span></span>
@@ -2209,7 +2119,7 @@ otherwise <code>a</code>
 </tr>
 </tbody>
 </table>
-<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">Q</span> <span class="op">&lt;-</span> <span class="fu">mstate2</span><span class="fu">:::</span><span class="fu">.pair_matrix</span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">P</span>, <span class="fl">7</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">Q</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 49 49</span></span>

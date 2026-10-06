@@ -1,9 +1,11 @@
 # Round half away from zero
 
-Function to turn the sojourn times into whole days. Unlike
-[`round`](https://rdrr.io/r/base/Round.html), which rounds halves to the
-even number (`round(0.5) = 0`, `round(2.5) = 2`), `rnd` always rounds
-halves away from zero (`rnd(0.5) = 1`, `rnd(2.5) = 3`).
+Function to turn the sojourn times into whole days (the default
+discretisation of
+[`msprep2`](https://jcarmezim.github.io/mstate2/reference/msprep2.md)).
+Unlike [`round`](https://rdrr.io/r/base/Round.html), which rounds halves
+to the even number (`round(0.5) = 0`, `round(2.5) = 2`), `rnd` always
+rounds halves away from zero (`rnd(0.5) = 1`, `rnd(2.5) = 3`).
 
 ## Usage
 

@@ -66,7 +66,7 @@ matrix.
 
 | Stage | Function | Output (class) |
 |----|----|----|
-| Data | [`msprep2()`](https://jcarmezim.github.io/mstate2/reference/msprep2.md), [`sojourn_to_panel()`](https://jcarmezim.github.io/mstate2/reference/sojourn_to_panel.md), [`rnd()`](https://jcarmezim.github.io/mstate2/reference/rnd.md) | daily panel, a tibble `(id, time, state)` (`msm2prep` with its report) |
+| Data | [`msprep2()`](https://jcarmezim.github.io/mstate2/reference/msprep2.md), [`rnd()`](https://jcarmezim.github.io/mstate2/reference/rnd.md) | daily panel, a tibble `(id, time, state)` (`msm2prep` with its report) |
 | Counting processes | [`prep2()`](https://jcarmezim.github.io/mstate2/reference/prep2.md) | `msm2data` |
 | Estimation | [`P2est()`](https://jcarmezim.github.io/mstate2/reference/P2est.md), [`P2boot()`](https://jcarmezim.github.io/mstate2/reference/P2boot.md) | `P2est`, `P2boot` |
 | Prediction | [`ckequations()`](https://jcarmezim.github.io/mstate2/reference/ckequations.md) | vector / matrix / tibble |
@@ -120,78 +120,8 @@ patient and day, with columns `id`, `time` and `state`. Any data in that
 form can be passed to
 [`prep2()`](https://jcarmezim.github.io/mstate2/reference/prep2.md).
 [`msprep2()`](https://jcarmezim.github.io/mstate2/reference/msprep2.md)
-builds it from raw data as they are collected (dates of each state, one
-column per state, days spent in each state, or an `mstate` object) and
-reports every record it has to change; for data like DIVINE, with the
-days spent in each state,
-[`sojourn_to_panel()`](https://jcarmezim.github.io/mstate2/reference/sojourn_to_panel.md)
-builds it too.
-
-## `sojourn_to_panel()`: from days spent in each state
-
-``` r
-
-sojourn_to_panel(data, id, segments, absorbing, round_fun = rnd)
-```
-
-| Argument | Meaning |
-|----|----|
-| `data` | one row per patient |
-| `id` | name of the identifier column |
-| `segments` | named vector `c(state = "duration column")`, **in visiting order** |
-| `absorbing` | named vector `c(state = "0/1 indicator")`; the first one equal to 1 ends follow-up |
-| `round_fun` | discretisation of the durations (default [`rnd()`](https://jcarmezim.github.io/mstate2/reference/rnd.md)) |
-
-For each patient, every duration is rounded to whole days, each state is
-repeated as many days as its duration, in the order of `segments`, and
-the absorbing state whose indicator is 1 is appended. A patient with no
-event is right-censored. Because only total durations are available, the
-order of the visits is the one given by `segments` and each state is
-visited at most once.
-
-``` r
-
-segs  <- c(NSP = "t.nosp", SP = "t.sp", NIMV = "t.nimv", IMV = "t.mv", Recov = "t.recov")
-absb  <- c(Disch = "disch.s", Death = "death.s")
-panel <- sojourn_to_panel(MSM, id = "id", segments = segs, absorbing = absb)
-dim(panel)
-#> [1] 27736     3
-count(panel, state)
-#> # A tibble: 7 × 2
-#>   state     n
-#>   <chr> <int>
-#> 1 Death   218
-#> 2 Disch  1858
-#> 3 IMV    4681
-#> 4 NIMV   1019
-#> 5 NSP   12432
-#> 6 Recov  4228
-#> 7 SP     3300
-```
-
-[`count()`](https://dplyr.tidyverse.org/reference/count.html) gives the
-patient-days in each state: the panel has one row per patient and day of
-follow-up, ending in `Disch` or `Death`.
-
-## `rnd()`: rounding half away from zero
-
-``` r
-
-rnd(c(0.5, 1.5, 2.5))
-#> [1] 1 2 3
-round(c(0.5, 1.5, 2.5))
-#> [1] 0 2 2
-```
-
-[`round()`](https://rdrr.io/r/base/Round.html) sends halves to the
-nearest even integer, so a stay of half a day would vanish.
-[`rnd()`](https://jcarmezim.github.io/mstate2/reference/rnd.md) sends
-them away from zero, as in the DIVINE analysis. In DIVINE, 146
-severe-pneumonia stays last a whole number of days plus one half. If a
-positive stay rounds to 0 days,
-[`sojourn_to_panel()`](https://jcarmezim.github.io/mstate2/reference/sojourn_to_panel.md)
-drops it and warns, because the transitions into and out of that state
-would be lost; this never happens in DIVINE.
+builds it from the data as they were collected and reports every record
+it has to change.
 
 ## `msprep2()`: from raw data as collected
 
@@ -214,10 +144,74 @@ the layout in which they were collected:
 
 | Layout | One row per | Arguments |
 |----|----|----|
-| events | subject and recorded state, with the date or time it was entered | `time`, `state` |
-| wide (as `msprep()`) | subject, with one time column (and optionally one status column) per state | `times`, `status` |
 | sojourn (as DIVINE) | subject, with the days spent in each state | `durations`, `outcome` |
+| wide (as `msprep()`) | subject, with one time and one status column per state | `states = list(...)` (or `times`, `status`) |
 | `msdata` | an object made by [`mstate::msprep()`](https://rdrr.io/pkg/mstate/man/msprep.html) | — |
+| events | subject and recorded state, with the date or time it was entered | `time`, `state` |
+
+DIVINE gives, for every patient, the days spent in each state
+(`durations`, in visiting order) and how follow-up ended (`outcome`, 0/1
+indicators of the absorbing states):
+
+``` r
+
+segs  <- c(NSP = "t.nosp", SP = "t.sp", NIMV = "t.nimv", IMV = "t.mv", Recov = "t.recov")
+absb  <- c(Disch = "disch.s", Death = "death.s")
+x <- msprep2(MSM, durations = segs, outcome = absb,
+             states = c("NSP", "SP", "Recov", "NIMV", "IMV", "Disch", "Death"))
+x
+#> <msm2prep>  discrete-time panel ready for prep2()
+#>   layout          : sojourn
+#>   subjects        : 2076 (2076 absorbed, 0 censored)
+#>   panel rows      : 27736 (time 0 - 138)
+#>   states (7)      : NSP, SP, Recov, NIMV, IMV, Disch, Death
+#>   absorbing       : Disch, Death
+#>   transitions     : 14 types, 3433 in total
+#>   issues          : none
+panel <- x$panel
+count(panel, state)
+#> # A tibble: 7 × 2
+#>   state     n
+#>   <fct> <int>
+#> 1 NSP   12432
+#> 2 SP     3300
+#> 3 Recov  4228
+#> 4 NIMV   1019
+#> 5 IMV    4681
+#> 6 Disch  1858
+#> 7 Death   218
+```
+
+For each patient, every duration is rounded to whole days, each state is
+repeated as many days as its duration, in the order of `durations`, and
+the absorbing state whose indicator is 1 is appended. A patient with no
+event is right-censored. Because only total durations are available, the
+order of the visits is the one given by `durations` and each state is
+visited at most once.
+[`count()`](https://dplyr.tidyverse.org/reference/count.html) gives the
+patient-days in each state.
+
+## `rnd()`: rounding half away from zero
+
+``` r
+
+rnd(c(0.5, 1.5, 2.5))
+#> [1] 1 2 3
+round(c(0.5, 1.5, 2.5))
+#> [1] 0 2 2
+```
+
+[`round()`](https://rdrr.io/r/base/Round.html) sends halves to the
+nearest even integer, so a stay of half a day would vanish.
+[`rnd()`](https://jcarmezim.github.io/mstate2/reference/rnd.md) sends
+them away from zero, as in the DIVINE analysis. In DIVINE, 146
+severe-pneumonia stays last a whole number of days plus one half. If a
+positive stay rounds to 0 days,
+[`msprep2()`](https://jcarmezim.github.io/mstate2/reference/msprep2.md)
+drops it and reports it (`rounded_to_zero`), because the transitions
+into and out of that state would be lost; this never happens in DIVINE.
+
+## Other layouts
 
 **The easiest way: conventional names.** If the columns are called
 `<state>_time` and `<state>_status` for every state (e.g. `death_time`
@@ -248,39 +242,21 @@ msprep2(conv, absorbing = "dead")
 **Any column names: a list of states.** If the columns have other names,
 `states` can be a list that gives, for each state and in order, its time
 and status columns. Every other column (except `id` and the initial
-state) is kept as a covariate:
-
-``` r
-
-own <- tibble(patient = 1:4, start_state = c("healthy", "healthy", "ill", "healthy"),
-              t_ill = c(2, 6, 0, 3), ill = c(1, 0, 1, 1),
-              t_dth = c(5, 6, 4, 8), dth = c(1, 0, 1, 0), age = c(60, 72, 55, 49))
-msprep2(own, id = "patient", initial = "start_state", absorbing = "dead",
-        states = list(healthy = NULL,                            # only initial: no columns
-                      ill     = c(time = "t_ill", status = "ill"),
-                      dead    = c(time = "t_dth", status = "dth")))
-#> <msm2prep>  discrete-time panel ready for prep2()
-#>   layout          : wide
-#>   subjects        : 4 (2 absorbed, 2 censored)
-#>   panel rows      : 27 (time 0 - 8)
-#>   states (3)      : healthy, ill, dead
-#>   absorbing       : dead
-#>   transitions     : 2 types, 4 in total
-#>   issues          : none
-```
-
-The shortest way is `Surv(time, status)` from **survival**, with the
-column names written without quotes. It is evaluated on the data, so it
-can contain expressions; the times can be numbers or dates (also text),
-and the status is checked by
+state) is kept as a covariate. The shortest way is `Surv(time, status)`
+from **survival**, with the column names written without quotes; it is
+evaluated on the data, so it can contain expressions, the times can be
+numbers or dates (also text), and the status is checked by
 [`survival::Surv()`](https://rdrr.io/pkg/survival/man/Surv.html) (0/1,
 `TRUE`/`FALSE`, or 1/2 with a warning):
 
 ``` r
 
 library(survival)
+own <- tibble(patient = 1:4, start_state = c("healthy", "healthy", "ill", "healthy"),
+              t_ill = c(2, 6, 0, 3), ill = c(1, 0, 1, 1),
+              t_dth = c(5, 6, 4, 8), dth = c(1, 0, 1, 0), age = c(60, 72, 55, 49))
 msprep2(own, id = "patient", initial = "start_state", absorbing = "dead",
-        states = list(healthy = NULL,
+        states = list(healthy = NULL,                            # only initial: no columns
                       ill     = Surv(t_ill, ill),
                       dead    = Surv(t_dth, dth == 1)))
 #> <msm2prep>  discrete-time panel ready for prep2()
@@ -293,7 +269,8 @@ msprep2(own, id = "patient", initial = "start_state", absorbing = "dead",
 #>   issues          : none
 ```
 
-Each state can also be written `c("t_ill" = "ill")` (time column =
+Each state can also be written with the column names in quotes,
+`c(time = "t_ill", status = "ill")`, `c("t_ill" = "ill")` (time column =
 status column), `c("t_ill", "ill")` (the 0/1 column is taken as the
 status) or just `"t_ill"` (no status: visited when its time is
 recorded), and the forms can be mixed.
@@ -328,42 +305,12 @@ bmt <- msprep2(ebmt3,
 `trans` is optional (without it, the absorbing states are the states
 nobody leaves) and can also be a list of destinations,
 `list(Tx = c("PR", "RelDeath"), PR = "RelDeath", RelDeath = NULL)`, or
-an `mstate` matrix.
+an `mstate` matrix. An `msdata` object already made by `msprep()` is
+also accepted: `msprep2(msbmt)`.
 
-Times can be numbers or dates (also text such as `"15/03/2020"`),
-measured from each patient’s origin (`start`, e.g. the admission date)
-in units of `unit` (`"day"`, `"week"`, …). Codes can be relabelled with
-`recode`, and a matrix of allowed transitions (`trans`, as
-[`mstate::transMat()`](https://rdrr.io/pkg/mstate/man/transMat.html)) is
-checked. Every record that is dropped or changed (missing values,
-records before the origin, after the end of follow-up or after death,
-two states in the same day, transitions not allowed) is listed in
-`x$issues`, with one warning.
-
-With DIVINE, the sojourn layout gives the same panel as
-[`sojourn_to_panel()`](https://jcarmezim.github.io/mstate2/reference/sojourn_to_panel.md),
-plus the report:
-
-``` r
-
-x <- msprep2(MSM, durations = segs, outcome = absb,
-             states = c("NSP", "SP", "Recov", "NIMV", "IMV", "Disch", "Death"))
-x
-#> <msm2prep>  discrete-time panel ready for prep2()
-#>   layout          : sojourn
-#>   subjects        : 2076 (2076 absorbed, 0 censored)
-#>   panel rows      : 27736 (time 0 - 138)
-#>   states (7)      : NSP, SP, Recov, NIMV, IMV, Disch, Death
-#>   absorbing       : Disch, Death
-#>   transitions     : 14 types, 3433 in total
-#>   issues          : none
-all.equal(x$panel |> mutate(state = as.character(state)), panel)
-#> [1] TRUE
-```
-
-Raw records with dates, one row per change of state, are handled in the
-same way; here two invented patients, one of them with a record after
-death:
+**Events with dates.** Raw records with one row per change of state are
+handled in the same way; here two invented patients, one of them with a
+record after death:
 
 ``` r
 
@@ -400,7 +347,14 @@ y$issues
 #> 1     2 after_absorbing SP    2020-03-10 after the entry into an absorbing state
 ```
 
-The result goes straight into
+In every layout, times can be numbers or dates (also text such as
+`"15/03/2020"`), measured from each patient’s origin (`start`, e.g. the
+admission date) in units of `unit` (`"day"`, `"week"`, …). Codes can be
+relabelled with `recode`, and the allowed transitions (`trans`) are
+checked. Every record that is dropped or changed (missing values,
+records before the origin, after the end of follow-up or after death,
+two states in the same day, transitions not allowed) is listed in
+`x$issues`, with one warning. The result goes straight into
 [`prep2()`](https://jcarmezim.github.io/mstate2/reference/prep2.md),
 which takes the states and absorbing states from it.
 
@@ -632,7 +586,7 @@ once, so replicates are cheap:
 
 system.time(bt <- P2boot(d, B = 500, seed = 1))
 #>    user  system elapsed 
-#>   0.333   0.012   0.345
+#>   0.343   0.298   0.650
 bt$estimate |>
   filter(j == "SP") |>
   select(h, l, p, se, se.boot)
@@ -877,7 +831,7 @@ round(c(DIVINE = fit$P["SP", "NIMV", "NSP"], simulated = fit_sim$P["SP", "NIMV",
 
 | Question | Function |
 |----|----|
-| How do I build the daily panel from my raw data? | [`msprep2()`](https://jcarmezim.github.io/mstate2/reference/msprep2.md), [`sojourn_to_panel()`](https://jcarmezim.github.io/mstate2/reference/sojourn_to_panel.md), [`rnd()`](https://jcarmezim.github.io/mstate2/reference/rnd.md) |
+| How do I build the daily panel from my raw data? | [`msprep2()`](https://jcarmezim.github.io/mstate2/reference/msprep2.md), [`rnd()`](https://jcarmezim.github.io/mstate2/reference/rnd.md) |
 | What are the counts? | [`prep2()`](https://jcarmezim.github.io/mstate2/reference/prep2.md), [`summary()`](https://rdrr.io/r/base/summary.html) |
 | What is $`P_{hj\ell}`$? | [`P2est()`](https://jcarmezim.github.io/mstate2/reference/P2est.md), [`P2boot()`](https://jcarmezim.github.io/mstate2/reference/P2boot.md) |
 | Where will a patient be in $`n`$ days? | [`ckequations()`](https://jcarmezim.github.io/mstate2/reference/ckequations.md) |

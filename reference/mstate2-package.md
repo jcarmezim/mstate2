@@ -19,11 +19,9 @@ multi-step predictions.
     [`msprep2`](https://jcarmezim.github.io/mstate2/reference/msprep2.md)
     turns raw data as collected (events, wide, sojourn or mstate
     `msdata` layouts, with dates) into a daily panel and reports every
-    record it drops or changes;
-    [`sojourn_to_panel`](https://jcarmezim.github.io/mstate2/reference/sojourn_to_panel.md)
-    builds the panel from sojourn times
+    record it drops or changes
     ([`rnd`](https://jcarmezim.github.io/mstate2/reference/rnd.md)
-    discretises them);
+    discretises the times);
     [`prep2`](https://jcarmezim.github.io/mstate2/reference/prep2.md)
     computes the second-order counting processes.
 

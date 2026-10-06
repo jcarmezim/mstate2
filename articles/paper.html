@@ -104,7 +104,7 @@ general use of every function is explained in
 <td>Data</td>
 <td>daily panel of the DIVINE cohort</td>
 <td>
-<code><a href="../reference/sojourn_to_panel.html">sojourn_to_panel()</a></code>, <code><a href="../reference/rnd.html">rnd()</a></code>
+<code><a href="../reference/msprep2.html">msprep2()</a></code>, <code><a href="../reference/rnd.html">rnd()</a></code>
 </td>
 <td>2</td>
 </tr>
@@ -190,14 +190,26 @@ follow-up ended (<code>disch.s</code>, <code>death.s</code>).</p>
 <h2 id="step-1-the-daily-panel">2. Step 1: the daily panel<a class="anchor" aria-label="anchor" href="#step-1-the-daily-panel"></a>
 </h2>
 <p>The methods of the paper are in discrete time: one observation per
-patient and day. <code><a href="../reference/sojourn_to_panel.html">sojourn_to_panel()</a></code> expands the days spent
-in each state into one row per day, in the visiting order NSP → SP →
-NIMV → IMV → Recov, and appends the final state.</p>
+patient and day. <code><a href="../reference/msprep2.html">msprep2()</a></code> expands the days spent in each
+state (<code>durations</code>) into one row per day, in the visiting
+order NSP → SP → NIMV → IMV → Recov, and appends the final state
+(<code>outcome</code>).</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">estados</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"NSP"</span>, <span class="st">"SP"</span>, <span class="st">"Recov"</span>, <span class="st">"NIMV"</span>, <span class="st">"IMV"</span>, <span class="st">"Disch"</span>, <span class="st">"Death"</span><span class="op">)</span></span>
-<span><span class="va">panel</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/sojourn_to_panel.html">sojourn_to_panel</a></span><span class="op">(</span><span class="va">MSM</span>, id <span class="op">=</span> <span class="st">"id"</span>,</span>
-<span>  segments  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>NSP <span class="op">=</span> <span class="st">"t.nosp"</span>, SP <span class="op">=</span> <span class="st">"t.sp"</span>, NIMV <span class="op">=</span> <span class="st">"t.nimv"</span>, IMV <span class="op">=</span> <span class="st">"t.mv"</span>, Recov <span class="op">=</span> <span class="st">"t.recov"</span><span class="op">)</span>,</span>
-<span>  absorbing <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>Disch <span class="op">=</span> <span class="st">"disch.s"</span>, Death <span class="op">=</span> <span class="st">"death.s"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/msprep2.html">msprep2</a></span><span class="op">(</span><span class="va">MSM</span>,</span>
+<span>  durations <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>NSP <span class="op">=</span> <span class="st">"t.nosp"</span>, SP <span class="op">=</span> <span class="st">"t.sp"</span>, NIMV <span class="op">=</span> <span class="st">"t.nimv"</span>, IMV <span class="op">=</span> <span class="st">"t.mv"</span>, Recov <span class="op">=</span> <span class="st">"t.recov"</span><span class="op">)</span>,</span>
+<span>  outcome   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>Disch <span class="op">=</span> <span class="st">"disch.s"</span>, Death <span class="op">=</span> <span class="st">"death.s"</span><span class="op">)</span>,</span>
+<span>  states    <span class="op">=</span> <span class="va">estados</span><span class="op">)</span></span>
+<span><span class="va">x</span></span>
+<span><span class="co">#&gt; &lt;msm2prep&gt;  discrete-time panel ready for prep2()</span></span>
+<span><span class="co">#&gt;   layout          : sojourn</span></span>
+<span><span class="co">#&gt;   subjects        : 2076 (2076 absorbed, 0 censored)</span></span>
+<span><span class="co">#&gt;   panel rows      : 27736 (time 0 - 138)</span></span>
+<span><span class="co">#&gt;   states (7)      : NSP, SP, Recov, NIMV, IMV, Disch, Death</span></span>
+<span><span class="co">#&gt;   absorbing       : Disch, Death</span></span>
+<span><span class="co">#&gt;   transitions     : 14 types, 3433 in total</span></span>
+<span><span class="co">#&gt;   issues          : none</span></span>
+<span><span class="va">panel</span> <span class="op">&lt;-</span> <span class="va">x</span><span class="op">$</span><span class="va">panel</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">panel</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 27736     3</span></span></code></pre></div>
 <p>Durations are recorded in half days. They are rounded with

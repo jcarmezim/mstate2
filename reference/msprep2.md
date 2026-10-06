@@ -214,9 +214,8 @@ accepts directly: a list with
 
   One row per subject, with the time spent in each transient state
   (`durations`, in visiting order) and 0/1 indicators of the absorbing
-  state that ended follow-up (`outcome`), as in the DIVINE data. Gives
-  the same panel as
-  [`sojourn_to_panel`](https://jcarmezim.github.io/mstate2/reference/sojourn_to_panel.md).
+  state that ended follow-up (`outcome`), as in the DIVINE data. Each
+  sojourn is rounded separately, as in the code of the methods paper.
 
 - `"msdata"`:
 
@@ -352,7 +351,7 @@ Statistical Software*, 38(7), 1-30.
 ## See also
 
 [`prep2`](https://jcarmezim.github.io/mstate2/reference/prep2.md),
-[`sojourn_to_panel`](https://jcarmezim.github.io/mstate2/reference/sojourn_to_panel.md)
+[`rnd`](https://jcarmezim.github.io/mstate2/reference/rnd.md)
 
 ## Examples
 
