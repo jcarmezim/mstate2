@@ -500,8 +500,9 @@ the first record (0 for a numeric wide layout)</td>
 <tr class="odd">
 <td><code>states</code></td>
 <td><code>NULL</code></td>
-<td>state space and order; default from <code>trans</code>, the layout,
-or the observed states</td>
+<td>state space and order (default from <code>trans</code>, the layout,
+or the observed states), or a named list with the time and status
+columns of each state</td>
 </tr>
 <tr class="even">
 <td><code>absorbing</code></td>
@@ -586,6 +587,16 @@ for every state, <code>inistat</code> (initial state) and
 <code>&lt;state&gt;</code> prefixes in column order,
 <code>inistat</code> is the initial state, every other column is kept as
 a covariate, and without <code>id</code> the rows are numbered.</p>
+<p><strong>Any column names: a list of states.</strong>
+<code>states</code> can also be a named list that gives, in order, the
+time and status columns of each state:
+<code>list(healthy = NULL, ill = c(time = "t_ill", status = "ill"), dead = c(time = "t_dth", status = "dth"))</code>.
+Each element can be <code>c(time = , status = )</code> in any order,
+<code>c(time_col = "status_col")</code>, two unnamed columns (the 0/1
+one is the status), a single time column (no status: visited when its
+time is recorded) or <code>NULL</code> (a state only entered as initial
+state). The other columns are kept as covariates, as with conventional
+names.</p>
 <p><strong>Value.</strong> An object of class
 <strong><code>msm2prep</code></strong>, a list with:</p>
 <table class="table">

@@ -243,7 +243,7 @@ numeric times and returns the counting-process format of the Cox model.
 | `unit` | `1` | length of a time unit: a number, or `"hour"`, `"day"`, `"week"`, `"month"`, `"year"` for dates |
 | `round_fun` | `rnd` | discretisation of the elapsed times |
 | `recode` | `NULL` | relabelling of the recorded states, `c(old = "new")` |
-| `states` | `NULL` | state space and order; default from `trans`, the layout, or the observed states |
+| `states` | `NULL` | state space and order (default from `trans`, the layout, or the observed states), or a named list with the time and status columns of each state |
 | `absorbing` | `NULL` | absorbing states; default from `trans`, `outcome`, or the states nobody leaves |
 | `trans` | `NULL` | allowed transitions: [`mstate::transMat()`](https://rdrr.io/pkg/mstate/man/transMat.html) matrix (`NA` = not allowed) or a logical/0-1 matrix |
 | `ties` | `"last"` | state kept when several fall in the same unit (an absorbing state always wins) |
@@ -264,6 +264,15 @@ and `<state>_status` for every state, `inistat` (initial state) and
 `id`, no argument is needed: the states are the `<state>` prefixes in
 column order, `inistat` is the initial state, every other column is kept
 as a covariate, and without `id` the rows are numbered.
+
+**Any column names: a list of states.** `states` can also be a named
+list that gives, in order, the time and status columns of each state:
+`list(healthy = NULL, ill = c(time = "t_ill", status = "ill"), dead = c(time = "t_dth", status = "dth"))`.
+Each element can be `c(time = , status = )` in any order,
+`c(time_col = "status_col")`, two unnamed columns (the 0/1 one is the
+status), a single time column (no status: visited when its time is
+recorded) or `NULL` (a state only entered as initial state). The other
+columns are kept as covariates, as with conventional names.
 
 **Value.** An object of class **`msm2prep`**, a list with:
 

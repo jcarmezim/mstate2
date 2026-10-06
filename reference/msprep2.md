@@ -115,9 +115,10 @@ msprep2(
 
 - states:
 
-  Optional state space and order. Default: the row names of `trans`, the
-  order of `times` or `durations` and `outcome`, or the sorted observed
-  states.
+  Either the state space and its order (a character vector; default: the
+  row names of `trans`, the order of `times` or `durations` and
+  `outcome`, or the sorted observed states), or a named list giving, for
+  each state, its time and status columns (wide layout; see Details).
 
 - absorbing:
 
@@ -241,6 +242,22 @@ layout with the columns named
 then `msprep2(data)` is enough: the states are the `<state>` prefixes,
 in column order, and every other column is kept as a covariate. `trans`,
 `absorbing`, `unit` and the other arguments can still be given.
+
+**Any column names: a list of states.** With other names, `states` can
+be a named list that assigns to each state, in order, its time and
+status columns:
+
+    states = list(healthy = c(time = "t_adm", status = "adm"),
+                  ill     = c(time = "t_ill", status = "ill"),
+                  dead    = c(time = "t_dth", status = "dth"))
+
+Each element can also be `c("t_ill" = "ill")` (time column = status
+column), `c("t_ill", "ill")` (two columns: the one with only 0/1 values
+is the status), just `"t_ill"` (no status: the state is visited when its
+time is recorded) or `NULL` (no columns: a state that is only entered as
+initial state). As with conventional names, `initial` gives the initial
+state (default `inistat` if present) and every column not named in the
+list, `id`, `initial`, `start` or `end` is kept as a covariate.
 
 **Time.** Times can be numbers or dates (`Date`, `POSIXct`, or text such
 as `"2020-03-15"` or `"15/03/2020"`). Each time is measured from the
@@ -376,6 +393,29 @@ y
 #>   transitions     : 2 types, 4 in total
 #>   issues          : none
 y$panel
+#> # A tibble: 27 × 4
+#>       id  time state     age
+#>    <int> <int> <fct>   <dbl>
+#>  1     1     0 healthy    60
+#>  2     1     1 healthy    60
+#>  3     1     2 ill        60
+#>  4     1     3 ill        60
+#>  5     1     4 ill        60
+#>  6     1     5 dead       60
+#>  7     2     0 healthy    72
+#>  8     2     1 healthy    72
+#>  9     2     2 healthy    72
+#> 10     2     3 healthy    72
+#> # ℹ 17 more rows
+
+# Any column names: a list giving the time and status columns of each state
+own <- data.frame(patient = 1:4, start_state = c("healthy", "healthy", "ill", "healthy"),
+                  t_ill = c(2, 6, 0, 3), ill = c(1, 0, 1, 1),
+                  t_dth = c(5, 6, 4, 8), dth = c(1, 0, 1, 0), age = c(60, 72, 55, 49))
+msprep2(own, id = "patient", initial = "start_state", absorbing = "dead",
+        states = list(healthy = NULL,
+                      ill     = c(time = "t_ill", status = "ill"),
+                      dead    = c(time = "t_dth", status = "dth")))$panel
 #> # A tibble: 27 × 4
 #>       id  time state     age
 #>    <int> <int> <fct>   <dbl>

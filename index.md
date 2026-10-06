@@ -245,6 +245,35 @@ msprep2(conv, absorbing = "dead")
 #>   issues          : none
 ```
 
+**Any column names: a list of states.** If the columns have other names,
+`states` can be a list that gives, for each state and in order, its time
+and status columns. Every other column (except `id` and the initial
+state) is kept as a covariate:
+
+``` r
+
+own <- tibble(patient = 1:4, start_state = c("healthy", "healthy", "ill", "healthy"),
+              t_ill = c(2, 6, 0, 3), ill = c(1, 0, 1, 1),
+              t_dth = c(5, 6, 4, 8), dth = c(1, 0, 1, 0), age = c(60, 72, 55, 49))
+msprep2(own, id = "patient", initial = "start_state", absorbing = "dead",
+        states = list(healthy = NULL,                            # only initial: no columns
+                      ill     = c(time = "t_ill", status = "ill"),
+                      dead    = c(time = "t_dth", status = "dth")))
+#> <msm2prep>  discrete-time panel ready for prep2()
+#>   layout          : wide
+#>   subjects        : 4 (2 absorbed, 2 censored)
+#>   panel rows      : 27 (time 0 - 8)
+#>   states (3)      : healthy, ill, dead
+#>   absorbing       : dead
+#>   transitions     : 2 types, 4 in total
+#>   issues          : none
+```
+
+Each state can also be written `c("t_ill" = "ill")` (time column =
+status column), `c("t_ill", "ill")` (the 0/1 column is taken as the
+status) or just `"t_ill"` (no status: visited when its time is
+recorded).
+
 Times can be numbers or dates (also text such as `"15/03/2020"`),
 measured from each patient’s origin (`start`, e.g. the admission date)
 in units of `unit` (`"day"`, `"week"`, …). Codes can be relabelled with
@@ -547,7 +576,7 @@ once, so replicates are cheap:
 
 system.time(bt <- P2boot(d, B = 500, seed = 1))
 #>    user  system elapsed 
-#>   0.334   0.008   0.348
+#>   0.329   0.000   0.331
 bt$estimate |>
   filter(j == "SP") |>
   select(h, l, p, se, se.boot)
