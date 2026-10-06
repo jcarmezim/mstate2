@@ -591,7 +591,10 @@ a covariate, and without <code>id</code> the rows are numbered.</p>
 <code>states</code> can also be a named list that gives, in order, the
 time and status columns of each state:
 <code>list(healthy = NULL, ill = c(time = "t_ill", status = "ill"), dead = c(time = "t_dth", status = "dth"))</code>.
-Each element can be <code>c(time = , status = )</code> in any order,
+Each element can be <code>Surv(time, status)</code> (columns without
+quotes, evaluated on the data: expressions allowed, times numeric or
+dates, status checked by <code><a href="https://rdrr.io/pkg/survival/man/Surv.html" class="external-link">survival::Surv()</a></code>),
+<code>c(time = , status = )</code> in any order,
 <code>c(time_col = "status_col")</code>, two unnamed columns (the 0/1
 one is the status), a single time column (no status: visited when its
 time is recorded) or <code>NULL</code> (a state only entered as initial

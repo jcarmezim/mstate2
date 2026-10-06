@@ -268,11 +268,15 @@ as a covariate, and without `id` the rows are numbered.
 **Any column names: a list of states.** `states` can also be a named
 list that gives, in order, the time and status columns of each state:
 `list(healthy = NULL, ill = c(time = "t_ill", status = "ill"), dead = c(time = "t_dth", status = "dth"))`.
-Each element can be `c(time = , status = )` in any order,
-`c(time_col = "status_col")`, two unnamed columns (the 0/1 one is the
-status), a single time column (no status: visited when its time is
-recorded) or `NULL` (a state only entered as initial state). The other
-columns are kept as covariates, as with conventional names.
+Each element can be `Surv(time, status)` (columns without quotes,
+evaluated on the data: expressions allowed, times numeric or dates,
+status checked by
+[`survival::Surv()`](https://rdrr.io/pkg/survival/man/Surv.html)),
+`c(time = , status = )` in any order, `c(time_col = "status_col")`, two
+unnamed columns (the 0/1 one is the status), a single time column (no
+status: visited when its time is recorded) or `NULL` (a state only
+entered as initial state). The other columns are kept as covariates, as
+with conventional names.
 
 **Value.** An object of class **`msm2prep`**, a list with:
 

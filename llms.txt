@@ -269,10 +269,34 @@ msprep2(own, id = "patient", initial = "start_state", absorbing = "dead",
 #>   issues          : none
 ```
 
+The shortest way is `Surv(time, status)` from **survival**, with the
+column names written without quotes. It is evaluated on the data, so it
+can contain expressions; the times can be numbers or dates (also text),
+and the status is checked by
+[`survival::Surv()`](https://rdrr.io/pkg/survival/man/Surv.html) (0/1,
+`TRUE`/`FALSE`, or 1/2 with a warning):
+
+``` r
+
+library(survival)
+msprep2(own, id = "patient", initial = "start_state", absorbing = "dead",
+        states = list(healthy = NULL,
+                      ill     = Surv(t_ill, ill),
+                      dead    = Surv(t_dth, dth == 1)))
+#> <msm2prep>  discrete-time panel ready for prep2()
+#>   layout          : wide
+#>   subjects        : 4 (2 absorbed, 2 censored)
+#>   panel rows      : 27 (time 0 - 8)
+#>   states (3)      : healthy, ill, dead
+#>   absorbing       : dead
+#>   transitions     : 2 types, 4 in total
+#>   issues          : none
+```
+
 Each state can also be written `c("t_ill" = "ill")` (time column =
 status column), `c("t_ill", "ill")` (the 0/1 column is taken as the
 status) or just `"t_ill"` (no status: visited when its time is
-recorded).
+recorded), and the forms can be mixed.
 
 Times can be numbers or dates (also text such as `"15/03/2020"`),
 measured from each patient’s origin (`start`, e.g. the admission date)
@@ -576,7 +600,7 @@ once, so replicates are cheap:
 
 system.time(bt <- P2boot(d, B = 500, seed = 1))
 #>    user  system elapsed 
-#>   0.329   0.000   0.331
+#>   0.355   0.270   0.629
 bt$estimate |>
   filter(j == "SP") |>
   select(h, l, p, se, se.boot)

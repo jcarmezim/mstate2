@@ -251,10 +251,26 @@ status columns:
                   ill     = c(time = "t_ill", status = "ill"),
                   dead    = c(time = "t_dth", status = "dth"))
 
-Each element can also be `c("t_ill" = "ill")` (time column = status
-column), `c("t_ill", "ill")` (two columns: the one with only 0/1 values
-is the status), just `"t_ill"` (no status: the state is visited when its
-time is recorded) or `NULL` (no columns: a state that is only entered as
+The shortest way is
+[`Surv`](https://rdrr.io/pkg/survival/man/Surv.html), with the column
+names written without quotes:
+
+    states = list(healthy = NULL,
+                  ill     = Surv(t_ill, ill),
+                  dead    = Surv(t_dth, dth == "yes"))
+
+`Surv(time, status)` is evaluated on the columns of `data`, so it can
+contain expressions; the times can be numbers or dates (also text), and
+the status is checked by
+[`survival::Surv()`](https://rdrr.io/pkg/survival/man/Surv.html) (0/1,
+`TRUE`/`FALSE`, or 1/2 = censored/event, with a warning; other values
+become `NA` with a warning).
+[`Surv()`](https://rdrr.io/pkg/survival/man/Surv.html) and the
+column-name forms can be mixed in the same list. Each element can also
+be `c("t_ill" = "ill")` (time column = status column),
+`c("t_ill", "ill")` (two columns: the one with only 0/1 values is the
+status), just `"t_ill"` (no status: the state is visited when its time
+is recorded) or `NULL` (no columns: a state that is only entered as
 initial state). As with conventional names, `initial` gives the initial
 state (default `inistat` if present) and every column not named in the
 list, `id`, `initial`, `start` or `end` is kept as a covariate.
@@ -416,6 +432,27 @@ msprep2(own, id = "patient", initial = "start_state", absorbing = "dead",
         states = list(healthy = NULL,
                       ill     = c(time = "t_ill", status = "ill"),
                       dead    = c(time = "t_dth", status = "dth")))$panel
+#> # A tibble: 27 × 4
+#>       id  time state     age
+#>    <int> <int> <fct>   <dbl>
+#>  1     1     0 healthy    60
+#>  2     1     1 healthy    60
+#>  3     1     2 ill        60
+#>  4     1     3 ill        60
+#>  5     1     4 ill        60
+#>  6     1     5 dead       60
+#>  7     2     0 healthy    72
+#>  8     2     1 healthy    72
+#>  9     2     2 healthy    72
+#> 10     2     3 healthy    72
+#> # ℹ 17 more rows
+
+# The same with Surv(): column names without quotes, expressions allowed
+library(survival)
+msprep2(own, id = "patient", initial = "start_state", absorbing = "dead",
+        states = list(healthy = NULL,
+                      ill     = Surv(t_ill, ill),
+                      dead    = Surv(t_dth, dth == 1)))$panel
 #> # A tibble: 27 × 4
 #>       id  time state     age
 #>    <int> <int> <fct>   <dbl>
