@@ -297,7 +297,10 @@ as a record).
 
 - `missing`:
 
-  an id, time or state is missing (events);
+  an id, time or state is missing (events), a state has status 1 but no
+  time, or a time has no valid status (wide; e.g. a status code that
+  [`Surv()`](https://rdrr.io/pkg/survival/man/Surv.html) turns into
+  `NA`);
 
 - `before_start`:
 

@@ -245,16 +245,16 @@ ids, if text times cannot be read as dates, if `unit` is a name with
 numeric times, or if `check = "error"` and a transition is not allowed.
 One warning gives the number of records dropped or changed, by type:
 
-| Issue             | Meaning                                                |
-|-------------------|--------------------------------------------------------|
-| `missing`         | missing id, time or state (events layout)              |
-| `before_start`    | record before the origin                               |
-| `after_end`       | record after the end of follow-up                      |
-| `after_absorbing` | record after the entry into an absorbing state         |
-| `same_unit`       | another state was kept in the same time unit           |
+| Issue | Meaning |
+|----|----|
+| `missing` | missing id, time or state (events layout); status 1 without a time, or a time without a valid status (wide layout) |
+| `before_start` | record before the origin |
+| `after_end` | record after the end of follow-up |
+| `after_absorbing` | record after the entry into an absorbing state |
+| `same_unit` | another state was kept in the same time unit |
 | `rounded_to_zero` | a positive duration rounds to 0 units (sojourn layout) |
-| `not_allowed`     | transition not allowed by `trans` (kept)               |
-| `no_data`         | subject with no usable record                          |
+| `not_allowed` | transition not allowed by `trans` (kept) |
+| `no_data` | subject with no usable record |
 
 **Example**
 
@@ -284,7 +284,7 @@ summary(x)
 #>   Disch    0    0     0    0    0     0     0
 #>   Death    0    0     0    0    0     0     0
 #> 
-#> Time units of follow-up by status:
+#> Time units observed per subject (rows of the panel), by status:
 #> # A tibble: 1 × 5
 #>   status   subjects   min median   max
 #>   <chr>       <int> <dbl>  <dbl> <dbl>

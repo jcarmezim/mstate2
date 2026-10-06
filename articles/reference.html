@@ -598,7 +598,8 @@ warning gives the number of records dropped or changed, by type:</p>
 <tbody>
 <tr class="odd">
 <td><code>missing</code></td>
-<td>missing id, time or state (events layout)</td>
+<td>missing id, time or state (events layout); status 1 without a time,
+or a time without a valid status (wide layout)</td>
 </tr>
 <tr class="even">
 <td><code>before_start</code></td>
@@ -656,7 +657,7 @@ warning gives the number of records dropped or changed, by type:</p>
 <span><span class="co">#&gt;   Disch    0    0     0    0    0     0     0</span></span>
 <span><span class="co">#&gt;   Death    0    0     0    0    0     0     0</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Time units of follow-up by status:</span></span>
+<span><span class="co">#&gt; Time units observed per subject (rows of the panel), by status:</span></span>
 <span><span class="co">#&gt; # A tibble: 1 × 5</span></span>
 <span><span class="co">#&gt;   status   subjects   min median   max</span></span>
 <span><span class="co">#&gt;   &lt;chr&gt;       &lt;int&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;</span></span>
