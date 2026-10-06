@@ -1143,10 +1143,15 @@ completeness.
 
 | Helper | Definition | What it does |
 |----|----|----|
+| `.surv_states(expr, data, env)`, `.surv_in_states(time, event)` | the list of states of wide data | checks the list (named, one `NULL` initial state, [`Surv()`](https://rdrr.io/pkg/survival/man/Surv.html) elsewhere) and evaluates each `Surv(time, status)` on the columns of `data` with the checks of [`survival::Surv()`](https://rdrr.io/pkg/survival/man/Surv.html) |
+| `.allowed_matrix(trans, states)` | text or matrix | logical matrix of allowed transitions from `"A -> B -> C"` text or a [`transMat()`](https://rdrr.io/pkg/mstate/man/transMat.html) matrix |
+| `.from_wide()`, `.from_sojourn()`, `.from_msdata()` | data | read each kind of data into one record per subject and state entered, with its time unit, and the end of follow-up of each subject |
+| `.build_panel(ev, subj, absorbing)` | records, subjects | stops at the absorbing state, resolves several states in one unit, expands each state over its units and logs every record dropped or changed |
+| `sojourn_to_panel()` | sojourn data | the original conversion of the DIVINE sojourn times, kept to check that [`msprep2()`](https://jcarmezim.github.io/mstate2/reference/msprep2.md) gives the same panel |
 | `.pair_matrix(P, M)` | tensor, number of states | builds the $`M^2 \times M^2`$ pair-transition matrix $`Q`$ with $`Q_{(a,b),(b,c)} = P_{abc}`$; pair $`(a, b)`$ has index $`(a-1)M + b`$ |
 | `.propagate(Q, hi, ji, nsteps, M)` | $`Q`$, start indices | starts from the pair $`(h, j)`$, multiplies by $`Q`$`nsteps` times and returns the `nsteps × M` matrix of marginal state distributions |
 | `.ck_distribution(P, h, j, nsteps, states)` | tensor, start states | resolves `h`, `j`, builds $`Q`$ and propagates; shared by [`ckequations()`](https://jcarmezim.github.io/mstate2/reference/ckequations.md) and [`compare2()`](https://jcarmezim.github.io/mstate2/reference/compare2.md) |
-| `.resolve(s, states)` | labels or indices | converts state labels to positions (indices are returned as integers; unknown labels as `NA`) |
+| `.resolve(s, states)` | labels or indices | converts state labels to positions (indices are returned as integers; unknown labels and indices outside the state space as `NA`) |
 | `.check_conf_level(conf.level)` | a number | errors unless `conf.level` is a single number strictly between 0 and 1 |
 | `.id_counts(object)` | `msm2data` | per-subject counts of every observed triple ($`n \times K`$ matrix, from `count(id, h, j, l)`) and their $`(h, j)`$ groups, for the bootstrap |
 | `.tensor_from_counts()` | replicate totals | second-order tensor of a bootstrap replicate |

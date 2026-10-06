@@ -32,7 +32,7 @@ ckequations(x, h, j, l = NULL, nsteps = 9L, bounds = FALSE)
 
 - nsteps:
 
-  Number of steps n (default 9), giving \\X_2, \ldots, X\_\\n+1\\\\.
+  Number of steps n (default 9), giving \\X_2, \ldots, X\_{n+1}\\.
 
 - bounds:
 

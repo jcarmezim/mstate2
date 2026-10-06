@@ -8,8 +8,8 @@
 
 ## Building the data
 
-Turn raw data as collected into a daily panel, and compute the
-second-order counting processes.
+Turn sojourn data, wide data or an mstate msdata object into a daily
+panel, and compute the second-order counting processes.
 
 - [`msprep2()`](https://jcarmezim.github.io/mstate2/reference/msprep2.md)
   : Prepare multistate data for the analysis

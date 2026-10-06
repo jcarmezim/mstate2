@@ -1969,6 +1969,48 @@ are documented here for completeness.</p>
 </tr></thead>
 <tbody>
 <tr class="odd">
+<td>
+<code>.surv_states(expr, data, env)</code>,
+<code>.surv_in_states(time, event)</code>
+</td>
+<td>the list of states of wide data</td>
+<td>checks the list (named, one <code>NULL</code> initial state,
+<code><a href="https://rdrr.io/pkg/survival/man/Surv.html" class="external-link">Surv()</a></code> elsewhere) and evaluates each
+<code>Surv(time, status)</code> on the columns of <code>data</code> with
+the checks of <code><a href="https://rdrr.io/pkg/survival/man/Surv.html" class="external-link">survival::Surv()</a></code>
+</td>
+</tr>
+<tr class="even">
+<td><code>.allowed_matrix(trans, states)</code></td>
+<td>text or matrix</td>
+<td>logical matrix of allowed transitions from
+<code>"A -&gt; B -&gt; C"</code> text or a <code><a href="https://rdrr.io/pkg/mstate/man/transMat.html" class="external-link">transMat()</a></code>
+matrix</td>
+</tr>
+<tr class="odd">
+<td>
+<code>.from_wide()</code>, <code>.from_sojourn()</code>,
+<code>.from_msdata()</code>
+</td>
+<td>data</td>
+<td>read each kind of data into one record per subject and state
+entered, with its time unit, and the end of follow-up of each
+subject</td>
+</tr>
+<tr class="even">
+<td><code>.build_panel(ev, subj, absorbing)</code></td>
+<td>records, subjects</td>
+<td>stops at the absorbing state, resolves several states in one unit,
+expands each state over its units and logs every record dropped or
+changed</td>
+</tr>
+<tr class="odd">
+<td><code>sojourn_to_panel()</code></td>
+<td>sojourn data</td>
+<td>the original conversion of the DIVINE sojourn times, kept to check
+that <code><a href="../reference/msprep2.html">msprep2()</a></code> gives the same panel</td>
+</tr>
+<tr class="even">
 <td><code>.pair_matrix(P, M)</code></td>
 <td>tensor, number of states</td>
 <td>builds the
@@ -1983,7 +2025,7 @@ has index
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mi>a</mi><mo>−</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo><mi>M</mi><mo>+</mo><mi>b</mi></mrow><annotation encoding="application/x-tex">(a-1)M + b</annotation></semantics></math>
 </td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>.propagate(Q, hi, ji, nsteps, M)</code></td>
 <td>
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Q</mi><annotation encoding="application/x-tex">Q</annotation></semantics></math>,
@@ -1994,7 +2036,7 @@ multiplies by
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Q</mi><annotation encoding="application/x-tex">Q</annotation></semantics></math><code>nsteps</code> times and returns the <code>nsteps × M</code> matrix
 of marginal state distributions</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>.ck_distribution(P, h, j, nsteps, states)</code></td>
 <td>tensor, start states</td>
 <td>resolves <code>h</code>, <code>j</code>, builds
@@ -2003,19 +2045,20 @@ and propagates; shared by <code><a href="../reference/ckequations.html">ckequati
 <code><a href="../reference/compare2.html">compare2()</a></code>
 </td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>.resolve(s, states)</code></td>
 <td>labels or indices</td>
 <td>converts state labels to positions (indices are returned as
-integers; unknown labels as <code>NA</code>)</td>
+integers; unknown labels and indices outside the state space as
+<code>NA</code>)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>.check_conf_level(conf.level)</code></td>
 <td>a number</td>
 <td>errors unless <code>conf.level</code> is a single number strictly
 between 0 and 1</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>.id_counts(object)</code></td>
 <td><code>msm2data</code></td>
 <td>per-subject counts of every observed triple
@@ -2024,12 +2067,12 @@ matrix, from <code>count(id, h, j, l)</code>) and their
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mi>h</mi><mo>,</mo><mi>j</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(h, j)</annotation></semantics></math>
 groups, for the bootstrap</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>.tensor_from_counts()</code></td>
 <td>replicate totals</td>
 <td>second-order tensor of a bootstrap replicate</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>
 <code>.boot_curves()</code>, <code>.boot_bands()</code>
 </td>
@@ -2038,7 +2081,7 @@ groups, for the bootstrap</td>
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math>-step
 curve of every replicate, and its percentile bands</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>`%||%`(a, b)</code></td>
 <td>two values</td>
 <td>returns <code>b</code> when <code>a</code> is <code>NULL</code>,

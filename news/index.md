@@ -20,6 +20,13 @@ Gómez Melis (2025) and reproduces their analysis of the DIVINE cohort
   relative probability estimator (RPE) of the 1-step second-order
   transition probabilities, with variances and confidence intervals
   (Table 2 of the paper).
+- [`P2boot()`](https://jcarmezim.github.io/mstate2/reference/P2boot.md):
+  subject-level bootstrap of the estimates, which gives percentile
+  intervals for the n-step predictions of
+  [`ckequations()`](https://jcarmezim.github.io/mstate2/reference/ckequations.md)
+  and
+  [`compare2()`](https://jcarmezim.github.io/mstate2/reference/compare2.md)
+  (an addition to the methods of the paper).
 - [`ckequations()`](https://jcarmezim.github.io/mstate2/reference/ckequations.md):
   n-step prediction with the extended Chapman-Kolmogorov relation and
   evolution intervals.
