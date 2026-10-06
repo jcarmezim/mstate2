@@ -248,7 +248,7 @@ numeric times and returns the counting-process format of the Cox model.
 | `trans` | `NULL` | allowed transitions: [`mstate::transMat()`](https://rdrr.io/pkg/mstate/man/transMat.html) matrix (`NA` = not allowed) or a logical/0-1 matrix |
 | `ties` | `"last"` | state kept when several fall in the same unit (an absorbing state always wins) |
 | `check` | `"warn"` | `"error"` stops at a transition not allowed by `trans` |
-| `keep` | `NULL` | baseline covariates carried into the panel |
+| `keep` | `NULL` | baseline covariates carried into the panel; with conventional names, every other column |
 
 **Input layouts**
 
@@ -258,6 +258,12 @@ numeric times and returns the counting-process format of the Cox model.
 | `wide` | subject, one time (and status) column per state | `times`, `status` |
 | `sojourn` | subject, days spent in each state and indicators of the outcome | `durations`, `outcome` |
 | `msdata` | subject and possible transition ([`mstate::msprep()`](https://rdrr.io/pkg/mstate/man/msprep.html)) | — |
+
+**Conventional names.** In the wide layout with columns `<state>_time`
+and `<state>_status` for every state, `inistat` (initial state) and
+`id`, no argument is needed: the states are the `<state>` prefixes in
+column order, `inistat` is the initial state, every other column is kept
+as a covariate, and without `id` the rows are numbered.
 
 **Value.** An object of class **`msm2prep`**, a list with:
 

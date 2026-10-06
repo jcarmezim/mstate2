@@ -150,7 +150,7 @@
 
 
 <dt id="arg-keep">keep<a class="anchor" aria-label="anchor" href="#arg-keep"></a></dt>
-<dd><p>Optional names of baseline covariate columns to carry into the panel.</p></dd>
+<dd><p>Optional names of baseline covariate columns to carry into the panel. With conventional names, all the columns that are not <code>id</code>, <code>inistat</code>, <code>&lt;state&gt;_time</code> or <code>&lt;state&gt;_status</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -190,7 +190,18 @@
 <dd><p>An object of class <code>"msdata"</code> made by <code><a href="https://rdrr.io/pkg/mstate/man/msprep.html" class="external-link">mstate::msprep()</a></code>; its transition matrix is used as <code>trans</code>.</p></dd>
 
 
-</dl><p>With <code>format = "auto"</code> (default) the layout is taken from the arguments given: an <code>msdata</code> object, <code>durations</code>, <code>times</code>, or else events.</p>
+</dl><p>With <code>format = "auto"</code> (default) the layout is taken from the arguments given: an <code>msdata</code> object, <code>durations</code>, <code>times</code>, conventional names (below), or else events.</p>
+<p><strong>Conventional names: no arguments needed.</strong> If the data are in the wide layout with the columns named</p><dl><dt><code>&lt;state&gt;_time</code>, <code>&lt;state&gt;_status</code></dt>
+<dd><p>for every state, e.g. <code>death_time</code> and <code>death_status</code> (time of entry, or censoring time when the status is 0; the initial states with time 0),</p></dd>
+
+  <dt><code>inistat</code></dt>
+<dd><p>the initial state of each individual,</p></dd>
+
+  <dt><code>id</code></dt>
+<dd><p>the individual (if missing, the rows are numbered),</p></dd>
+
+
+</dl><p>then <code>msprep2(data)</code> is enough: the states are the <code>&lt;state&gt;</code> prefixes, in column order, and every other column is kept as a covariate. <code>trans</code>, <code>absorbing</code>, <code>unit</code> and the other arguments can still be given.</p>
 <p><strong>Time.</strong> Times can be numbers or dates (<code>Date</code>, <code>POSIXct</code>, or text such as <code>"2020-03-15"</code> or <code>"15/03/2020"</code>). Each time is measured from the subject's origin (<code>start</code>: a column, a common value, or by default the subject's first record) in units of <code>unit</code> (a number in the units of the times, or <code>"hour"</code>, <code>"day"</code>, <code>"week"</code>, <code>"month"</code> or <code>"year"</code> for dates) and discretised with <code>round_fun</code>. A subject occupies each state from the time unit in which it was entered until the unit before the next state; follow-up ends at the entry into an absorbing state, at the end of follow-up (<code>end</code>), or, without <code>end</code>, at the last record (the subject is then censored in that unit; a repeated record of the same state counts as a record).</p>
 <p><strong>Cleaning.</strong> Every record that is dropped or changed is listed in the <code>issues</code> table of the result, and a single warning gives the counts:</p><dl><dt><code>missing</code></dt>
 <dd><p>an id, time or state is missing (events);</p></dd>
@@ -274,6 +285,38 @@
 <span class="r-out co"><span class="r-pr">#&gt;</span>   states (4)      : NSP, SP, Disch, Death</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   absorbing       : Disch, Death</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   distinct (h,j)  : 3</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Conventional names: x_time, x_status and inistat; nothing else to say</span></span></span>
+<span class="r-in"><span><span class="va">conv</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>id <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">4</span>, inistat <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"healthy"</span>, <span class="st">"healthy"</span>, <span class="st">"ill"</span>, <span class="st">"healthy"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                   healthy_time <span class="op">=</span> <span class="fl">0</span>, healthy_status <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">0</span>, <span class="fl">1</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                   ill_time <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">6</span>, <span class="fl">0</span>, <span class="fl">3</span><span class="op">)</span>, ill_status <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">0</span>, <span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                   dead_time <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">5</span>, <span class="fl">6</span>, <span class="fl">4</span>, <span class="fl">8</span><span class="op">)</span>, dead_status <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">0</span>, <span class="fl">1</span>, <span class="fl">0</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                   age <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">60</span>, <span class="fl">72</span>, <span class="fl">55</span>, <span class="fl">49</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu">msprep2</span><span class="op">(</span><span class="va">conv</span>, absorbing <span class="op">=</span> <span class="st">"dead"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">y</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;msm2prep&gt;  discrete-time panel ready for prep2()</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   layout          : wide</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   subjects        : 4 (2 absorbed, 2 censored)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   panel rows      : 27 (time 0 - 8)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   states (3)      : healthy, ill, dead</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   absorbing       : dead</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   transitions     : 2 types, 4 in total</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   issues          : none</span>
+<span class="r-in"><span><span class="va">y</span><span class="op">$</span><span class="va">panel</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 27 × 4</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       id  time state     age</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;fct&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span>     1     0 healthy    60</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 2</span>     1     1 healthy    60</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 3</span>     1     2 ill        60</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 4</span>     1     3 ill        60</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 5</span>     1     4 ill        60</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 6</span>     1     5 dead       60</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 7</span>     2     0 healthy    72</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span>     2     1 healthy    72</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span>     2     2 healthy    72</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span>     2     3 healthy    72</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 17 more rows</span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Wide layout, as in mstate::msprep(): entry time and status per state</span></span></span>
 <span class="r-in"><span><span class="va">wide</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>id <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">3</span>,</span></span>

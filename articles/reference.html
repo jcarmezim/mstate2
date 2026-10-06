@@ -532,7 +532,8 @@ always wins)</td>
 <tr class="even">
 <td><code>keep</code></td>
 <td><code>NULL</code></td>
-<td>baseline covariates carried into the panel</td>
+<td>baseline covariates carried into the panel; with conventional names,
+every other column</td>
 </tr>
 </tbody>
 </table>
@@ -578,6 +579,13 @@ observations)</td>
 </tr>
 </tbody>
 </table>
+<p><strong>Conventional names.</strong> In the wide layout with columns
+<code>&lt;state&gt;_time</code> and <code>&lt;state&gt;_status</code>
+for every state, <code>inistat</code> (initial state) and
+<code>id</code>, no argument is needed: the states are the
+<code>&lt;state&gt;</code> prefixes in column order,
+<code>inistat</code> is the initial state, every other column is kept as
+a covariate, and without <code>id</code> the rows are numbered.</p>
 <p><strong>Value.</strong> An object of class
 <strong><code>msm2prep</code></strong>, a list with:</p>
 <table class="table">

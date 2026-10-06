@@ -145,6 +145,8 @@ msprep2(
 - keep:
 
   Optional names of baseline covariate columns to carry into the panel.
+  With conventional names, all the columns that are not `id`, `inistat`,
+  `<state>_time` or `<state>_status`.
 
 ## Value
 
@@ -216,7 +218,29 @@ accepts directly: a list with
   transition matrix is used as `trans`.
 
 With `format = "auto"` (default) the layout is taken from the arguments
-given: an `msdata` object, `durations`, `times`, or else events.
+given: an `msdata` object, `durations`, `times`, conventional names
+(below), or else events.
+
+**Conventional names: no arguments needed.** If the data are in the wide
+layout with the columns named
+
+- `<state>_time`, `<state>_status`:
+
+  for every state, e.g. `death_time` and `death_status` (time of entry,
+  or censoring time when the status is 0; the initial states with time
+  0),
+
+- `inistat`:
+
+  the initial state of each individual,
+
+- `id`:
+
+  the individual (if missing, the rows are numbered),
+
+then `msprep2(data)` is enough: the states are the `<state>` prefixes,
+in column order, and every other column is kept as a covariate. `trans`,
+`absorbing`, `unit` and the other arguments can still be given.
 
 **Time.** Times can be numbers or dates (`Date`, `POSIXct`, or text such
 as `"2020-03-15"` or `"15/03/2020"`). Each time is measured from the
@@ -334,6 +358,38 @@ prep2(x)
 #>   states (4)      : NSP, SP, Disch, Death
 #>   absorbing       : Disch, Death
 #>   distinct (h,j)  : 3
+
+# Conventional names: x_time, x_status and inistat; nothing else to say
+conv <- data.frame(id = 1:4, inistat = c("healthy", "healthy", "ill", "healthy"),
+                   healthy_time = 0, healthy_status = c(1, 1, 0, 1),
+                   ill_time = c(2, 6, 0, 3), ill_status = c(1, 0, 1, 1),
+                   dead_time = c(5, 6, 4, 8), dead_status = c(1, 0, 1, 0),
+                   age = c(60, 72, 55, 49))
+y <- msprep2(conv, absorbing = "dead")
+y
+#> <msm2prep>  discrete-time panel ready for prep2()
+#>   layout          : wide
+#>   subjects        : 4 (2 absorbed, 2 censored)
+#>   panel rows      : 27 (time 0 - 8)
+#>   states (3)      : healthy, ill, dead
+#>   absorbing       : dead
+#>   transitions     : 2 types, 4 in total
+#>   issues          : none
+y$panel
+#> # A tibble: 27 × 4
+#>       id  time state     age
+#>    <int> <int> <fct>   <dbl>
+#>  1     1     0 healthy    60
+#>  2     1     1 healthy    60
+#>  3     1     2 ill        60
+#>  4     1     3 ill        60
+#>  5     1     4 ill        60
+#>  6     1     5 dead       60
+#>  7     2     0 healthy    72
+#>  8     2     1 healthy    72
+#>  9     2     2 healthy    72
+#> 10     2     3 healthy    72
+#> # ℹ 17 more rows
 
 # Wide layout, as in mstate::msprep(): entry time and status per state
 wide <- data.frame(id = 1:3,

@@ -210,6 +210,32 @@ the layout in which they were collected:
 | sojourn (as DIVINE) | subject, with the days spent in each state | `durations`, `outcome` |
 | `msdata` | an object made by [`mstate::msprep()`](https://rdrr.io/pkg/mstate/man/msprep.html) | — |
 
+**The easiest way: conventional names.** If the columns are called
+`<state>_time` and `<state>_status` for every state (e.g. `death_time`
+and `death_status`; time of entry, or of censoring when the status is
+0), the initial state of each individual is in `inistat` and the
+individual in `id`, nothing else needs to be said: `msprep2(data)` takes
+the states from the names, in column order, and keeps every other column
+as a covariate.
+
+``` r
+
+conv <- tibble(id = 1:4, inistat = c("healthy", "healthy", "ill", "healthy"),
+               healthy_time = 0, healthy_status = c(1, 1, 0, 1),
+               ill_time  = c(2, 6, 0, 3), ill_status  = c(1, 0, 1, 1),
+               dead_time = c(5, 6, 4, 8), dead_status = c(1, 0, 1, 0),
+               age = c(60, 72, 55, 49))
+msprep2(conv, absorbing = "dead")
+#> <msm2prep>  discrete-time panel ready for prep2()
+#>   layout          : wide
+#>   subjects        : 4 (2 absorbed, 2 censored)
+#>   panel rows      : 27 (time 0 - 8)
+#>   states (3)      : healthy, ill, dead
+#>   absorbing       : dead
+#>   transitions     : 2 types, 4 in total
+#>   issues          : none
+```
+
 Times can be numbers or dates (also text such as `"15/03/2020"`),
 measured from each patient’s origin (`start`, e.g. the admission date)
 in units of `unit` (`"day"`, `"week"`, …). Codes can be relabelled with
@@ -512,7 +538,7 @@ once, so replicates are cheap:
 
 system.time(bt <- P2boot(d, B = 500, seed = 1))
 #>    user  system elapsed 
-#>   0.311   0.008   0.322
+#>   0.334   0.008   0.348
 bt$estimate |>
   filter(j == "SP") |>
   select(h, l, p, se, se.boot)
