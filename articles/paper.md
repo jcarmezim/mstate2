@@ -6,21 +6,18 @@ This vignette reproduces, step by step, the real-data analysis of
 > Second-order Markov multistate models: nonparametric estimation and
 > inference. Manuscript submitted for publication.
 
-with `mstate2`. Each step names the part of the paper it reproduces, the
-function that does it and the result to compare. A final checklist
-compares the package output with the published values. The general use
-of every function is explained in
+with `mstate2`. Each step names the function that does it and the result
+to compare. A final checklist compares the package output with the
+published values. The general use of every function is explained in
 [`vignette("mstate2")`](https://jcarmezim.github.io/mstate2/articles/mstate2.md).
 
-| Paper | What it shows | Function | Section here |
+| Step | What it shows | Function | Section here |
 |----|----|----|----|
 | Data | daily panel of the DIVINE cohort | [`msprep2()`](https://jcarmezim.github.io/mstate2/reference/msprep2.md), [`rnd()`](https://jcarmezim.github.io/mstate2/reference/rnd.md) | 2 |
 | Counting processes | $`\tilde N_{hj\ell}(s)`$, $`\tilde Y_{hj}(s-1)`$ | [`prep2()`](https://jcarmezim.github.io/mstate2/reference/prep2.md) | 3 |
-| Eq. 9, Theorems 4–5 (Eqs. 13–14), Corollary 2 | relative probability estimator (RPE), variance, CI | [`P2est()`](https://jcarmezim.github.io/mstate2/reference/P2est.md) | 4 |
-| Table 2 | 1-step probabilities from severe pneumonia | [`P2est()`](https://jcarmezim.github.io/mstate2/reference/P2est.md) | 4 |
-| Eq. 6 | extended Chapman–Kolmogorov relation | [`ckequations()`](https://jcarmezim.github.io/mstate2/reference/ckequations.md) | 5 |
-| Section 6.3, Figures 4–5 | for how long the previous state matters | [`compare2()`](https://jcarmezim.github.io/mstate2/reference/compare2.md), [`overlap_step()`](https://jcarmezim.github.io/mstate2/reference/overlap_step.md) | 6 |
-| Section 5, Table 1 (RPE rows) | simulation study of the estimator | [`simulate2()`](https://jcarmezim.github.io/mstate2/reference/simulate2.md), [`P2est()`](https://jcarmezim.github.io/mstate2/reference/P2est.md) | 8 |
+| Estimation | relative probability estimator (RPE), variance and confidence intervals; 1-step probabilities from severe pneumonia | [`P2est()`](https://jcarmezim.github.io/mstate2/reference/P2est.md) | 4 |
+| Prediction | extended Chapman–Kolmogorov relation | [`ckequations()`](https://jcarmezim.github.io/mstate2/reference/ckequations.md) | 5 |
+| Does the previous state matter? | for how long the previous state matters | [`compare2()`](https://jcarmezim.github.io/mstate2/reference/compare2.md), [`overlap_step()`](https://jcarmezim.github.io/mstate2/reference/overlap_step.md) | 6 |
 
 Notation: $`P_{hj\ell} = P(X_s = \ell \mid X_{s-1} = j, X_{s-2} = h)`$,
 where $`h`$ is the state at the previous time, $`j`$ the state at the
@@ -88,7 +85,8 @@ Durations are recorded in half days. They are rounded with
 [`rnd()`](https://jcarmezim.github.io/mstate2/reference/rnd.md), the
 rounding function of the paper’s code, which sends 0.5 to 1. Base R’s
 [`round()`](https://rdrr.io/r/base/Round.html) sends 0.5 to 0, deletes
-the half-day stays in severe pneumonia and does not reproduce Table 2:
+the half-day stays in severe pneumonia and does not reproduce the
+published estimates:
 
 ``` r
 
@@ -125,10 +123,10 @@ days of each patient, which have no complete history. The 12 histories
 $`(h, j)`$ are the 5 stays in the same state and the 7 changes of state
 observed in the data.
 
-## 4. Step 3: Table 2, the relative probability estimator
+## 4. Step 3: the relative probability estimator
 
-The RPE (Eq. 9) pools all the transitions and all the patient-days at
-risk of each history:
+The RPE pools all the transitions and all the patient-days at risk of
+each history:
 
 ``` math
 \tilde P_{hj\ell} = \frac{\sum_s \tilde N_{hj\ell}(s)}{\sum_s \tilde Y_{hj}(s-1)},
@@ -136,17 +134,17 @@ risk of each history:
 \mathrm{se} = \sqrt{\frac{\tilde P_{hj\ell}(1-\tilde P_{hj\ell})}{\sum_s \tilde Y_{hj}(s-1)}},
 ```
 
-where the standard error is the square root of the variance estimator of
-Theorem 5 (Eq. 14) divided by $`n`$, with Wald 95% confidence intervals
-(Corollary 2) clipped to \[0, 1\], as in the paper’s code.
+where the standard error comes from the asymptotic variance of the
+estimator, with Wald 95% confidence intervals clipped to \[0, 1\], as in
+the paper’s code.
 
 ``` r
 
 fit <- P2est(d)
-table2 <- fit$estimate |>
+from_sp <- fit$estimate |>
   filter(j == "SP", l %in% c("NIMV", "IMV")) |>
   select(h, j, l, p, se, lower, upper, n.trans, at.risk)
-table2
+from_sp
 #> # A tibble: 4 × 9
 #>   h     j     l          p      se  lower  upper n.trans at.risk
 #>   <fct> <fct> <fct>  <dbl>   <dbl>  <dbl>  <dbl>   <int>   <int>
@@ -156,12 +154,12 @@ table2
 #> 4 SP    SP    IMV   0.0184 0.00260 0.0133 0.0235      49    2668
 ```
 
-**Comparison with Table 2 of the paper:**
+**Comparison with the published estimates:**
 
 ``` r
 
 published <- c(0.224, 0.151, 0.025, 0.018)        # NSP->NIMV, NSP->IMV, SP->NIMV, SP->IMV
-table2 |>
+from_sp |>
   transmute(history = paste(h, j, sep = " -> "), to = l,
             paper = published, mstate2 = round(p, 3)) |>
   mutate(match = paper == mstate2)
@@ -183,7 +181,7 @@ overlap, for NIMV or for IMV:
 
 ``` r
 
-table2 |>
+from_sp |>
   group_by(to = l) |>
   summarise(separated = lower[h == "NSP"] > upper[h == "SP"])
 #> # A tibble: 2 × 2
@@ -198,9 +196,9 @@ give the two patients the same probability.
 
 ## 5. Step 4: n-step prediction (extended Chapman–Kolmogorov)
 
-The extended Chapman–Kolmogorov relation (Eq. 6) gives the probability
-of being in each state $`n`$ days later, given the states at the
-previous and the current time:
+The extended Chapman–Kolmogorov relation gives the probability of being
+in each state $`n`$ days later, given the states at the previous and the
+current time:
 $`P_{hj\ell}(1, n) = P(X_{n+1} = \ell \mid X_1 = j, X_0 = h)`$.
 [`ckequations()`](https://jcarmezim.github.io/mstate2/reference/ckequations.md)
 computes it exactly by treating the pair of consecutive states as a
@@ -226,7 +224,7 @@ round(ckequations(fit, h = "NSP", j = "SP", nsteps = 9), 3)
 
 Each row is the distribution of the state on day $`n`$ and sums to 1.
 
-## 6. Step 5: for how long does the previous state matter? (Section 6.3)
+## 6. Step 5: for how long does the previous state matter?
 
 [`compare2()`](https://jcarmezim.github.io/mstate2/reference/compare2.md)
 computes the $`n`$-step curves for the two histories, NSP → SP and SP →
@@ -251,10 +249,9 @@ summary(cmp_imv)
 #>   intervals first overlap at step 7 (time s = 8); significant for the first 6 step(s).
 ```
 
-These are the curves of Figures 4–5 of the paper, with its colours (blue
-for NSP, red for SP at the previous time). Without intervals
-(`bounds = FALSE`), the two histories start far apart and converge (the
-RPE curves of Figure 4):
+The curves use the colours of the paper (blue for NSP, red for SP at the
+previous time). Without intervals (`bounds = FALSE`), the two histories
+start far apart and converge:
 
 ``` r
 
@@ -274,8 +271,7 @@ plot of chunk figure-curves
 par(op)
 ```
 
-With evolution intervals (Figure 5); the dotted line marks the first
-overlap:
+With evolution intervals; the dotted line marks the first overlap:
 
 ``` r
 
@@ -310,7 +306,7 @@ The state at the previous time changes the prediction of non-invasive
 ventilation for 4 days (the intervals overlap from day 5) and of
 invasive ventilation for 6 days (from day 7). The paper reports the
 overlap “around the fifth day” for NIMV and “between the sixth and
-seventh day” for IMV (Section 6.3).
+seventh day” for IMV.
 
 These curves are those of the paper’s code: its `Chapman.Kolmogorov()`
 function gives the same nine values for each history (differences below
@@ -355,100 +351,7 @@ par(op)
 With bootstrap intervals the two histories of SP → NIMV remain separated
 for 7 days instead of 4.
 
-## 8. Step 6: the simulation study (Section 5, Table 1)
-
-Section 5 of the paper studies the estimators on data simulated from a
-four-state model: states 1, 2 and 3 and an absorbing state A.
-Individuals enter the study at different times through an auxiliary
-state 0 (probability 0.05 of entering state 1 and 0.05 of entering state
-2 at each step), make a first move with first-order probabilities and
-then move with second-order probabilities until they are absorbed. The
-paper simulates 1,000 individuals and repeats the study 100 times.
-[`simulate2()`](https://jcarmezim.github.io/mstate2/reference/simulate2.md)
-implements this mechanism, with the probabilities of Section 5.1 written
-as a tensor `P[j, l, h]` and a first-move matrix:
-
-``` r
-
-st <- c("1", "2", "3", "A")
-tensor <- array(0, c(4, 4, 4), dimnames = list(st, st, st))   # P[j, l, h]
-tensor["2", c("2", "3"), "1"] <- c(0.4, 0.6)   # 1 -> 2 -> {2, 3}
-tensor["3", c("3", "A"), "1"] <- c(0.1, 0.9)   # 1 -> 3 -> {3, A}
-tensor["2", c("2", "3"), "2"] <- c(0.7, 0.3)   # 2 -> 2 -> {2, 3}
-tensor["3", c("3", "A"), "2"] <- c(0.8, 0.2)   # 2 -> 3 -> {3, A}
-tensor["3", c("3", "A"), "3"] <- c(0.5, 0.5)   # 3 -> 3 -> {3, A}
-tensor["A", "A", ] <- 1                          # A is absorbing
-first <- matrix(0, 4, 4, dimnames = list(st, st))
-first["1", c("A", "2", "3")] <- c(0.1, 0.8, 0.1) # first move from state 1
-first["2", c("2", "3")]      <- c(0.5, 0.5)      # first move from state 2
-entry <- c("1" = 0.05, "2" = 0.05)               # entry from the auxiliary state 0
-```
-
-Table 1 reports one of the two probabilities of each history (the other
-is its complement): $`p_{123} = 0.6`$, $`p_{13A} = 0.9`$,
-$`p_{222} = 0.7`$, $`p_{233} = 0.8`$ and $`p_{333} = 0.5`$. Each
-replicate simulates 1,000 individuals and estimates them with
-[`P2est()`](https://jcarmezim.github.io/mstate2/reference/P2est.md):
-
-``` r
-
-truth <- tibble(h    = c("1", "1", "2", "2", "3"),
-                j    = c("2", "3", "2", "3", "3"),
-                l    = c("3", "A", "2", "3", "3"),
-                true = c(0.6, 0.9, 0.7, 0.8, 0.5))
-one_replicate <- function(r) {
-  sim <- simulate2(1000, tensor, first, entry = entry)
-  P2est(prep2(sim, states = st, check.consecutive = FALSE))$estimate |>
-    mutate(across(c(h, j, l), as.character)) |>
-    inner_join(truth, by = c("h", "j", "l"))
-}
-set.seed(5)                                      # the seed of the paper's code
-reps <- purrr::map(1:100, one_replicate) |>
-  bind_rows(.id = "replicate")
-```
-
-The four measures of Table 1 are the mean squared error (MSE), the
-empirical standard deviation of the 100 estimates (ESD), the average of
-the estimated standard errors (ASD) and the coverage of the 95%
-intervals (CP):
-
-``` r
-
-paper_table1 <- truth |>                         # RPE rows of Table 1
-  mutate(paper_MSE = c(0.0008, 0.0020, 0.0001, 0.0002, 0.0002),
-         paper_ESD = c(0.0274, 0.0444, 0.0121, 0.0123, 0.0130),
-         paper_ASD = c(0.0245, 0.0420, 0.0125, 0.0134, 0.0132),
-         paper_CP  = c(91, 91, 97, 97, 96))
-table1 <- reps |>
-  summarise(MSE = mean((p - true)^2), ESD = sd(p), ASD = mean(se),
-            CP  = 100 * mean(lower < true & true < upper),
-            .by = c(h, j, l, true)) |>
-  left_join(paper_table1, by = c("h", "j", "l", "true"))
-table1 |>
-  transmute(probability = paste0("p", h, j, l, " = ", true),
-            MSE = round(MSE, 4), paper_MSE, ESD = round(ESD, 4), paper_ESD,
-            ASD = round(ASD, 4), paper_ASD, CP, paper_CP)
-#> # A tibble: 5 × 9
-#>   probability    MSE paper_MSE    ESD paper_ESD    ASD paper_ASD    CP paper_CP
-#>   <chr>        <dbl>     <dbl>  <dbl>     <dbl>  <dbl>     <dbl> <dbl>    <dbl>
-#> 1 p123 = 0.6  0.0006    0.0008 0.0256    0.0274 0.0244    0.0245    94       91
-#> 2 p13A = 0.9  0.0016    0.002  0.0399    0.0444 0.04      0.042     89       91
-#> 3 p222 = 0.7  0.0002    0.0001 0.0129    0.0121 0.0124    0.0125    93       97
-#> 4 p233 = 0.8  0.0002    0.0002 0.0123    0.0123 0.0134    0.0134    97       97
-#> 5 p333 = 0.5  0.0002    0.0002 0.013     0.013  0.0132    0.0132    95       96
-```
-
-The values agree with the RPE rows of Table 1 up to Monte Carlo error
-(100 replicates; the paper’s code draws the transitions of the whole
-cohort as binomial counts and
-[`simulate2()`](https://jcarmezim.github.io/mstate2/reference/simulate2.md)
-draws them individual by individual, so the random numbers differ): the
-estimator is almost unbiased, the estimated standard errors (ASD) match
-the observed variability (ESD), and the coverage is close to 95%. The
-CPE rows of Table 1 are not reproduced, because the package implements
-only the RPE.
-
-## 9. Checklist
+## 8. Checklist
 
 | Result | Paper | `mstate2` |
 |----|----|----|
@@ -458,11 +361,9 @@ only the RPE.
 | P(SP → SP → IMV) | 0.018 | 0.018 |
 | First overlap of the evolution intervals, SP → NIMV | around day 5 | day 5 |
 | First overlap of the evolution intervals, SP → IMV | between days 6 and 7 | day 7 |
-| Table 1, ESD of the RPE of $`p_{233}`$ | 0.0123 | 0.0123 |
-| Table 1, ASD of the RPE of $`p_{233}`$ | 0.0134 | 0.0134 |
 
-The DIVINE checks (Table 2 and Section 6.3) also run as a script in
-`tests/DIVINE_reproduction.R` whenever the DIVINE data are available.
+These checks also run as a script in `tests/DIVINE_reproduction.R`
+whenever the DIVINE data are available.
 
 ## References
 

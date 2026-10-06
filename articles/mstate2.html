@@ -80,10 +80,10 @@ Carmezim</h4>
 using the DIVINE cohort of patients hospitalised with COVID-19, the
 real-data illustration of Najera-Zuloaga, Besalú and Gómez Melis (2025).
 It reproduces the analysis of the paper step by step and adds bootstrap
-intervals for the predictions. Every exported function is introduced at
-the point of the analysis where it is needed, with its arguments, what
-it computes and how to read its output. A complete function reference is
-in <code><a href="../articles/reference.html">vignette("reference")</a></code>.</p>
+intervals for the predictions. Each function is introduced where the
+analysis needs it, with its arguments, what it computes and how to read
+its output. A complete function reference is in
+<code><a href="../articles/reference.html">vignette("reference")</a></code>.</p>
 <div class="section level2">
 <h2 id="second-order-models">1. Second-order models<a class="anchor" aria-label="anchor" href="#second-order-models"></a>
 </h2>
@@ -238,11 +238,6 @@ transition matrix.</p>
 </td>
 <td>
 <code>msm2pred</code>, list</td>
-</tr>
-<tr class="even">
-<td>Simulation</td>
-<td><code><a href="../reference/simulate2.html">simulate2()</a></code></td>
-<td>panel</td>
 </tr>
 </tbody>
 </table>
@@ -882,11 +877,10 @@ patient-days at risk of the history:</p>
 \qquad
 \mathrm{se} = \sqrt{\frac{\tilde P_{hj\ell}(1-\tilde P_{hj\ell})}{\sum_s \tilde Y_{hj}(s-1)}}.
 </annotation></semantics></math></p>
-<p>These are Eq. 9 and the variance of Theorem 5 of the paper; the Wald
-interval
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>P</mi><mo accent="true">̃</mo></mover><mrow><mi>h</mi><mi>j</mi><mi>ℓ</mi></mrow></msub><mo>±</mo><mi>z</mi><mspace width="0.167em"></mspace><mrow><mi mathvariant="normal">s</mi><mi mathvariant="normal">e</mi></mrow></mrow><annotation encoding="application/x-tex">\tilde P_{hj\ell} \pm z\,\mathrm{se}</annotation></semantics></math>
-is that of its Corollary 2. On DIVINE, the estimates coincide with those
-of the paper’s code.</p>
+<p>The standard error comes from the asymptotic variance of the
+estimator, and the Wald interval is
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>P</mi><mo accent="true">̃</mo></mover><mrow><mi>h</mi><mi>j</mi><mi>ℓ</mi></mrow></msub><mo>±</mo><mi>z</mi><mspace width="0.167em"></mspace><mrow><mi mathvariant="normal">s</mi><mi mathvariant="normal">e</mi></mrow></mrow><annotation encoding="application/x-tex">\tilde P_{hj\ell} \pm z\,\mathrm{se}</annotation></semantics></math>.
+On DIVINE, the estimates coincide with those of the paper’s code.</p>
 <p>For every absorbing state
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>a</mi><annotation encoding="application/x-tex">a</annotation></semantics></math>,
 <code>P[a, a, h]</code> is set to 1 for every
@@ -903,8 +897,7 @@ so that no probability is lost when predictions are propagated.</p>
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mi>h</mi><mo>,</mo><mi>j</mi><mo>,</mo><mi>ℓ</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(h, j, \ell)</annotation></semantics></math>,
 with the estimate, standard error, interval, number of transitions
 (<code>n.trans</code>) and patient-days at risk (<code>at.risk</code>).
-<strong>Table 2 of the paper</strong> is the part for patients in severe
-pneumonia at the current time:</p>
+For patients in severe pneumonia at the current time:</p>
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span><span class="op">$</span><span class="va">estimate</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">j</span> <span class="op">==</span> <span class="st">"SP"</span><span class="op">)</span></span>
@@ -961,19 +954,19 @@ and are preferable for small probabilities:</p>
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/P2boot.html">P2boot</a></span><span class="op">(</span><span class="va">object</span>, B <span class="op">=</span> <span class="fl">200</span>, conf.level <span class="op">=</span> <span class="fl">0.95</span>, seed <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
 <p>A patient contributes many days to the same history, and the
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math>-step
-predictions of Section 5 need intervals that account for the uncertainty
-of all the estimates at once. <code><a href="../reference/P2boot.html">P2boot()</a></code> resamples
-<strong>whole patients</strong> with replacement and re-estimates every
-probability in each of the <code>B</code> replicates. The result is a
-<code>P2est</code> object with the replicates attached and an extra
-column <code>se.boot</code>; every function that takes a
+predictions of the next section need intervals that account for the
+uncertainty of all the estimates at once. <code><a href="../reference/P2boot.html">P2boot()</a></code>
+resamples <strong>whole patients</strong> with replacement and
+re-estimates every probability in each of the <code>B</code> replicates.
+The result is a <code>P2est</code> object with the replicates attached
+and an extra column <code>se.boot</code>; every function that takes a
 <code>P2est</code> also takes a <code>P2boot</code> and then uses
 <strong>percentile bootstrap intervals</strong>. The per-patient counts
 are computed once, so replicates are cheap:</p>
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="va">bt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/P2boot.html">P2boot</a></span><span class="op">(</span><span class="va">d</span>, B <span class="op">=</span> <span class="fl">500</span>, seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    user  system elapsed </span></span>
-<span><span class="co">#&gt;   0.344   0.282   0.653</span></span>
+<span><span class="co">#&gt;   0.291   0.016   0.308</span></span>
 <span><span class="va">bt</span><span class="op">$</span><span class="va">estimate</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">j</span> <span class="op">==</span> <span class="st">"SP"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">h</span>, <span class="va">l</span>, <span class="va">p</span>, <span class="va">se</span>, <span class="va">se.boot</span><span class="op">)</span></span>
@@ -1141,8 +1134,7 @@ returns the step <code>n</code>, the time <code>s = n + 1</code>, the
 number of leading steps with separated intervals and the separation
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">max</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><msub><mi>L</mi><mn>1</mn></msub><mo>,</mo><msub><mi>L</mi><mn>2</mn></msub><mo stretchy="false" form="postfix">)</mo><mo>−</mo><mrow><mi mathvariant="normal">min</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><msub><mi>U</mi><mn>1</mn></msub><mo>,</mo><msub><mi>U</mi><mn>2</mn></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\max(L_1, L_2) - \min(U_1, U_2)</annotation></semantics></math>
 at each step.</p>
-<p>With evolution intervals, as in <strong>Section 6.3 of the
-paper</strong>:</p>
+<p>With the <strong>evolution intervals</strong> of the paper:</p>
 <div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cmp_nimv</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compare2.html">compare2</a></span><span class="op">(</span><span class="va">fit</span>, h <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"NSP"</span>, <span class="st">"SP"</span><span class="op">)</span>, j <span class="op">=</span> <span class="st">"SP"</span>, l <span class="op">=</span> <span class="st">"NIMV"</span><span class="op">)</span></span>
 <span><span class="va">cmp_imv</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compare2.html">compare2</a></span><span class="op">(</span><span class="va">fit</span>, h <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"NSP"</span>, <span class="st">"SP"</span><span class="op">)</span>, j <span class="op">=</span> <span class="st">"SP"</span>, l <span class="op">=</span> <span class="st">"IMV"</span><span class="op">)</span></span>
@@ -1184,44 +1176,7 @@ plot of chunk compare2-boot
 </div>
 </div>
 <div class="section level2">
-<h2 id="simulation-simulate2">7. Simulation: <code>simulate2()</code><a class="anchor" aria-label="anchor" href="#simulation-simulate2"></a>
-</h2>
-<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/simulate2.html">simulate2</a></span><span class="op">(</span><span class="va">n</span>, <span class="va">tensor</span>, <span class="va">first</span>, init <span class="op">=</span> <span class="cn">NULL</span>, entry <span class="op">=</span> <span class="cn">NULL</span>, states <span class="op">=</span> <span class="cn">NULL</span>, maxT <span class="op">=</span> <span class="fl">1000</span><span class="op">)</span></span></code></pre></div>
-<p><code><a href="../reference/simulate2.html">simulate2()</a></code> generates a daily panel from a second-order
-model given by a tensor <code>P[j, l, h]</code>, a matrix
-<code>first</code> for the first move (which has no previous time) and
-the distribution <code>init</code> of the state at time 0; with
-<code>entry</code>, patients enter at different global times (Section 5
-of the paper). It is useful to study the methods under a known model;
-<code><a href="../articles/paper.html">vignette("paper")</a></code> uses it to reproduce the simulation study
-of the paper (Table 1). For instance, from the model fitted to
-DIVINE:</p>
-<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">first_moves</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">inner_join</a></span><span class="op">(</span></span>
-<span>  <span class="va">panel</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">time</span> <span class="op">==</span> <span class="fl">0</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">id</span>, from <span class="op">=</span> <span class="va">state</span><span class="op">)</span>,     <span class="co"># state at admission</span></span>
-<span>  <span class="va">panel</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">time</span> <span class="op">==</span> <span class="fl">1</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">id</span>, to <span class="op">=</span> <span class="va">state</span><span class="op">)</span>,       <span class="co"># state on day 1</span></span>
-<span>  by <span class="op">=</span> <span class="st">"id"</span><span class="op">)</span></span>
-<span><span class="va">first_mat</span> <span class="op">&lt;-</span> <span class="va">first_moves</span> <span class="op">|&gt;</span>                                    <span class="co"># first move (no previous time)</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span>from <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">from</span>, <span class="va">estados</span><span class="op">)</span>, to <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">to</span>, <span class="va">estados</span><span class="op">)</span>, .drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">from</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>p <span class="op">=</span> <span class="va">n</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">pmax</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">n</span><span class="op">)</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">ungroup</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/stats/xtabs.html" class="external-link">xtabs</a></span><span class="op">(</span>formula <span class="op">=</span> <span class="va">p</span> <span class="op">~</span> <span class="va">from</span> <span class="op">+</span> <span class="va">to</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">unclass</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="va">init</span> <span class="op">&lt;-</span> <span class="va">first_moves</span> <span class="op">|&gt;</span>                                         <span class="co"># distribution at admission</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span>state <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">from</span>, <span class="va">estados</span><span class="op">)</span>, .drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>p <span class="op">=</span> <span class="va">n</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">n</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/pull.html" class="external-link">pull</a></span><span class="op">(</span><span class="va">p</span>, name <span class="op">=</span> <span class="va">state</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
-<span><span class="va">sim</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simulate2.html">simulate2</a></span><span class="op">(</span><span class="fl">2000</span>, <span class="va">fit</span><span class="op">$</span><span class="va">P</span>, first <span class="op">=</span> <span class="va">first_mat</span>, init <span class="op">=</span> <span class="va">init</span><span class="op">)</span></span>
-<span><span class="va">fit_sim</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/P2est.html">P2est</a></span><span class="op">(</span><span class="fu"><a href="../reference/prep2.html">prep2</a></span><span class="op">(</span><span class="va">sim</span>, states <span class="op">=</span> <span class="va">estados</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>DIVINE <span class="op">=</span> <span class="va">fit</span><span class="op">$</span><span class="va">P</span><span class="op">[</span><span class="st">"SP"</span>, <span class="st">"NIMV"</span>, <span class="st">"NSP"</span><span class="op">]</span>, simulated <span class="op">=</span> <span class="va">fit_sim</span><span class="op">$</span><span class="va">P</span><span class="op">[</span><span class="st">"SP"</span>, <span class="st">"NIMV"</span>, <span class="st">"NSP"</span><span class="op">]</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span></span>
-<span><span class="co">#&gt;    DIVINE simulated </span></span>
-<span><span class="co">#&gt;     0.224     0.232</span></span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="methodological-choices">8. Methodological choices<a class="anchor" aria-label="anchor" href="#methodological-choices"></a>
+<h2 id="methodological-choices">7. Methodological choices<a class="anchor" aria-label="anchor" href="#methodological-choices"></a>
 </h2>
 <table class="table">
 <colgroup>
@@ -1263,7 +1218,7 @@ parameters</td>
 </tr>
 <tr class="even">
 <td>First overlap of the intervals</td>
-<td>the criterion of Section 6.3 of the paper</td>
+<td>the criterion of the methods paper</td>
 <td>Najera-Zuloaga et al. (2025)</td>
 </tr>
 <tr class="odd">
@@ -1275,8 +1230,7 @@ parameters</td>
 <td>Percentile intervals for
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math>-step
 predictions</td>
-<td>non-linear functions of all the estimates; near-nominal coverage in
-simulation</td>
+<td>non-linear functions of all the estimates</td>
 <td>Efron and Tibshirani (1993)</td>
 </tr>
 <tr class="odd">
@@ -1289,7 +1243,7 @@ as arrays</td>
 </table>
 </div>
 <div class="section level2">
-<h2 id="summary">9. Summary<a class="anchor" aria-label="anchor" href="#summary"></a>
+<h2 id="summary">8. Summary<a class="anchor" aria-label="anchor" href="#summary"></a>
 </h2>
 <table class="table">
 <colgroup>
@@ -1331,10 +1285,6 @@ days?</td>
 <td>
 <code><a href="../reference/compare2.html">compare2()</a></code>, <code><a href="../reference/overlap_step.html">overlap_step()</a></code>
 </td>
-</tr>
-<tr class="even">
-<td>How do the methods behave under a known model?</td>
-<td><code><a href="../reference/simulate2.html">simulate2()</a></code></td>
 </tr>
 </tbody>
 </table>

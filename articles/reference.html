@@ -75,11 +75,12 @@ Carmezim</h4>
     
 <!-- This vignette is precomputed: edit reference.Rmd.orig and run
      vignettes/precompile.R with the DIVINE data available. -->
-<p>This document is the complete reference for <code>mstate2</code>. The
-package implements the methods of Najera-Zuloaga, Besalú and Gómez Melis
-(2025) and adds subject-level bootstrap intervals for the predictions.
-The document lists every exported function, every S3 method, every
-object class and the internal helpers, each with the same structure:</p>
+<p>This document is the reference for the analysis functions of
+<code>mstate2</code>. The package implements the methods of
+Najera-Zuloaga, Besalú and Gómez Melis (2025) and adds subject-level
+bootstrap intervals for the predictions. The document lists the
+functions of the analysis, their S3 methods, the object classes and the
+internal helpers, each with the same structure:</p>
 <ul>
 <li>
 <strong>Definition</strong>: the exact signature, with default
@@ -264,8 +265,8 @@ uses to turn the DIVINE sojourn times into days.</p>
 in the direction of the sign and truncating towards zero. Base R’s
 <code><a href="https://rdrr.io/r/base/Round.html" class="external-link">round()</a></code> instead sends halves to the nearest <em>even</em>
 integer (IEC 60559), so <code>round(0.5) = 0</code> would make a
-half-day stay vanish. Only <code><a href="../reference/rnd.html">rnd()</a></code> reproduces Table 2 of the
-paper.</p>
+half-day stay vanish. Only <code><a href="../reference/rnd.html">rnd()</a></code> reproduces the published
+estimates.</p>
 <p><strong>Errors and warnings.</strong> None.</p>
 <p><strong>Example</strong></p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
@@ -750,8 +751,8 @@ with the current row’s state as <code>l</code>.</li>
 <li>
 <code>N</code> counts triples by <code>(h, j, l, s)</code>
 (<code><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count()</a></code>); <code>Y</code> sums <code>N</code> over
-<code>l</code>. These are the counting processes of Section 2.2 of the
-paper. With complete follow-up,
+<code>l</code>. These are the counting processes of the paper. With
+complete follow-up,
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>∑</mo><mi>ℓ</mi></msub><msub><mover><mi>N</mi><mo accent="true">̃</mo></mover><mrow><mi>h</mi><mi>j</mi><mi>ℓ</mi></mrow></msub><mo stretchy="false" form="prefix">(</mo><mi>s</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\sum_\ell \tilde N_{hj\ell}(s)</annotation></semantics></math>
 is exactly the number of subjects in
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>h</mi><annotation encoding="application/x-tex">h</annotation></semantics></math>
@@ -988,17 +989,15 @@ and <code>at.risk</code>
 \qquad
 \mathrm{se} = \sqrt{\frac{\tilde P_{hj\ell}(1-\tilde P_{hj\ell})}{\sum_s \tilde Y_{hj}(s-1)}}.
 </annotation></semantics></math></p>
-<p>The estimator is Eq. 9 of the paper; the standard error is
+<p>The estimator is the RPE of the paper; the standard error is
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>𝜍</mi><mo accent="true">̃</mo></mover><mrow><mi>h</mi><mi>j</mi><mi>ℓ</mi></mrow></msub><mi>/</mi><msqrt><mi>n</mi></msqrt></mrow><annotation encoding="application/x-tex">\tilde\varsigma_{hj\ell}/\sqrt{n}</annotation></semantics></math>,
-with the variance estimator of Theorem 5 (Eq. 14), because
+with the estimator of its asymptotic variance, because
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>π</mi><mo accent="true">̂</mo></mover><mrow><mi>h</mi><mi>j</mi></mrow></msub><mo stretchy="false" form="prefix">(</mo><mi>s</mi><mo>−</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo><mo>=</mo><msub><mover><mi>Y</mi><mo accent="true">̃</mo></mover><mrow><mi>h</mi><mi>j</mi></mrow></msub><mo stretchy="false" form="prefix">(</mo><mi>s</mi><mo>−</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo><mi>/</mi><mi>n</mi></mrow><annotation encoding="application/x-tex">\hat\pi_{hj}(s-1) = \tilde Y_{hj}(s-1)/n</annotation></semantics></math>.
 The RPE pools all exposure and weighs every subject-instant equally (the
-paper shows, Corollary 3, that it is more efficient than the conditional
-probability estimator, which is therefore not implemented). Intervals:
-Wald
+paper shows that it is more efficient than the conditional probability
+estimator, which is therefore not implemented). Intervals: Wald
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>P</mi><mo accent="true">̃</mo></mover><mo>±</mo><mi>z</mi><mspace width="0.167em"></mspace><mrow><mi mathvariant="normal">s</mi><mi mathvariant="normal">e</mi></mrow></mrow><annotation encoding="application/x-tex">\tilde P \pm z\,\mathrm{se}</annotation></semantics></math>
-(Corollary 2; clipped if <code>clip</code>, as in the paper’s code), or
-logit
+(clipped if <code>clip</code>, as in the paper’s code), or logit
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">e</mi><mi mathvariant="normal">x</mi><mi mathvariant="normal">p</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">t</mi></mrow><mo stretchy="false" form="prefix">(</mo><mrow><mi mathvariant="normal">l</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">g</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">t</mi></mrow><mspace width="0.167em"></mspace><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo>±</mo><mi>z</mi><mspace width="0.167em"></mspace><mrow><mi mathvariant="normal">s</mi><mi mathvariant="normal">e</mi></mrow><mi>/</mi><mo stretchy="false" form="prefix">(</mo><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>−</mo><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\mathrm{expit}(\mathrm{logit}\,\hat p \pm z\,\mathrm{se}/(\hat p(1-\hat p)))</annotation></semantics></math>,
 which degenerates to
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">[</mo><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo>,</mo><mover><mi>p</mi><mo accent="true">̂</mo></mover><mo stretchy="false" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[\hat p, \hat p]</annotation></semantics></math>
@@ -1036,7 +1035,7 @@ single number strictly between 0 and 1.</p>
 <span><span class="co">#&gt;   states: NSP, SP, Recov, NIMV, IMV, Disch, Death</span></span>
 <span><span class="co">#&gt;   95% wald confidence intervals; 2076 subjects</span></span>
 <span><span class="co">#&gt;   39 estimated transition probabilities (h -&gt; j -&gt; l)</span></span>
-<span><span class="va">fit</span><span class="op">$</span><span class="va">estimate</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">j</span> <span class="op">==</span> <span class="st">"SP"</span><span class="op">)</span>             <span class="co"># Table 2 of the paper</span></span>
+<span><span class="va">fit</span><span class="op">$</span><span class="va">estimate</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">j</span> <span class="op">==</span> <span class="st">"SP"</span><span class="op">)</span>             <span class="co"># patients in SP at the current time</span></span>
 <span><span class="co">#&gt; # A tibble: 10 × 9</span></span>
 <span><span class="co">#&gt;    h     j     l           p      se   lower   upper n.trans at.risk</span></span>
 <span><span class="co">#&gt;    &lt;fct&gt; &lt;fct&gt; &lt;fct&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;int&gt;   &lt;int&gt;</span></span>
@@ -1153,10 +1152,7 @@ resampled: the standard non-parametric bootstrap for clustered data
 predictions are non-linear functions of all the estimated probabilities,
 so propagating each replicate and taking percentiles (Efron and
 Tibshirani, 1993) is simpler and more reliable than a delta-method
-variance. In the package’s simulation study, 95% percentile intervals of
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math>-step
-predictions had coverage 0.91 to 0.94, while the evolution intervals had
-coverage 1 and were up to five times wider.</p>
+variance.</p>
 <p><strong>Errors and warnings.</strong> Error if <code>object</code> is
 not an <code>msm2data</code>, if <code>B &lt; 2</code> or if
 <code>conf.level</code> is not in (0, 1).</p>
@@ -1311,21 +1307,22 @@ This is exact, and costs one matrix–vector product per step. Writing a
 second-order chain as a first-order chain on pairs of consecutive states
 is the standard representation of higher-order Markov chains
 (e.g. Benson, Gleich and Lim, 2017). It gives exactly the sum over paths
-of Eq. 6 of the paper: with <code>nsteps = 9</code>, the result equals
-the nine values of the <code>Chapman.Kolmogorov(P, h, j, l)</code>
-function of the paper’s code (differences below
+of the extended Chapman–Kolmogorov relation of the paper: with
+<code>nsteps = 9</code>, the result equals the nine values of the
+<code>Chapman.Kolmogorov(P, h, j, l)</code> function of the paper’s code
+(differences below
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mn>10</mn><mrow><mi>−</mi><mn>16</mn></mrow></msup><annotation encoding="application/x-tex">10^{-16}</annotation></semantics></math>
 on DIVINE).</p>
 <p>With <code>bounds = TRUE</code>, the same propagation is applied to
 <code>P.lower</code> and <code>P.upper</code>: these are the
-<strong>evolution intervals</strong> of Section 6.3 of the paper. As the
-paper explains, they are not confidence intervals; they are built to
-contain them, so that two evolution intervals that do not overlap
-indicate a significant difference. The rows of the limit tensors do not
-sum to 1, so the bounds are also clipped to [0, 1] (on DIVINE this
-changes nothing). If <code>x</code> is a <code>P2boot</code> fit, the
-bounds are instead percentile bootstrap intervals (every replicate
-tensor is propagated), with close to nominal coverage.</p>
+<strong>evolution intervals</strong> of the paper. As the paper
+explains, they are not confidence intervals; they are built to contain
+them, so that two evolution intervals that do not overlap indicate a
+significant difference. The rows of the limit tensors do not sum to 1,
+so the bounds are also clipped to [0, 1] (on DIVINE this changes
+nothing). If <code>x</code> is a <code>P2boot</code> fit, the bounds are
+instead percentile bootstrap intervals (every replicate tensor is
+propagated), with close to nominal coverage.</p>
 <p><strong>Errors and warnings.</strong></p>
 <ul>
 <li>Error: <code>x</code> is neither a <code>P2est</code> nor a
@@ -1451,8 +1448,7 @@ With a <code>P2boot</code> fit the bounds are percentile bootstrap
 intervals, and the attribute <code>bands</code> records which kind was
 used (<code>"evolution"</code> or <code>"bootstrap"</code>). The curves
 are stacked in long format (<code><a href="https://purrr.tidyverse.org/reference/map.html" class="external-link">purrr::map()</a></code> and
-<code><a href="https://purrr.tidyverse.org/reference/list_c.html" class="external-link">purrr::list_rbind()</a></code>). These are the curves of Figures 4
-(RPE) and 5 of the paper.</p>
+<code><a href="https://purrr.tidyverse.org/reference/list_c.html" class="external-link">purrr::list_rbind()</a></code>).</p>
 <p><strong>Errors and warnings.</strong> Error if <code>object</code> is
 not a <code>P2est</code>, or if <code>j</code>, <code>l</code> or any
 <code>h</code> is not in the state space.</p>
@@ -1557,10 +1553,10 @@ are separated exactly when
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">max</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><msub><mi>L</mi><mn>1</mn></msub><mo>,</mo><msub><mi>L</mi><mn>2</mn></msub><mo stretchy="false" form="postfix">)</mo><mo>&gt;</mo><mrow><mi mathvariant="normal">min</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><msub><mi>U</mi><mn>1</mn></msub><mo>,</mo><msub><mi>U</mi><mn>2</mn></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\max(L_1, L_2) &gt; \min(U_1, U_2)</annotation></semantics></math>.
 The first step where this fails is the first overlap.</p>
 <p><strong>Why it is done this way.</strong> Non-overlap of the two
-intervals is the criterion of the methods paper (Section 6.3). In
-DIVINE, the evolution intervals first overlap at step 5 for SP → NIMV
-and at step 7 for SP → IMV, the “fifth day” and “between the sixth and
-seventh day” of the paper.</p>
+intervals is the criterion of the methods paper. In DIVINE, the
+evolution intervals first overlap at step 5 for SP → NIMV and at step 7
+for SP → IMV, the “fifth day” and “between the sixth and seventh day” of
+the paper.</p>
 <p><strong>Errors and warnings.</strong> Error if <code>x</code> has no
 bounds, or does not have exactly two groups.</p>
 <p><strong>Example</strong></p>
@@ -1712,171 +1708,6 @@ without bounds (lines are drawn instead).</p>
 plot of chunk plot
 </p>
 </div>
-</div>
-</div>
-<div class="section level2">
-<h2 id="simulation">Simulation<a class="anchor" aria-label="anchor" href="#simulation"></a>
-</h2>
-<div class="section level3">
-<h3 id="simulate2">
-<code>simulate2()</code><a class="anchor" aria-label="anchor" href="#simulate2"></a>
-</h3>
-<p><strong>Definition</strong></p>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/simulate2.html">simulate2</a></span><span class="op">(</span><span class="va">n</span>, <span class="va">tensor</span>, <span class="va">first</span>, init <span class="op">=</span> <span class="cn">NULL</span>, entry <span class="op">=</span> <span class="cn">NULL</span>, states <span class="op">=</span> <span class="cn">NULL</span>, maxT <span class="op">=</span> <span class="fl">1000</span><span class="op">)</span></span></code></pre></div>
-<p><strong>What it does.</strong> Simulates discrete-time panel data
-from a second-order Markov multistate model, defined by a second-order
-tensor, a matrix for the first move, and an entry distribution. Useful
-to validate methods, study the estimators and plan studies.</p>
-<p><strong>Arguments</strong></p>
-<table class="table">
-<colgroup>
-<col width="33%">
-<col width="33%">
-<col width="33%">
-</colgroup>
-<thead><tr class="header">
-<th>Argument</th>
-<th>Default</th>
-<th>Meaning</th>
-</tr></thead>
-<tbody>
-<tr class="odd">
-<td><code>n</code></td>
-<td>—</td>
-<td>number of individuals</td>
-</tr>
-<tr class="even">
-<td><code>tensor</code></td>
-<td>—</td>
-<td>
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>M</mi><mo>×</mo><mi>M</mi><mo>×</mo><mi>M</mi></mrow><annotation encoding="application/x-tex">M \times M \times M</annotation></semantics></math>
-tensor <code>P[j, l, h]</code>; absorbing states need
-<code>tensor[a, a, h] = 1</code> for all <code>h</code>
-</td>
-</tr>
-<tr class="odd">
-<td><code>first</code></td>
-<td>—</td>
-<td>
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>M</mi><mo>×</mo><mi>M</mi></mrow><annotation encoding="application/x-tex">M \times M</annotation></semantics></math>
-matrix, <code>first[h, l]</code>
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>=</mo><mi>P</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>X</mi><mn>1</mn></msub><mo>=</mo><mi>ℓ</mi><mo>∣</mo><msub><mi>X</mi><mn>0</mn></msub><mo>=</mo><mi>h</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">= P(X_1 = \ell \mid X_0 = h)</annotation></semantics></math>
-</td>
-</tr>
-<tr class="even">
-<td><code>init</code></td>
-<td><code>NULL</code></td>
-<td>distribution of the entry state
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>X</mi><mn>0</mn></msub><annotation encoding="application/x-tex">X_0</annotation></semantics></math>
-when <code>entry = NULL</code>; default uniform over transient
-states</td>
-</tr>
-<tr class="odd">
-<td><code>entry</code></td>
-<td><code>NULL</code></td>
-<td>
-<strong>named</strong> vector of per-step entry probabilities by
-state; its sum is the per-step probability of entering, which gives
-<strong>staggered entry</strong>
-</td>
-</tr>
-<tr class="even">
-<td><code>states</code></td>
-<td><code>NULL</code></td>
-<td>state labels; default the tensor’s dimnames, or
-<code>1:M</code>
-</td>
-</tr>
-<tr class="odd">
-<td><code>maxT</code></td>
-<td><code>1000</code></td>
-<td>maximum number of global time steps</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Value.</strong> A tibble with columns <code>id</code>,
-<code>time</code> and <code>state</code> (factor with levels
-<code>states</code>), sorted by <code>id</code> and <code>time</code>,
-ready for <code><a href="../reference/prep2.html">prep2()</a></code>.</p>
-<p><strong>How it works.</strong></p>
-<ol style="list-style-type: decimal">
-<li>Absorbing states are those with <code>tensor[a, a, h] = 1</code> for
-all
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>h</mi><annotation encoding="application/x-tex">h</annotation></semantics></math>.</li>
-<li>Entry: without <code>entry</code>, all individuals enter at time 0
-with
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mn>0</mn></msub><mo>∼</mo></mrow><annotation encoding="application/x-tex">X_0 \sim</annotation></semantics></math><code>init</code>. With <code>entry</code>, at each global step each
-individual not yet entered enters with probability
-<code>sum(entry)</code>, in a state drawn from <code>entry</code>, and
-makes the first move at the following step.</li>
-<li>First move:
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mn>1</mn></msub><mo>∼</mo></mrow><annotation encoding="application/x-tex">X_1 \sim</annotation></semantics></math><code>first[X_0, ]</code>.</li>
-<li>Later moves:
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mi>s</mi></msub><mo>∼</mo></mrow><annotation encoding="application/x-tex">X_s \sim</annotation></semantics></math><code>tensor[X_{s-1}, , X_{s-2}]</code>. Individuals sharing the same
-pair are sampled together.</li>
-<li>An individual stops when it reaches an absorbing state, or when its
-probability row is all zero (an unspecified pair: the path ends
-there).</li>
-</ol>
-<p>The individual states are kept in vectors and updated with a loop
-over global time, because drawing every individual’s next state at every
-step is much faster that way than with a table. The design of Section 5
-of the paper is <code>entry = c("1" = 0.05, "2" = 0.05)</code> with the
-tensor and first-step matrix of Section 5.1 (see
-<code><a href="../articles/paper.html">vignette("paper")</a></code>). The paper’s code draws the number of
-individuals making each transition as independent binomials; here every
-individual draws its own next state from the same probabilities, which
-is the same model.</p>
-<p><strong>Errors and warnings.</strong> Error if <code>entry</code> is
-unnamed or names states not in <code>states</code>. Warning if
-<code>maxT</code> is reached with individuals still active (usually a
-zero-probability or non-absorbing cycle in <code>tensor</code>).</p>
-<p><strong>Example</strong></p>
-<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co">## simulate from the model fitted to DIVINE; the first move (no previous</span></span>
-<span><span class="co">## time) uses the empirical matrix of day 0 -&gt; day 1</span></span>
-<span><span class="va">first_moves</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">inner_join</a></span><span class="op">(</span></span>
-<span>  <span class="va">panel</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">time</span> <span class="op">==</span> <span class="fl">0</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">id</span>, from <span class="op">=</span> <span class="va">state</span><span class="op">)</span>,     <span class="co"># state at admission</span></span>
-<span>  <span class="va">panel</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">time</span> <span class="op">==</span> <span class="fl">1</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">id</span>, to <span class="op">=</span> <span class="va">state</span><span class="op">)</span>,       <span class="co"># state on day 1</span></span>
-<span>  by <span class="op">=</span> <span class="st">"id"</span><span class="op">)</span></span>
-<span><span class="va">first_mat</span> <span class="op">&lt;-</span> <span class="va">first_moves</span> <span class="op">|&gt;</span>                                    <span class="co"># first move (no previous time)</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span>from <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">from</span>, <span class="va">estados</span><span class="op">)</span>, to <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">to</span>, <span class="va">estados</span><span class="op">)</span>, .drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">from</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>p <span class="op">=</span> <span class="va">n</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">pmax</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">n</span><span class="op">)</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">ungroup</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/stats/xtabs.html" class="external-link">xtabs</a></span><span class="op">(</span>formula <span class="op">=</span> <span class="va">p</span> <span class="op">~</span> <span class="va">from</span> <span class="op">+</span> <span class="va">to</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">unclass</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="va">init</span> <span class="op">&lt;-</span> <span class="va">first_moves</span> <span class="op">|&gt;</span>                                         <span class="co"># distribution at admission</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span>state <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">from</span>, <span class="va">estados</span><span class="op">)</span>, .drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>p <span class="op">=</span> <span class="va">n</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">n</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/pull.html" class="external-link">pull</a></span><span class="op">(</span><span class="va">p</span>, name <span class="op">=</span> <span class="va">state</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span></span>
-<span><span class="va">sim</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simulate2.html">simulate2</a></span><span class="op">(</span><span class="fl">2000</span>, <span class="va">fit</span><span class="op">$</span><span class="va">P</span>, first <span class="op">=</span> <span class="va">first_mat</span>, init <span class="op">=</span> <span class="va">init</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">sim</span>, <span class="va">state</span><span class="op">)</span></span>
-<span><span class="co">#&gt; # A tibble: 7 × 2</span></span>
-<span><span class="co">#&gt;   state     n</span></span>
-<span><span class="co">#&gt;   &lt;fct&gt; &lt;int&gt;</span></span>
-<span><span class="co">#&gt; 1 NSP   11601</span></span>
-<span><span class="co">#&gt; 2 SP     3303</span></span>
-<span><span class="co">#&gt; 3 Recov  4409</span></span>
-<span><span class="co">#&gt; 4 NIMV   1023</span></span>
-<span><span class="co">#&gt; 5 IMV    5382</span></span>
-<span><span class="co">#&gt; 6 Disch  1780</span></span>
-<span><span class="co">#&gt; 7 Death   220</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="../reference/simulate2.html">simulate2</a></span><span class="op">(</span><span class="fl">3</span>, <span class="va">fit</span><span class="op">$</span><span class="va">P</span>, first <span class="op">=</span> <span class="va">first_mat</span>, entry <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>NSP <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span><span class="op">)</span>, <span class="fl">8</span><span class="op">)</span>   <span class="co"># staggered entry</span></span>
-<span><span class="co">#&gt; # A tibble: 8 × 3</span></span>
-<span><span class="co">#&gt;      id  time state</span></span>
-<span><span class="co">#&gt;   &lt;int&gt; &lt;int&gt; &lt;fct&gt;</span></span>
-<span><span class="co">#&gt; 1     1     1 NSP  </span></span>
-<span><span class="co">#&gt; 2     1     2 NSP  </span></span>
-<span><span class="co">#&gt; 3     1     3 NSP  </span></span>
-<span><span class="co">#&gt; 4     1     4 NSP  </span></span>
-<span><span class="co">#&gt; 5     1     5 SP   </span></span>
-<span><span class="co">#&gt; 6     1     6 SP   </span></span>
-<span><span class="co">#&gt; 7     1     7 SP   </span></span>
-<span><span class="co">#&gt; 8     1     8 SP</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
@@ -2090,7 +1921,7 @@ otherwise <code>a</code>
 </tr>
 </tbody>
 </table>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">Q</span> <span class="op">&lt;-</span> <span class="fu">mstate2</span><span class="fu">:::</span><span class="fu">.pair_matrix</span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">P</span>, <span class="fl">7</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">Q</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 49 49</span></span>

@@ -5,9 +5,9 @@ This vignette shows how to analyse a multistate process with
 patients hospitalised with COVID-19, the real-data illustration of
 Najera-Zuloaga, Besalú and Gómez Melis (2025). It reproduces the
 analysis of the paper step by step and adds bootstrap intervals for the
-predictions. Every exported function is introduced at the point of the
-analysis where it is needed, with its arguments, what it computes and
-how to read its output. A complete function reference is in
+predictions. Each function is introduced where the analysis needs it,
+with its arguments, what it computes and how to read its output. A
+complete function reference is in
 [`vignette("reference")`](https://jcarmezim.github.io/mstate2/articles/reference.md).
 
 ## 1. Second-order models
@@ -62,7 +62,6 @@ matrix.
 | Estimation | [`P2est()`](https://jcarmezim.github.io/mstate2/reference/P2est.md), [`P2boot()`](https://jcarmezim.github.io/mstate2/reference/P2boot.md) | `P2est`, `P2boot` |
 | Prediction | [`ckequations()`](https://jcarmezim.github.io/mstate2/reference/ckequations.md) | vector / matrix / tibble |
 | Does the previous time matter? | [`compare2()`](https://jcarmezim.github.io/mstate2/reference/compare2.md), [`overlap_step()`](https://jcarmezim.github.io/mstate2/reference/overlap_step.md) | `msm2pred`, list |
-| Simulation | [`simulate2()`](https://jcarmezim.github.io/mstate2/reference/simulate2.md) | panel |
 
 ## 2. The DIVINE cohort
 
@@ -552,10 +551,9 @@ risk of the history:
 \mathrm{se} = \sqrt{\frac{\tilde P_{hj\ell}(1-\tilde P_{hj\ell})}{\sum_s \tilde Y_{hj}(s-1)}}.
 ```
 
-These are Eq. 9 and the variance of Theorem 5 of the paper; the Wald
-interval $`\tilde P_{hj\ell} \pm z\,\mathrm{se}`$ is that of its
-Corollary 2. On DIVINE, the estimates coincide with those of the paper’s
-code.
+The standard error comes from the asymptotic variance of the estimator,
+and the Wald interval is $`\tilde P_{hj\ell} \pm z\,\mathrm{se}`$. On
+DIVINE, the estimates coincide with those of the paper’s code.
 
 For every absorbing state $`a`$, `P[a, a, h]` is set to 1 for every
 $`h`$, so that no probability is lost when predictions are propagated.
@@ -572,8 +570,8 @@ fit
 
 The `estimate` table has one row per observed $`(h, j, \ell)`$, with the
 estimate, standard error, interval, number of transitions (`n.trans`)
-and patient-days at risk (`at.risk`). **Table 2 of the paper** is the
-part for patients in severe pneumonia at the current time:
+and patient-days at risk (`at.risk`). For patients in severe pneumonia
+at the current time:
 
 ``` r
 
@@ -640,8 +638,8 @@ P2boot(object, B = 200, conf.level = 0.95, seed = NULL)
 ```
 
 A patient contributes many days to the same history, and the $`n`$-step
-predictions of Section 5 need intervals that account for the uncertainty
-of all the estimates at once.
+predictions of the next section need intervals that account for the
+uncertainty of all the estimates at once.
 [`P2boot()`](https://jcarmezim.github.io/mstate2/reference/P2boot.md)
 resamples **whole patients** with replacement and re-estimates every
 probability in each of the `B` replicates. The result is a `P2est`
@@ -654,7 +652,7 @@ once, so replicates are cheap:
 
 system.time(bt <- P2boot(d, B = 500, seed = 1))
 #>    user  system elapsed 
-#>   0.344   0.282   0.653
+#>   0.291   0.016   0.308
 bt$estimate |>
   filter(j == "SP") |>
   select(h, l, p, se, se.boot)
@@ -789,7 +787,7 @@ changes the prediction significantly. It returns the step `n`, the time
 `s = n + 1`, the number of leading steps with separated intervals and
 the separation $`\max(L_1, L_2) - \min(U_1, U_2)`$ at each step.
 
-With evolution intervals, as in **Section 6.3 of the paper**:
+With the **evolution intervals** of the paper:
 
 ``` r
 
@@ -839,49 +837,7 @@ plot(cmp_b, dualaxis = FALSE, xlab = "steps (n)", main = "SP -> NIMV (bootstrap)
 
 plot of chunk compare2-boot
 
-## 7. Simulation: `simulate2()`
-
-``` r
-
-simulate2(n, tensor, first, init = NULL, entry = NULL, states = NULL, maxT = 1000)
-```
-
-[`simulate2()`](https://jcarmezim.github.io/mstate2/reference/simulate2.md)
-generates a daily panel from a second-order model given by a tensor
-`P[j, l, h]`, a matrix `first` for the first move (which has no previous
-time) and the distribution `init` of the state at time 0; with `entry`,
-patients enter at different global times (Section 5 of the paper). It is
-useful to study the methods under a known model;
-[`vignette("paper")`](https://jcarmezim.github.io/mstate2/articles/paper.md)
-uses it to reproduce the simulation study of the paper (Table 1). For
-instance, from the model fitted to DIVINE:
-
-``` r
-
-first_moves <- inner_join(
-  panel |> filter(time == 0) |> select(id, from = state),     # state at admission
-  panel |> filter(time == 1) |> select(id, to = state),       # state on day 1
-  by = "id")
-first_mat <- first_moves |>                                    # first move (no previous time)
-  count(from = factor(from, estados), to = factor(to, estados), .drop = FALSE) |>
-  group_by(from) |>
-  mutate(p = n / pmax(sum(n), 1)) |>
-  ungroup() |>
-  xtabs(formula = p ~ from + to) |>
-  unclass()
-init <- first_moves |>                                         # distribution at admission
-  count(state = factor(from, estados), .drop = FALSE) |>
-  mutate(p = n / sum(n)) |>
-  pull(p, name = state)
-set.seed(1)
-sim <- simulate2(2000, fit$P, first = first_mat, init = init)
-fit_sim <- P2est(prep2(sim, states = estados))
-round(c(DIVINE = fit$P["SP", "NIMV", "NSP"], simulated = fit_sim$P["SP", "NIMV", "NSP"]), 3)
-#>    DIVINE simulated 
-#>     0.224     0.232
-```
-
-## 8. Methodological choices
+## 7. Methodological choices
 
 | Choice | Why | Reference |
 |----|----|----|
@@ -890,12 +846,12 @@ round(c(DIVINE = fit$P["SP", "NIMV", "NSP"], simulated = fit_sim$P["SP", "NIMV",
 | Relative probability estimator only | more efficient than the conditional probability estimator | Najera-Zuloaga et al. (2025) |
 | Logit intervals as an option | Wald intervals behave poorly near 0 or 1 | Brown, Cai and DasGupta (2001) |
 | Prediction through the chain on pairs | exact, linear in the horizon | Benson, Gleich and Lim (2017) |
-| First overlap of the intervals | the criterion of Section 6.3 of the paper | Najera-Zuloaga et al. (2025) |
+| First overlap of the intervals | the criterion of the methods paper | Najera-Zuloaga et al. (2025) |
 | Bootstrap of whole patients | patients are the independent units | Davison and Hinkley (1997); Field and Welsh (2007) |
-| Percentile intervals for $`n`$-step predictions | non-linear functions of all the estimates; near-nominal coverage in simulation | Efron and Tibshirani (1993) |
+| Percentile intervals for $`n`$-step predictions | non-linear functions of all the estimates | Efron and Tibshirani (1993) |
 | Tables handled with the tidyverse and returned as tibbles; tensors as arrays | readable data handling; the predictions are linear algebra | Wickham et al. (2019) |
 
-## 9. Summary
+## 8. Summary
 
 | Question | Function |
 |----|----|
@@ -904,7 +860,6 @@ round(c(DIVINE = fit$P["SP", "NIMV", "NSP"], simulated = fit_sim$P["SP", "NIMV",
 | What is $`P_{hj\ell}`$? | [`P2est()`](https://jcarmezim.github.io/mstate2/reference/P2est.md), [`P2boot()`](https://jcarmezim.github.io/mstate2/reference/P2boot.md) |
 | Where will a patient be in $`n`$ days? | [`ckequations()`](https://jcarmezim.github.io/mstate2/reference/ckequations.md) |
 | Does the state at the previous time matter, and for how long? | [`compare2()`](https://jcarmezim.github.io/mstate2/reference/compare2.md), [`overlap_step()`](https://jcarmezim.github.io/mstate2/reference/overlap_step.md) |
-| How do the methods behave under a known model? | [`simulate2()`](https://jcarmezim.github.io/mstate2/reference/simulate2.md) |
 
 ## References
 

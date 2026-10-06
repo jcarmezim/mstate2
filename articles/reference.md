@@ -1,10 +1,11 @@
 # mstate2 function reference
 
-This document is the complete reference for `mstate2`. The package
-implements the methods of Najera-Zuloaga, Besalú and Gómez Melis (2025)
-and adds subject-level bootstrap intervals for the predictions. The
-document lists every exported function, every S3 method, every object
-class and the internal helpers, each with the same structure:
+This document is the reference for the analysis functions of `mstate2`.
+The package implements the methods of Najera-Zuloaga, Besalú and Gómez
+Melis (2025) and adds subject-level bootstrap intervals for the
+predictions. The document lists the functions of the analysis, their S3
+methods, the object classes and the internal helpers, each with the same
+structure:
 
 - **Definition**: the exact signature, with default values.
 - **What it does**: its purpose in one paragraph.
@@ -107,7 +108,7 @@ truncating towards zero. Base R’s
 the nearest *even* integer (IEC 60559), so `round(0.5) = 0` would make a
 half-day stay vanish. Only
 [`rnd()`](https://jcarmezim.github.io/mstate2/reference/rnd.md)
-reproduces Table 2 of the paper.
+reproduces the published estimates.
 
 **Errors and warnings.** None.
 
@@ -375,12 +376,11 @@ The columns `h`, `j`, `l` are factors with levels `states`.
     `l`.
 4.  `N` counts triples by `(h, j, l, s)`
     ([`count()`](https://dplyr.tidyverse.org/reference/count.html)); `Y`
-    sums `N` over `l`. These are the counting processes of Section 2.2
-    of the paper. With complete follow-up,
-    $`\sum_\ell \tilde N_{hj\ell}(s)`$ is exactly the number of subjects
-    in $`h`$ at $`s-2`$ and $`j`$ at $`s-1`$; a subject whose follow-up
-    stops in $`j`$ (right-censored) is not counted at risk, because its
-    next state is not observed.
+    sums `N` over `l`. These are the counting processes of the paper.
+    With complete follow-up, $`\sum_\ell \tilde N_{hj\ell}(s)`$ is
+    exactly the number of subjects in $`h`$ at $`s-2`$ and $`j`$ at
+    $`s-1`$; a subject whose follow-up stops in $`j`$ (right-censored)
+    is not counted at risk, because its next state is not observed.
 5.  If `absorbing` is `NULL`, a state is absorbing when it is occupied
     but never left ($`j \to \ell`$ with $`\ell \ne j`$ never observed).
 
@@ -534,15 +534,15 @@ $`= \sum_s \tilde Y_{hj}(s-1)`$.
 \mathrm{se} = \sqrt{\frac{\tilde P_{hj\ell}(1-\tilde P_{hj\ell})}{\sum_s \tilde Y_{hj}(s-1)}}.
 ```
 
-The estimator is Eq. 9 of the paper; the standard error is
-$`\tilde\varsigma_{hj\ell}/\sqrt{n}`$, with the variance estimator of
-Theorem 5 (Eq. 14), because
+The estimator is the RPE of the paper; the standard error is
+$`\tilde\varsigma_{hj\ell}/\sqrt{n}`$, with the estimator of its
+asymptotic variance, because
 $`\hat\pi_{hj}(s-1) = \tilde Y_{hj}(s-1)/n`$. The RPE pools all exposure
-and weighs every subject-instant equally (the paper shows, Corollary 3,
-that it is more efficient than the conditional probability estimator,
-which is therefore not implemented). Intervals: Wald
-$`\tilde P \pm z\,\mathrm{se}`$ (Corollary 2; clipped if `clip`, as in
-the paper’s code), or logit
+and weighs every subject-instant equally (the paper shows that it is
+more efficient than the conditional probability estimator, which is
+therefore not implemented). Intervals: Wald
+$`\tilde P \pm z\,\mathrm{se}`$ (clipped if `clip`, as in the paper’s
+code), or logit
 $`\mathrm{expit}(\mathrm{logit}\,\hat p \pm z\,\mathrm{se}/(\hat p(1-\hat p)))`$,
 which degenerates to $`[\hat p, \hat p]`$ when $`\hat p \in \{0, 1\}`$.
 Finally, for every absorbing state $`a`$ and every $`h`$, `P[a, a, h]`,
@@ -573,7 +573,7 @@ fit
 #>   states: NSP, SP, Recov, NIMV, IMV, Disch, Death
 #>   95% wald confidence intervals; 2076 subjects
 #>   39 estimated transition probabilities (h -> j -> l)
-fit$estimate |> filter(j == "SP")             # Table 2 of the paper
+fit$estimate |> filter(j == "SP")             # patients in SP at the current time
 #> # A tibble: 10 × 9
 #>    h     j     l           p      se   lower   upper n.trans at.risk
 #>    <fct> <fct> <fct>   <dbl>   <dbl>   <dbl>   <dbl>   <int>   <int>
@@ -661,10 +661,7 @@ non-parametric bootstrap for clustered data (Davison and Hinkley, 1997;
 Field and Welsh, 2007). The $`n`$-step predictions are non-linear
 functions of all the estimated probabilities, so propagating each
 replicate and taking percentiles (Efron and Tibshirani, 1993) is simpler
-and more reliable than a delta-method variance. In the package’s
-simulation study, 95% percentile intervals of $`n`$-step predictions had
-coverage 0.91 to 0.94, while the evolution intervals had coverage 1 and
-were up to five times wider.
+and more reliable than a delta-method variance.
 
 **Errors and warnings.** Error if `object` is not an `msm2data`, if
 `B < 2` or if `conf.level` is not in (0, 1).
@@ -751,18 +748,18 @@ gives the distribution of $`X_{m+1}`$. This is exact, and costs one
 matrix–vector product per step. Writing a second-order chain as a
 first-order chain on pairs of consecutive states is the standard
 representation of higher-order Markov chains (e.g. Benson, Gleich and
-Lim, 2017). It gives exactly the sum over paths of Eq. 6 of the paper:
-with `nsteps = 9`, the result equals the nine values of the
-`Chapman.Kolmogorov(P, h, j, l)` function of the paper’s code
-(differences below $`10^{-16}`$ on DIVINE).
+Lim, 2017). It gives exactly the sum over paths of the extended
+Chapman–Kolmogorov relation of the paper: with `nsteps = 9`, the result
+equals the nine values of the `Chapman.Kolmogorov(P, h, j, l)` function
+of the paper’s code (differences below $`10^{-16}`$ on DIVINE).
 
 With `bounds = TRUE`, the same propagation is applied to `P.lower` and
-`P.upper`: these are the **evolution intervals** of Section 6.3 of the
-paper. As the paper explains, they are not confidence intervals; they
-are built to contain them, so that two evolution intervals that do not
-overlap indicate a significant difference. The rows of the limit tensors
-do not sum to 1, so the bounds are also clipped to \[0, 1\] (on DIVINE
-this changes nothing). If `x` is a `P2boot` fit, the bounds are instead
+`P.upper`: these are the **evolution intervals** of the paper. As the
+paper explains, they are not confidence intervals; they are built to
+contain them, so that two evolution intervals that do not overlap
+indicate a significant difference. The rows of the limit tensors do not
+sum to 1, so the bounds are also clipped to \[0, 1\] (on DIVINE this
+changes nothing). If `x` is a `P2boot` fit, the bounds are instead
 percentile bootstrap intervals (every replicate tensor is propagated),
 with close to nominal coverage.
 
@@ -844,7 +841,6 @@ kind was used (`"evolution"` or `"bootstrap"`). The curves are stacked
 in long format
 ([`purrr::map()`](https://purrr.tidyverse.org/reference/map.html) and
 [`purrr::list_rbind()`](https://purrr.tidyverse.org/reference/list_c.html)).
-These are the curves of Figures 4 (RPE) and 5 of the paper.
 
 **Errors and warnings.** Error if `object` is not a `P2est`, or if `j`,
 `l` or any `h` is not in the state space.
@@ -915,10 +911,9 @@ $`\max(L_1, L_2) > \min(U_1, U_2)`$. The first step where this fails is
 the first overlap.
 
 **Why it is done this way.** Non-overlap of the two intervals is the
-criterion of the methods paper (Section 6.3). In DIVINE, the evolution
-intervals first overlap at step 5 for SP → NIMV and at step 7 for SP →
-IMV, the “fifth day” and “between the sixth and seventh day” of the
-paper.
+criterion of the methods paper. In DIVINE, the evolution intervals first
+overlap at step 5 for SP → NIMV and at step 7 for SP → IMV, the “fifth
+day” and “between the sixth and seventh day” of the paper.
 
 **Errors and warnings.** Error if `x` has no bounds, or does not have
 exactly two groups.
@@ -1014,116 +1009,6 @@ plot(cmp, type = "interval", dualaxis = FALSE, xlab = "steps (n)")
 ![plot of chunk plot](figures/ref-plot-1.png)
 
 plot of chunk plot
-
-## Simulation
-
-### `simulate2()`
-
-**Definition**
-
-``` r
-
-simulate2(n, tensor, first, init = NULL, entry = NULL, states = NULL, maxT = 1000)
-```
-
-**What it does.** Simulates discrete-time panel data from a second-order
-Markov multistate model, defined by a second-order tensor, a matrix for
-the first move, and an entry distribution. Useful to validate methods,
-study the estimators and plan studies.
-
-**Arguments**
-
-| Argument | Default | Meaning |
-|----|----|----|
-| `n` | — | number of individuals |
-| `tensor` | — | $`M \times M \times M`$ tensor `P[j, l, h]`; absorbing states need `tensor[a, a, h] = 1` for all `h` |
-| `first` | — | $`M \times M`$ matrix, `first[h, l]` $`= P(X_1 = \ell \mid X_0 = h)`$ |
-| `init` | `NULL` | distribution of the entry state $`X_0`$ when `entry = NULL`; default uniform over transient states |
-| `entry` | `NULL` | **named** vector of per-step entry probabilities by state; its sum is the per-step probability of entering, which gives **staggered entry** |
-| `states` | `NULL` | state labels; default the tensor’s dimnames, or `1:M` |
-| `maxT` | `1000` | maximum number of global time steps |
-
-**Value.** A tibble with columns `id`, `time` and `state` (factor with
-levels `states`), sorted by `id` and `time`, ready for
-[`prep2()`](https://jcarmezim.github.io/mstate2/reference/prep2.md).
-
-**How it works.**
-
-1.  Absorbing states are those with `tensor[a, a, h] = 1` for all $`h`$.
-2.  Entry: without `entry`, all individuals enter at time 0 with
-    $`X_0 \sim`$`init`. With `entry`, at each global step each
-    individual not yet entered enters with probability `sum(entry)`, in
-    a state drawn from `entry`, and makes the first move at the
-    following step.
-3.  First move: $`X_1 \sim`$`first[X_0, ]`.
-4.  Later moves: $`X_s \sim`$`tensor[X_{s-1}, , X_{s-2}]`. Individuals
-    sharing the same pair are sampled together.
-5.  An individual stops when it reaches an absorbing state, or when its
-    probability row is all zero (an unspecified pair: the path ends
-    there).
-
-The individual states are kept in vectors and updated with a loop over
-global time, because drawing every individual’s next state at every step
-is much faster that way than with a table. The design of Section 5 of
-the paper is `entry = c("1" = 0.05, "2" = 0.05)` with the tensor and
-first-step matrix of Section 5.1 (see
-[`vignette("paper")`](https://jcarmezim.github.io/mstate2/articles/paper.md)).
-The paper’s code draws the number of individuals making each transition
-as independent binomials; here every individual draws its own next state
-from the same probabilities, which is the same model.
-
-**Errors and warnings.** Error if `entry` is unnamed or names states not
-in `states`. Warning if `maxT` is reached with individuals still active
-(usually a zero-probability or non-absorbing cycle in `tensor`).
-
-**Example**
-
-``` r
-
-## simulate from the model fitted to DIVINE; the first move (no previous
-## time) uses the empirical matrix of day 0 -> day 1
-first_moves <- inner_join(
-  panel |> filter(time == 0) |> select(id, from = state),     # state at admission
-  panel |> filter(time == 1) |> select(id, to = state),       # state on day 1
-  by = "id")
-first_mat <- first_moves |>                                    # first move (no previous time)
-  count(from = factor(from, estados), to = factor(to, estados), .drop = FALSE) |>
-  group_by(from) |>
-  mutate(p = n / pmax(sum(n), 1)) |>
-  ungroup() |>
-  xtabs(formula = p ~ from + to) |>
-  unclass()
-init <- first_moves |>                                         # distribution at admission
-  count(state = factor(from, estados), .drop = FALSE) |>
-  mutate(p = n / sum(n)) |>
-  pull(p, name = state)
-set.seed(2)
-sim <- simulate2(2000, fit$P, first = first_mat, init = init)
-count(sim, state)
-#> # A tibble: 7 × 2
-#>   state     n
-#>   <fct> <int>
-#> 1 NSP   11601
-#> 2 SP     3303
-#> 3 Recov  4409
-#> 4 NIMV   1023
-#> 5 IMV    5382
-#> 6 Disch  1780
-#> 7 Death   220
-set.seed(2)
-head(simulate2(3, fit$P, first = first_mat, entry = c(NSP = 0.3)), 8)   # staggered entry
-#> # A tibble: 8 × 3
-#>      id  time state
-#>   <int> <int> <fct>
-#> 1     1     1 NSP  
-#> 2     1     2 NSP  
-#> 3     1     3 NSP  
-#> 4     1     4 NSP  
-#> 5     1     5 SP   
-#> 6     1     6 SP   
-#> 7     1     7 SP   
-#> 8     1     8 SP
-```
 
 ## Object classes
 
