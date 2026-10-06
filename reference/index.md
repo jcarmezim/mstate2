@@ -12,7 +12,7 @@ Turn raw data as collected into a daily panel, and compute the
 second-order counting processes.
 
 - [`msprep2()`](https://jcarmezim.github.io/mstate2/reference/msprep2.md)
-  : Prepare raw multistate data for the analysis
+  : Prepare multistate data for the analysis
 - [`rnd()`](https://jcarmezim.github.io/mstate2/reference/rnd.md) :
   Round half away from zero
 - [`prep2()`](https://jcarmezim.github.io/mstate2/reference/prep2.md) :

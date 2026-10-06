@@ -81,7 +81,7 @@ x
 #>   issues          : none
 panel <- x$panel
 dim(panel)
-#> [1] 27736     3
+#> [1] 27736     4
 ```
 
 Durations are recorded in half days. They are rounded with

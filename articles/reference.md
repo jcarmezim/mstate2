@@ -129,85 +129,57 @@ MSM |> filter(t.sp %% 1 == 0.5) |> nrow()   # half-day stays in severe pneumonia
 
 ``` r
 
-msprep2(data, id = "id", format = c("auto", "events", "wide", "sojourn", "msdata"),
-        time = "time", state = "state", times = NULL, status = NULL,
-        durations = NULL, outcome = NULL, initial = NULL, start = NULL, end = NULL,
-        unit = 1, round_fun = rnd, recode = NULL, states = NULL, absorbing = NULL,
-        trans = NULL, ties = c("last", "first"), check = c("warn", "error"), keep = NULL)
+msprep2(data, states = NULL, trans = NULL, durations = NULL, outcome = NULL,
+        id = "id", keep = NULL, unit = 1)
 ```
 
-**What it does.** Turns multistate data **as they are collected** into
-the daily panel of
+**What it does.** Turns multistate data into the daily panel of
 [`prep2()`](https://jcarmezim.github.io/mstate2/reference/prep2.md), and
 reports every record it had to drop or change. It plays the role of
 [`mstate::msprep()`](https://rdrr.io/pkg/mstate/man/msprep.html), which
-only takes the wide layout, needs the transition matrix, works with
-numeric times and returns the counting-process format of the Cox model.
+needs the transition matrix from state numbers and returns the
+counting-process format of the Cox model.
 
 **Arguments**
 
 | Argument | Default | Meaning |
 |----|----|----|
-| `data` | — | raw data (a data frame, or an `msdata` object) |
-| `id` | `"id"` | subject id column |
-| `format` | `"auto"` | input layout (below); `"auto"` chooses it from the arguments given |
-| `time`, `state` | `"time"`, `"state"` | events layout: time (or date) and state columns |
-| `times` | `NULL` | wide layout: named vector `c(state = "time column")` |
-| `status` | `NULL` | wide layout: named vector `c(state = "0/1 status column")`; times with status 0 are censoring times, as in `msprep()` |
-| `durations` | `NULL` | sojourn layout: named vector `c(state = "duration column")`, in visiting order |
-| `outcome` | `NULL` | sojourn layout: named vector `c(state = "0/1 indicator")` of the absorbing states |
-| `initial` | `NULL` | state entered at the origin: a column or a single label; with a list of states, the state without columns |
-| `start` | `NULL` | origin of time: a column (e.g. admission date) or a value; default the first record (0 for a numeric wide layout) |
-| `end` | `NULL` | end of follow-up of subjects not absorbed: a column or a value |
-| `unit` | `1` | length of a time unit: a number, or `"hour"`, `"day"`, `"week"`, `"month"`, `"year"` for dates |
-| `round_fun` | `rnd` | discretisation of the elapsed times |
-| `recode` | `NULL` | relabelling of the recorded states, `c(old = "new")` |
-| `states` | `NULL` | state space and order (default from `trans`, the layout, or the observed states), or a named list with the time and status columns of each state |
-| `absorbing` | `NULL` | absorbing states; default from `trans`, `outcome`, or the states nobody leaves |
-| `trans` | `NULL` | allowed transitions: text `c("Tx -> PR -> RelDeath", "Tx -> RelDeath")`, a list of destinations `list(Tx = c("PR", "RelDeath"), PR = "RelDeath", RelDeath = NULL)`, or a matrix ([`mstate::transMat()`](https://rdrr.io/pkg/mstate/man/transMat.html), logical or 0/1); gives the absorbing states |
-| `ties` | `"last"` | state kept when several fall in the same unit (an absorbing state always wins) |
-| `check` | `"warn"` | `"error"` stops at a transition not allowed by `trans` |
-| `keep` | `NULL` | baseline covariates carried into the panel; with conventional names, every other column |
+| `data` | — | a data frame, or an `msdata` object from [`mstate::msprep()`](https://rdrr.io/pkg/mstate/man/msprep.html) |
+| `states` | `NULL` | wide data: named list with the states in order, each one `Surv(time, status)` or `NULL` (the initial state of everybody); sojourn data: optionally, the order of the states (character vector) |
+| `trans` | `NULL` | allowed transitions as text, `c("Tx -> PR -> RelDeath", "Tx -> RelDeath")` (a chain `"A -> B -> C"` gives A → B and B → C), or a [`mstate::transMat()`](https://rdrr.io/pkg/mstate/man/transMat.html) matrix; the states with no exit are absorbing |
+| `durations` | `NULL` | sojourn data: named vector `c(state = "duration column")`, in visiting order |
+| `outcome` | `NULL` | sojourn data: named vector `c(state = "0/1 indicator")` of the absorbing states |
+| `id` | `"id"` | subject id column (if missing, the rows are numbered) |
+| `keep` | `NULL` | covariates carried into the panel; default every column that is not used |
+| `unit` | `1` | length of a time unit in the units of the data (e.g. `30.4375` from days to months) |
 
-**Input layouts**
+**The three kinds of data**
 
-| Layout | One row per | Arguments |
+| Data | One row per | Arguments |
 |----|----|----|
-| `events` | subject and recorded state (state changes or repeated observations) | `time`, `state` |
-| `wide` | subject, one time (and status) column per state | `times`, `status` |
-| `sojourn` | subject, days spent in each state and indicators of the outcome | `durations`, `outcome` |
-| `msdata` | subject and possible transition ([`mstate::msprep()`](https://rdrr.io/pkg/mstate/man/msprep.html)) | — |
+| sojourn (as DIVINE) | subject, with the time spent in each state and the outcome | `durations`, `outcome` |
+| wide (as [`mstate::msprep()`](https://rdrr.io/pkg/mstate/man/msprep.html)) | subject, with the time of entry (or of censoring, when the status is 0) of each state | `states = list(...)` with [`Surv()`](https://rdrr.io/pkg/survival/man/Surv.html), `trans` |
+| `msdata` | subject and possible transition ([`mstate::msprep()`](https://rdrr.io/pkg/mstate/man/msprep.html)) | — (its matrix is used) |
 
-**Conventional names.** In the wide layout with columns `<state>_time`
-and `<state>_status` for every state, `inistat` (initial state) and
-`id`, no argument is needed: the states are the `<state>` prefixes in
-column order, `inistat` is the initial state, every other column is kept
-as a covariate, and without `id` the rows are numbered.
-
-**Any column names: a list of states.** `states` can also be a named
-list that gives, in order, the time and status columns of each state:
-`list(healthy = NULL, ill = c(time = "t_ill", status = "ill"), dead = c(time = "t_dth", status = "dth"))`.
-Each element can be `Surv(time, status)` (columns without quotes,
-evaluated on the data: expressions allowed, times numeric or dates,
-status checked by
-[`survival::Surv()`](https://rdrr.io/pkg/survival/man/Surv.html)),
-`c(time = , status = )` in any order, `c(time_col = "status_col")`, two
-unnamed columns (the 0/1 one is the status), a single time column (no
-status: visited when its time is recorded) or `NULL` (a state only
-entered as initial state). The other columns are kept as covariates, as
-with conventional names.
+`Surv(time, status)` is evaluated on the columns of `data` (names
+without quotes, expressions allowed, **survival** need not be attached)
+and checks its arguments as
+[`survival::Surv()`](https://rdrr.io/pkg/survival/man/Surv.html): the
+time must be numeric and the status 0/1, `TRUE`/`FALSE` or 1/2 (1 =
+censored, 2 = event, with a warning); other codes become `NA`. A text
+status must say which value is the event, `Surv(t, status == "yes")`.
 
 **Value.** An object of class **`msm2prep`**, a list with:
 
 | Component | Content |
 |----|----|
-| `panel` | tibble `(id, time, state, keep…)`: one row per subject and unit, `time` from the origin, `state` a factor with levels `states` |
+| `panel` | tibble `(id, time, state, covariates…)`: one row per subject and unit, `state` a factor with levels `states` |
 | `states`, `absorbing` | state space and absorbing states |
 | `trans` | logical matrix of allowed transitions, or `NULL` |
 | `transitions` | tibble `(from, to, n, allowed)` with the observed transitions |
-| `subjects` | tibble with first and last unit, entry and exit state and `status` (`"absorbed"` or `"censored"`) of each subject |
+| `subjects` | tibble with first and last unit, entry and exit state, rows and `status` (`"absorbed"` or `"censored"`) of each subject |
 | `issues` | tibble `(id, issue, state, time, detail)`: every record dropped or changed |
-| `settings` | layout, unit and tie rule |
+| `settings` | layout and unit |
 
 [`print()`](https://rdrr.io/r/base/print.html) shows a short report and
 [`summary()`](https://rdrr.io/r/base/summary.html) the table of
@@ -219,40 +191,41 @@ accepts the object directly.
 
 **How it works.**
 
-1.  Each layout is read into the same intermediate form: one record per
-    subject and recorded state, with its time. Text dates are read with
-    the formats `2020-03-15`, `15/03/2020`, `15-03-2020` and
-    `2020/03/15`; states are relabelled with `recode`; the `initial`
-    state is added at the origin.
-2.  Times are measured from the subject’s origin in units of `unit` and
-    rounded with `round_fun`.
-3.  Records before the origin or after the end of follow-up are dropped.
-4.  In time order, the first absorbing state ends follow-up; later
-    records are dropped.
-5.  When several records fall in the same unit, the last (or first) is
-    kept; an absorbing state is always kept. A different state that
-    loses this way occupies no unit and its transitions are lost.
-6.  Repeated records of the same state are merged (they are
-    observations, not transitions), but still extend follow-up.
-7.  Each state is expanded over the units it occupies: until the unit
+1.  Each kind of data is read into the same form: one record per subject
+    and state entered, with its time. Wide data: the initial state at
+    time 0 and every state with status 1 at its time; follow-up ends at
+    the largest time recorded (entry or censoring), as in
+    [`msprep()`](https://rdrr.io/pkg/mstate/man/msprep.html). Sojourn
+    data: the visits one after the other, then the absorbing state whose
+    indicator is 1. `msdata`: the starting state and every transition
+    with status 1.
+2.  Times are divided by `unit` and rounded with
+    [`rnd()`](https://jcarmezim.github.io/mstate2/reference/rnd.md)
+    (sojourn data: each duration separately, as in the paper’s code).
+3.  In time order, the first absorbing state ends follow-up; states
+    entered later are dropped.
+4.  When several states fall in the same unit, the last one is kept (an
+    absorbing state is always kept); the other one occupies no unit and
+    its transitions are lost.
+5.  Each state is expanded over the units it occupies: until the unit
     before the next state; the last state until the end of follow-up
-    (`end`, the last record, or one unit if absorbing).
-8.  The observed transitions are counted and checked against `trans`.
+    (one unit if absorbing).
+6.  The observed transitions are counted and checked against `trans`.
 
-**Errors and warnings.** Error if a column is missing, if a recorded
-state is not in `states`, if the wide or sojourn layout has duplicated
-ids, if text times cannot be read as dates, if `unit` is a name with
-numeric times, or if `check = "error"` and a transition is not allowed.
-One warning gives the number of records dropped or changed, by type:
+**Errors and warnings.** Error if a column is missing, if the list of
+states is not named, has no state or more than one state as `NULL`, or a
+state that is not `Surv(time, status)`, if a state in `trans` is not in
+`states`, if the data have duplicated ids, or if `unit` is not a
+positive number. One warning gives the number of records dropped or
+changed, by type:
 
 | Issue | Meaning |
 |----|----|
-| `missing` | missing id, time or state (events layout); status 1 without a time, or a time without a valid status (wide layout) |
-| `before_start` | record before the origin |
-| `after_end` | record after the end of follow-up |
-| `after_absorbing` | record after the entry into an absorbing state |
+| `missing` | status 1 without a time, or a time without a valid status (wide) |
+| `rounded_to_zero` | a positive duration rounds to 0 units (sojourn) |
 | `same_unit` | another state was kept in the same time unit |
-| `rounded_to_zero` | a positive duration rounds to 0 units (sojourn layout) |
+| `after_absorbing` | a state entered after the absorbing state |
+| `before_start` | a negative time |
 | `not_allowed` | transition not allowed by `trans` (kept) |
 | `no_data` | subject with no usable record |
 
@@ -307,12 +280,45 @@ count(panel, state)         # patient-days in each state
 ```
 
 Every DIVINE patient ends in `Disch` or `Death`, so no follow-up is
-censored. In the sojourn layout the order of the visits and repeated
-visits cannot be recovered from the durations: the order is that of
-`durations` and each state is visited at most once. Each sojourn is
-rounded separately with
-[`rnd()`](https://jcarmezim.github.io/mstate2/reference/rnd.md), as in
-the paper’s code.
+censored. In sojourn data the order of the visits and repeated visits
+cannot be recovered from the durations: the order is that of `durations`
+and each state is visited at most once.
+
+Wide data, as they go into
+[`mstate::msprep()`](https://rdrr.io/pkg/mstate/man/msprep.html):
+
+``` r
+
+wide <- data.frame(id = 1:4, ill_time = c(3, 5, 2, 6), ill_status = c(1, 0, 1, 0),
+                   dead_time = c(7, 5, 9, 6), dead_status = c(1, 1, 0, 0),
+                   age = c(60, 72, 55, 49))
+w <- msprep2(wide,
+             states = list(healthy = NULL,
+                           ill     = Surv(ill_time, ill_status),
+                           dead    = Surv(dead_time, dead_status)),
+             trans  = c("healthy -> ill -> dead", "healthy -> dead"))
+w
+#> <msm2prep>  discrete-time panel ready for prep2()
+#>   layout          : wide
+#>   subjects        : 4 (2 absorbed, 2 censored)
+#>   panel rows      : 31 (time 0 - 9)
+#>   states (3)      : healthy, ill, dead
+#>   absorbing       : dead
+#>   transitions     : 3 types, 4 in total (0 not allowed by `trans`)
+#>   issues          : none
+w$panel |> filter(id == 1)
+#> # A tibble: 8 × 4
+#>      id  time state     age
+#>   <int> <int> <fct>   <dbl>
+#> 1     1     0 healthy    60
+#> 2     1     1 healthy    60
+#> 3     1     2 healthy    60
+#> 4     1     3 ill        60
+#> 5     1     4 ill        60
+#> 6     1     5 ill        60
+#> 7     1     6 ill        60
+#> 8     1     7 dead       60
+```
 
 ### `prep2()`
 

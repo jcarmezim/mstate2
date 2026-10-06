@@ -17,8 +17,10 @@ multi-step predictions.
 
 1.  **Data.**
     [`msprep2`](https://jcarmezim.github.io/mstate2/reference/msprep2.md)
-    turns raw data as collected (events, wide, sojourn or mstate
-    `msdata` layouts, with dates) into a daily panel and reports every
+    turns sojourn data (as DIVINE), wide data with one
+    `Surv(time, status)` per state (as for
+    [`mstate::msprep()`](https://rdrr.io/pkg/mstate/man/msprep.html)) or
+    an mstate `msdata` object into a daily panel and reports every
     record it drops or changes
     ([`rnd`](https://jcarmezim.github.io/mstate2/reference/rnd.md)
     discretises the times);

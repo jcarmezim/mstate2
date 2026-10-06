@@ -282,16 +282,12 @@ paper.</p>
 </h3>
 <p><strong>Definition</strong></p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/msprep2.html">msprep2</a></span><span class="op">(</span><span class="va">data</span>, id <span class="op">=</span> <span class="st">"id"</span>, format <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"events"</span>, <span class="st">"wide"</span>, <span class="st">"sojourn"</span>, <span class="st">"msdata"</span><span class="op">)</span>,</span>
-<span>        time <span class="op">=</span> <span class="st">"time"</span>, state <span class="op">=</span> <span class="st">"state"</span>, times <span class="op">=</span> <span class="cn">NULL</span>, status <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>        durations <span class="op">=</span> <span class="cn">NULL</span>, outcome <span class="op">=</span> <span class="cn">NULL</span>, initial <span class="op">=</span> <span class="cn">NULL</span>, start <span class="op">=</span> <span class="cn">NULL</span>, end <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>        unit <span class="op">=</span> <span class="fl">1</span>, round_fun <span class="op">=</span> <span class="va">rnd</span>, recode <span class="op">=</span> <span class="cn">NULL</span>, states <span class="op">=</span> <span class="cn">NULL</span>, absorbing <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>        trans <span class="op">=</span> <span class="cn">NULL</span>, ties <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"last"</span>, <span class="st">"first"</span><span class="op">)</span>, check <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"warn"</span>, <span class="st">"error"</span><span class="op">)</span>, keep <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
-<p><strong>What it does.</strong> Turns multistate data <strong>as they
-are collected</strong> into the daily panel of <code><a href="../reference/prep2.html">prep2()</a></code>, and
-reports every record it had to drop or change. It plays the role of
-<code><a href="https://rdrr.io/pkg/mstate/man/msprep.html" class="external-link">mstate::msprep()</a></code>, which only takes the wide layout, needs
-the transition matrix, works with numeric times and returns the
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/msprep2.html">msprep2</a></span><span class="op">(</span><span class="va">data</span>, states <span class="op">=</span> <span class="cn">NULL</span>, trans <span class="op">=</span> <span class="cn">NULL</span>, durations <span class="op">=</span> <span class="cn">NULL</span>, outcome <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>        id <span class="op">=</span> <span class="st">"id"</span>, keep <span class="op">=</span> <span class="cn">NULL</span>, unit <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
+<p><strong>What it does.</strong> Turns multistate data into the daily
+panel of <code><a href="../reference/prep2.html">prep2()</a></code>, and reports every record it had to drop
+or change. It plays the role of <code><a href="https://rdrr.io/pkg/mstate/man/msprep.html" class="external-link">mstate::msprep()</a></code>, which
+needs the transition matrix from state numbers and returns the
 counting-process format of the Cox model.</p>
 <p><strong>Arguments</strong></p>
 <table class="table">
@@ -309,135 +305,59 @@ counting-process format of the Cox model.</p>
 <tr class="odd">
 <td><code>data</code></td>
 <td>—</td>
-<td>raw data (a data frame, or an <code>msdata</code> object)</td>
-</tr>
-<tr class="even">
-<td><code>id</code></td>
-<td><code>"id"</code></td>
-<td>subject id column</td>
-</tr>
-<tr class="odd">
-<td><code>format</code></td>
-<td><code>"auto"</code></td>
-<td>input layout (below); <code>"auto"</code> chooses it from the
-arguments given</td>
-</tr>
-<tr class="even">
-<td>
-<code>time</code>, <code>state</code>
-</td>
-<td>
-<code>"time"</code>, <code>"state"</code>
-</td>
-<td>events layout: time (or date) and state columns</td>
-</tr>
-<tr class="odd">
-<td><code>times</code></td>
-<td><code>NULL</code></td>
-<td>wide layout: named vector <code>c(state = "time column")</code>
+<td>a data frame, or an <code>msdata</code> object from
+<code><a href="https://rdrr.io/pkg/mstate/man/msprep.html" class="external-link">mstate::msprep()</a></code>
 </td>
 </tr>
 <tr class="even">
-<td><code>status</code></td>
-<td><code>NULL</code></td>
-<td>wide layout: named vector
-<code>c(state = "0/1 status column")</code>; times with status 0 are
-censoring times, as in <code>msprep()</code>
-</td>
-</tr>
-<tr class="odd">
-<td><code>durations</code></td>
-<td><code>NULL</code></td>
-<td>sojourn layout: named vector
-<code>c(state = "duration column")</code>, in visiting order</td>
-</tr>
-<tr class="even">
-<td><code>outcome</code></td>
-<td><code>NULL</code></td>
-<td>sojourn layout: named vector <code>c(state = "0/1 indicator")</code>
-of the absorbing states</td>
-</tr>
-<tr class="odd">
-<td><code>initial</code></td>
-<td><code>NULL</code></td>
-<td>state entered at the origin: a column or a single label; with a list
-of states, the state without columns</td>
-</tr>
-<tr class="even">
-<td><code>start</code></td>
-<td><code>NULL</code></td>
-<td>origin of time: a column (e.g. admission date) or a value; default
-the first record (0 for a numeric wide layout)</td>
-</tr>
-<tr class="odd">
-<td><code>end</code></td>
-<td><code>NULL</code></td>
-<td>end of follow-up of subjects not absorbed: a column or a value</td>
-</tr>
-<tr class="even">
-<td><code>unit</code></td>
-<td><code>1</code></td>
-<td>length of a time unit: a number, or <code>"hour"</code>,
-<code>"day"</code>, <code>"week"</code>, <code>"month"</code>,
-<code>"year"</code> for dates</td>
-</tr>
-<tr class="odd">
-<td><code>round_fun</code></td>
-<td><code>rnd</code></td>
-<td>discretisation of the elapsed times</td>
-</tr>
-<tr class="even">
-<td><code>recode</code></td>
-<td><code>NULL</code></td>
-<td>relabelling of the recorded states, <code>c(old = "new")</code>
-</td>
-</tr>
-<tr class="odd">
 <td><code>states</code></td>
 <td><code>NULL</code></td>
-<td>state space and order (default from <code>trans</code>, the layout,
-or the observed states), or a named list with the time and status
-columns of each state</td>
-</tr>
-<tr class="even">
-<td><code>absorbing</code></td>
-<td><code>NULL</code></td>
-<td>absorbing states; default from <code>trans</code>,
-<code>outcome</code>, or the states nobody leaves</td>
+<td>wide data: named list with the states in order, each one
+<code>Surv(time, status)</code> or <code>NULL</code> (the initial state
+of everybody); sojourn data: optionally, the order of the states
+(character vector)</td>
 </tr>
 <tr class="odd">
 <td><code>trans</code></td>
 <td><code>NULL</code></td>
-<td>allowed transitions: text
-<code>c("Tx -&gt; PR -&gt; RelDeath", "Tx -&gt; RelDeath")</code>, a
-list of destinations
-<code>list(Tx = c("PR", "RelDeath"), PR = "RelDeath", RelDeath = NULL)</code>,
-or a matrix (<code><a href="https://rdrr.io/pkg/mstate/man/transMat.html" class="external-link">mstate::transMat()</a></code>, logical or 0/1); gives the
-absorbing states</td>
+<td>allowed transitions as text,
+<code>c("Tx -&gt; PR -&gt; RelDeath", "Tx -&gt; RelDeath")</code> (a
+chain <code>"A -&gt; B -&gt; C"</code> gives A → B and B → C), or a
+<code><a href="https://rdrr.io/pkg/mstate/man/transMat.html" class="external-link">mstate::transMat()</a></code> matrix; the states with no exit are
+absorbing</td>
 </tr>
 <tr class="even">
-<td><code>ties</code></td>
-<td><code>"last"</code></td>
-<td>state kept when several fall in the same unit (an absorbing state
-always wins)</td>
+<td><code>durations</code></td>
+<td><code>NULL</code></td>
+<td>sojourn data: named vector
+<code>c(state = "duration column")</code>, in visiting order</td>
 </tr>
 <tr class="odd">
-<td><code>check</code></td>
-<td><code>"warn"</code></td>
-<td>
-<code>"error"</code> stops at a transition not allowed by
-<code>trans</code>
-</td>
+<td><code>outcome</code></td>
+<td><code>NULL</code></td>
+<td>sojourn data: named vector <code>c(state = "0/1 indicator")</code>
+of the absorbing states</td>
 </tr>
 <tr class="even">
+<td><code>id</code></td>
+<td><code>"id"</code></td>
+<td>subject id column (if missing, the rows are numbered)</td>
+</tr>
+<tr class="odd">
 <td><code>keep</code></td>
 <td><code>NULL</code></td>
-<td>baseline covariates carried into the panel; with conventional names,
-every other column</td>
+<td>covariates carried into the panel; default every column that is not
+used</td>
+</tr>
+<tr class="even">
+<td><code>unit</code></td>
+<td><code>1</code></td>
+<td>length of a time unit in the units of the data
+(e.g. <code>30.4375</code> from days to months)</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Input layouts</strong></p>
+<p><strong>The three kinds of data</strong></p>
 <table class="table">
 <colgroup>
 <col width="33%">
@@ -445,60 +365,42 @@ every other column</td>
 <col width="33%">
 </colgroup>
 <thead><tr class="header">
-<th>Layout</th>
+<th>Data</th>
 <th>One row per</th>
 <th>Arguments</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td><code>events</code></td>
-<td>subject and recorded state (state changes or repeated
-observations)</td>
-<td>
-<code>time</code>, <code>state</code>
-</td>
-</tr>
-<tr class="even">
-<td><code>wide</code></td>
-<td>subject, one time (and status) column per state</td>
-<td>
-<code>times</code>, <code>status</code>
-</td>
-</tr>
-<tr class="odd">
-<td><code>sojourn</code></td>
-<td>subject, days spent in each state and indicators of the outcome</td>
+<td>sojourn (as DIVINE)</td>
+<td>subject, with the time spent in each state and the outcome</td>
 <td>
 <code>durations</code>, <code>outcome</code>
 </td>
 </tr>
 <tr class="even">
+<td>wide (as <code><a href="https://rdrr.io/pkg/mstate/man/msprep.html" class="external-link">mstate::msprep()</a></code>)</td>
+<td>subject, with the time of entry (or of censoring, when the status is
+0) of each state</td>
+<td>
+<code>states = list(...)</code> with <code><a href="https://rdrr.io/pkg/survival/man/Surv.html" class="external-link">Surv()</a></code>,
+<code>trans</code>
+</td>
+</tr>
+<tr class="odd">
 <td><code>msdata</code></td>
 <td>subject and possible transition (<code><a href="https://rdrr.io/pkg/mstate/man/msprep.html" class="external-link">mstate::msprep()</a></code>)</td>
-<td>—</td>
+<td>— (its matrix is used)</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Conventional names.</strong> In the wide layout with columns
-<code>&lt;state&gt;_time</code> and <code>&lt;state&gt;_status</code>
-for every state, <code>inistat</code> (initial state) and
-<code>id</code>, no argument is needed: the states are the
-<code>&lt;state&gt;</code> prefixes in column order,
-<code>inistat</code> is the initial state, every other column is kept as
-a covariate, and without <code>id</code> the rows are numbered.</p>
-<p><strong>Any column names: a list of states.</strong>
-<code>states</code> can also be a named list that gives, in order, the
-time and status columns of each state:
-<code>list(healthy = NULL, ill = c(time = "t_ill", status = "ill"), dead = c(time = "t_dth", status = "dth"))</code>.
-Each element can be <code>Surv(time, status)</code> (columns without
-quotes, evaluated on the data: expressions allowed, times numeric or
-dates, status checked by <code><a href="https://rdrr.io/pkg/survival/man/Surv.html" class="external-link">survival::Surv()</a></code>),
-<code>c(time = , status = )</code> in any order,
-<code>c(time_col = "status_col")</code>, two unnamed columns (the 0/1
-one is the status), a single time column (no status: visited when its
-time is recorded) or <code>NULL</code> (a state only entered as initial
-state). The other columns are kept as covariates, as with conventional
-names.</p>
+<p><code>Surv(time, status)</code> is evaluated on the columns of
+<code>data</code> (names without quotes, expressions allowed,
+<strong>survival</strong> need not be attached) and checks its arguments
+as <code><a href="https://rdrr.io/pkg/survival/man/Surv.html" class="external-link">survival::Surv()</a></code>: the time must be numeric and the
+status 0/1, <code>TRUE</code>/<code>FALSE</code> or 1/2 (1 = censored, 2
+= event, with a warning); other codes become <code>NA</code>. A text
+status must say which value is the event,
+<code>Surv(t, status == "yes")</code>.</p>
 <p><strong>Value.</strong> An object of class
 <strong><code>msm2prep</code></strong>, a list with:</p>
 <table class="table">
@@ -513,9 +415,9 @@ names.</p>
 <tbody>
 <tr class="odd">
 <td><code>panel</code></td>
-<td>tibble <code>(id, time, state, keep…)</code>: one row per subject
-and unit, <code>time</code> from the origin, <code>state</code> a factor
-with levels <code>states</code>
+<td>tibble <code>(id, time, state, covariates…)</code>: one row per
+subject and unit, <code>state</code> a factor with levels
+<code>states</code>
 </td>
 </tr>
 <tr class="even">
@@ -536,7 +438,7 @@ transitions</td>
 </tr>
 <tr class="odd">
 <td><code>subjects</code></td>
-<td>tibble with first and last unit, entry and exit state and
+<td>tibble with first and last unit, entry and exit state, rows and
 <code>status</code> (<code>"absorbed"</code> or <code>"censored"</code>)
 of each subject</td>
 </tr>
@@ -547,7 +449,7 @@ dropped or changed</td>
 </tr>
 <tr class="odd">
 <td><code>settings</code></td>
-<td>layout, unit and tie rule</td>
+<td>layout and unit</td>
 </tr>
 </tbody>
 </table>
@@ -557,35 +459,34 @@ the follow-up and the issues by type. <code><a href="../reference/prep2.html">pr
 object directly.</p>
 <p><strong>How it works.</strong></p>
 <ol style="list-style-type: decimal">
-<li>Each layout is read into the same intermediate form: one record per
-subject and recorded state, with its time. Text dates are read with the
-formats <code>2020-03-15</code>, <code>15/03/2020</code>,
-<code>15-03-2020</code> and <code>2020/03/15</code>; states are
-relabelled with <code>recode</code>; the <code>initial</code> state is
-added at the origin.</li>
-<li>Times are measured from the subject’s origin in units of
-<code>unit</code> and rounded with <code>round_fun</code>.</li>
-<li>Records before the origin or after the end of follow-up are
-dropped.</li>
-<li>In time order, the first absorbing state ends follow-up; later
-records are dropped.</li>
-<li>When several records fall in the same unit, the last (or first) is
-kept; an absorbing state is always kept. A different state that loses
-this way occupies no unit and its transitions are lost.</li>
-<li>Repeated records of the same state are merged (they are
-observations, not transitions), but still extend follow-up.</li>
+<li>Each kind of data is read into the same form: one record per subject
+and state entered, with its time. Wide data: the initial state at time 0
+and every state with status 1 at its time; follow-up ends at the largest
+time recorded (entry or censoring), as in <code><a href="https://rdrr.io/pkg/mstate/man/msprep.html" class="external-link">msprep()</a></code>. Sojourn
+data: the visits one after the other, then the absorbing state whose
+indicator is 1. <code>msdata</code>: the starting state and every
+transition with status 1.</li>
+<li>Times are divided by <code>unit</code> and rounded with
+<code><a href="../reference/rnd.html">rnd()</a></code> (sojourn data: each duration separately, as in the
+paper’s code).</li>
+<li>In time order, the first absorbing state ends follow-up; states
+entered later are dropped.</li>
+<li>When several states fall in the same unit, the last one is kept (an
+absorbing state is always kept); the other one occupies no unit and its
+transitions are lost.</li>
 <li>Each state is expanded over the units it occupies: until the unit
-before the next state; the last state until the end of follow-up
-(<code>end</code>, the last record, or one unit if absorbing).</li>
+before the next state; the last state until the end of follow-up (one
+unit if absorbing).</li>
 <li>The observed transitions are counted and checked against
 <code>trans</code>.</li>
 </ol>
 <p><strong>Errors and warnings.</strong> Error if a column is missing,
-if a recorded state is not in <code>states</code>, if the wide or
-sojourn layout has duplicated ids, if text times cannot be read as
-dates, if <code>unit</code> is a name with numeric times, or if
-<code>check = "error"</code> and a transition is not allowed. One
-warning gives the number of records dropped or changed, by type:</p>
+if the list of states is not named, has no state or more than one state
+as <code>NULL</code>, or a state that is not
+<code>Surv(time, status)</code>, if a state in <code>trans</code> is not
+in <code>states</code>, if the data have duplicated ids, or if
+<code>unit</code> is not a positive number. One warning gives the number
+of records dropped or changed, by type:</p>
 <table class="table">
 <colgroup>
 <col width="50%">
@@ -598,34 +499,30 @@ warning gives the number of records dropped or changed, by type:</p>
 <tbody>
 <tr class="odd">
 <td><code>missing</code></td>
-<td>missing id, time or state (events layout); status 1 without a time,
-or a time without a valid status (wide layout)</td>
+<td>status 1 without a time, or a time without a valid status
+(wide)</td>
 </tr>
 <tr class="even">
-<td><code>before_start</code></td>
-<td>record before the origin</td>
-</tr>
-<tr class="odd">
-<td><code>after_end</code></td>
-<td>record after the end of follow-up</td>
-</tr>
-<tr class="even">
-<td><code>after_absorbing</code></td>
-<td>record after the entry into an absorbing state</td>
+<td><code>rounded_to_zero</code></td>
+<td>a positive duration rounds to 0 units (sojourn)</td>
 </tr>
 <tr class="odd">
 <td><code>same_unit</code></td>
 <td>another state was kept in the same time unit</td>
 </tr>
 <tr class="even">
-<td><code>rounded_to_zero</code></td>
-<td>a positive duration rounds to 0 units (sojourn layout)</td>
+<td><code>after_absorbing</code></td>
+<td>a state entered after the absorbing state</td>
 </tr>
 <tr class="odd">
+<td><code>before_start</code></td>
+<td>a negative time</td>
+</tr>
+<tr class="even">
 <td><code>not_allowed</code></td>
 <td>transition not allowed by <code>trans</code> (kept)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>no_data</code></td>
 <td>subject with no usable record</td>
 </tr>
@@ -678,18 +575,48 @@ or a time without a valid status (wide layout)</td>
 <span><span class="co">#&gt; 6 Disch  1858</span></span>
 <span><span class="co">#&gt; 7 Death   218</span></span></code></pre></div>
 <p>Every DIVINE patient ends in <code>Disch</code> or
-<code>Death</code>, so no follow-up is censored. In the sojourn layout
-the order of the visits and repeated visits cannot be recovered from the
+<code>Death</code>, so no follow-up is censored. In sojourn data the
+order of the visits and repeated visits cannot be recovered from the
 durations: the order is that of <code>durations</code> and each state is
-visited at most once. Each sojourn is rounded separately with
-<code><a href="../reference/rnd.html">rnd()</a></code>, as in the paper’s code.</p>
+visited at most once.</p>
+<p>Wide data, as they go into <code><a href="https://rdrr.io/pkg/mstate/man/msprep.html" class="external-link">mstate::msprep()</a></code>:</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">wide</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>id <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">4</span>, ill_time <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">5</span>, <span class="fl">2</span>, <span class="fl">6</span><span class="op">)</span>, ill_status <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">0</span>, <span class="fl">1</span>, <span class="fl">0</span><span class="op">)</span>,</span>
+<span>                   dead_time <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">7</span>, <span class="fl">5</span>, <span class="fl">9</span>, <span class="fl">6</span><span class="op">)</span>, dead_status <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">0</span>, <span class="fl">0</span><span class="op">)</span>,</span>
+<span>                   age <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">60</span>, <span class="fl">72</span>, <span class="fl">55</span>, <span class="fl">49</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">w</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/msprep2.html">msprep2</a></span><span class="op">(</span><span class="va">wide</span>,</span>
+<span>             states <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>healthy <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>                           ill     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/survival/man/Surv.html" class="external-link">Surv</a></span><span class="op">(</span><span class="va">ill_time</span>, <span class="va">ill_status</span><span class="op">)</span>,</span>
+<span>                           dead    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/survival/man/Surv.html" class="external-link">Surv</a></span><span class="op">(</span><span class="va">dead_time</span>, <span class="va">dead_status</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>             trans  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"healthy -&gt; ill -&gt; dead"</span>, <span class="st">"healthy -&gt; dead"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">w</span></span>
+<span><span class="co">#&gt; &lt;msm2prep&gt;  discrete-time panel ready for prep2()</span></span>
+<span><span class="co">#&gt;   layout          : wide</span></span>
+<span><span class="co">#&gt;   subjects        : 4 (2 absorbed, 2 censored)</span></span>
+<span><span class="co">#&gt;   panel rows      : 31 (time 0 - 9)</span></span>
+<span><span class="co">#&gt;   states (3)      : healthy, ill, dead</span></span>
+<span><span class="co">#&gt;   absorbing       : dead</span></span>
+<span><span class="co">#&gt;   transitions     : 3 types, 4 in total (0 not allowed by `trans`)</span></span>
+<span><span class="co">#&gt;   issues          : none</span></span>
+<span><span class="va">w</span><span class="op">$</span><span class="va">panel</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">id</span> <span class="op">==</span> <span class="fl">1</span><span class="op">)</span></span>
+<span><span class="co">#&gt; # A tibble: 8 × 4</span></span>
+<span><span class="co">#&gt;      id  time state     age</span></span>
+<span><span class="co">#&gt;   &lt;int&gt; &lt;int&gt; &lt;fct&gt;   &lt;dbl&gt;</span></span>
+<span><span class="co">#&gt; 1     1     0 healthy    60</span></span>
+<span><span class="co">#&gt; 2     1     1 healthy    60</span></span>
+<span><span class="co">#&gt; 3     1     2 healthy    60</span></span>
+<span><span class="co">#&gt; 4     1     3 ill        60</span></span>
+<span><span class="co">#&gt; 5     1     4 ill        60</span></span>
+<span><span class="co">#&gt; 6     1     5 ill        60</span></span>
+<span><span class="co">#&gt; 7     1     6 ill        60</span></span>
+<span><span class="co">#&gt; 8     1     7 dead       60</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="prep2">
 <code>prep2()</code><a class="anchor" aria-label="anchor" href="#prep2"></a>
 </h3>
 <p><strong>Definition</strong></p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/prep2.html">prep2</a></span><span class="op">(</span><span class="va">data</span>, id <span class="op">=</span> <span class="st">"id"</span>, time <span class="op">=</span> <span class="st">"time"</span>, state <span class="op">=</span> <span class="st">"state"</span>,</span>
 <span>      states <span class="op">=</span> <span class="cn">NULL</span>, absorbing <span class="op">=</span> <span class="cn">NULL</span>, drop.na <span class="op">=</span> <span class="cn">FALSE</span>, check.consecutive <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <p><strong>What it does.</strong> Builds the <strong>second-order
@@ -866,7 +793,7 @@ observations).</li>
 consecutive <strong>rows</strong>).</li>
 </ul>
 <p><strong>Example</strong></p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">d</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prep2.html">prep2</a></span><span class="op">(</span><span class="va">panel</span>, states <span class="op">=</span> <span class="va">estados</span><span class="op">)</span></span>
 <span><span class="va">d</span></span>
 <span><span class="co">#&gt; &lt;msm2data&gt;  second-order counting processes</span></span>
@@ -905,7 +832,7 @@ consecutive <strong>rows</strong>).</li>
 <code>summary.msm2data()</code><a class="anchor" aria-label="anchor" href="#print-msm2data-and-summary-msm2data"></a>
 </h3>
 <p><strong>Definition</strong></p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co">## S3 method for class 'msm2data'</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span>
 <span><span class="co">## S3 method for class 'msm2data'</span></span>
@@ -927,7 +854,7 @@ and columns <code>total_at_risk</code>
 the RPE denominator, in subject-instants), <code>s_min</code> and
 <code>s_max</code>.</p>
 <p><strong>Example</strong></p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">expo</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">d</span><span class="op">)</span></span>
 <span><span class="co">#&gt; &lt;msm2data summary&gt;</span></span>
 <span><span class="co">#&gt;   2076 subjects, 23584 triples, time 0-138</span></span>
@@ -957,7 +884,7 @@ the RPE denominator, in subject-instants), <code>s_min</code> and
 <code>P2est()</code><a class="anchor" aria-label="anchor" href="#p2est"></a>
 </h3>
 <p><strong>Definition</strong></p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/P2est.html">P2est</a></span><span class="op">(</span><span class="va">object</span>, conf.level <span class="op">=</span> <span class="fl">0.95</span>, ci <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"wald"</span>, <span class="st">"logit"</span><span class="op">)</span>, clip <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <p><strong>What it does.</strong> Estimates every observed 1-step
 second-order transition probability
@@ -1102,7 +1029,7 @@ changes.</p>
 not an <code>msm2data</code> or if <code>conf.level</code> is not a
 single number strictly between 0 and 1.</p>
 <p><strong>Example</strong></p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/P2est.html">P2est</a></span><span class="op">(</span><span class="va">d</span><span class="op">)</span></span>
 <span><span class="va">fit</span></span>
 <span><span class="co">#&gt; &lt;P2est&gt;  RPE estimates of 1-step second-order transition probabilities</span></span>
@@ -1138,7 +1065,7 @@ single number strictly between 0 and 1.</p>
 <code>print.P2est()</code><a class="anchor" aria-label="anchor" href="#print-p2est"></a>
 </h3>
 <p><strong>Definition</strong></p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co">## S3 method for class 'P2est'</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
 <p><strong>What it does.</strong> Prints the estimator, states, interval
@@ -1151,7 +1078,7 @@ themselves are in <code>x$estimate</code>.</p>
 <code>P2boot()</code><a class="anchor" aria-label="anchor" href="#p2boot"></a>
 </h3>
 <p><strong>Definition</strong></p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/P2boot.html">P2boot</a></span><span class="op">(</span><span class="va">object</span>, B <span class="op">=</span> <span class="fl">200</span>, conf.level <span class="op">=</span> <span class="fl">0.95</span>, seed <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
 <p><strong>What it does.</strong> Subject-level bootstrap of the RPE:
 resamples subjects with replacement and recomputes every
@@ -1234,7 +1161,7 @@ coverage 1 and were up to five times wider.</p>
 not an <code>msm2data</code>, if <code>B &lt; 2</code> or if
 <code>conf.level</code> is not in (0, 1).</p>
 <p><strong>Example</strong></p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">bt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/P2boot.html">P2boot</a></span><span class="op">(</span><span class="va">d</span>, B <span class="op">=</span> <span class="fl">500</span>, seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="va">bt</span></span>
 <span><span class="co">#&gt; &lt;P2boot&gt;  RPE estimates with 500 subject-level bootstrap replicates</span></span>
@@ -1274,7 +1201,7 @@ not an <code>msm2data</code>, if <code>B &lt; 2</code> or if
 <code>ckequations()</code><a class="anchor" aria-label="anchor" href="#ckequations"></a>
 </h3>
 <p><strong>Definition</strong></p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ckequations.html">ckequations</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">h</span>, <span class="va">j</span>, l <span class="op">=</span> <span class="cn">NULL</span>, nsteps <span class="op">=</span> <span class="fl">9L</span>, bounds <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
 <p><strong>What it does.</strong> Computes the
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math>-step
@@ -1414,7 +1341,7 @@ the state space.</li>
 are no limits to propagate).</li>
 </ul>
 <p><strong>Example</strong></p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ckequations.html">ckequations</a></span><span class="op">(</span><span class="va">fit</span>, h <span class="op">=</span> <span class="st">"NSP"</span>, j <span class="op">=</span> <span class="st">"SP"</span>, l <span class="op">=</span> <span class="st">"NIMV"</span>, nsteps <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 0.2238 0.1820 0.1587 0.1383 0.1204</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="../reference/ckequations.html">ckequations</a></span><span class="op">(</span><span class="va">fit</span>, h <span class="op">=</span> <span class="st">"NSP"</span>, j <span class="op">=</span> <span class="st">"SP"</span>, nsteps <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span>            <span class="co"># full distribution</span></span>
@@ -1445,7 +1372,7 @@ are no limits to propagate).</li>
 <code>compare2()</code><a class="anchor" aria-label="anchor" href="#compare2"></a>
 </h3>
 <p><strong>Definition</strong></p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/compare2.html">compare2</a></span><span class="op">(</span><span class="va">object</span>, <span class="va">h</span>, <span class="va">j</span>, <span class="va">l</span>, nsteps <span class="op">=</span> <span class="fl">9L</span>, bounds <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <p><strong>What it does.</strong> For a common current state
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math>
@@ -1530,7 +1457,7 @@ are stacked in long format (<code><a href="https://purrr.tidyverse.org/reference
 not a <code>P2est</code>, or if <code>j</code>, <code>l</code> or any
 <code>h</code> is not in the state space.</p>
 <p><strong>Example</strong></p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cmp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compare2.html">compare2</a></span><span class="op">(</span><span class="va">fit</span>, h <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"NSP"</span>, <span class="st">"SP"</span><span class="op">)</span>, j <span class="op">=</span> <span class="st">"SP"</span>, l <span class="op">=</span> <span class="st">"NIMV"</span><span class="op">)</span></span>
 <span><span class="va">cmp</span></span>
 <span><span class="co">#&gt; &lt;msm2pred&gt;  RPE n-step transitions to 'NIMV' via current state 'SP'</span></span>
@@ -1560,7 +1487,7 @@ not a <code>P2est</code>, or if <code>j</code>, <code>l</code> or any
 <code>overlap_step()</code><a class="anchor" aria-label="anchor" href="#overlap_step"></a>
 </h3>
 <p><strong>Definition</strong></p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/overlap_step.html">overlap_step</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></code></pre></div>
 <p><strong>What it does.</strong> For a two-group comparison with
 bounds, finds the <strong>first step at which the two intervals
@@ -1637,7 +1564,7 @@ seventh day” of the paper.</p>
 <p><strong>Errors and warnings.</strong> Error if <code>x</code> has no
 bounds, or does not have exactly two groups.</p>
 <p><strong>Example</strong></p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/overlap_step.html">overlap_step</a></span><span class="op">(</span><span class="va">cmp</span><span class="op">)</span></span>
 <span><span class="co">#&gt; $n</span></span>
 <span><span class="co">#&gt; [1] 5</span></span>
@@ -1667,7 +1594,7 @@ bounds, or does not have exactly two groups.</p>
 <code>plot.msm2pred()</code><a class="anchor" aria-label="anchor" href="#print-msm2pred-summary-msm2pred-and-plot-msm2pred"></a>
 </h3>
 <p><strong>Definition</strong></p>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co">## S3 method for class 'msm2pred'</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span>
 <span><span class="co">## S3 method for class 'msm2pred'</span></span>
@@ -1774,7 +1701,7 @@ and the time
 <p>A warning is issued if <code>type = "interval"</code> is requested
 without bounds (lines are drawn instead).</p>
 <p><strong>Example</strong></p>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">cmp</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Trajectory comparison (RPE, 95% evolution intervals)</span></span>
 <span><span class="co">#&gt;   target 'NIMV' via current state 'SP'; preceding: NSP, SP</span></span>
@@ -1795,7 +1722,7 @@ plot of chunk plot
 <code>simulate2()</code><a class="anchor" aria-label="anchor" href="#simulate2"></a>
 </h3>
 <p><strong>Definition</strong></p>
-<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/simulate2.html">simulate2</a></span><span class="op">(</span><span class="va">n</span>, <span class="va">tensor</span>, <span class="va">first</span>, init <span class="op">=</span> <span class="cn">NULL</span>, entry <span class="op">=</span> <span class="cn">NULL</span>, states <span class="op">=</span> <span class="cn">NULL</span>, maxT <span class="op">=</span> <span class="fl">1000</span><span class="op">)</span></span></code></pre></div>
 <p><strong>What it does.</strong> Simulates discrete-time panel data
 from a second-order Markov multistate model, defined by a second-order
@@ -1906,7 +1833,7 @@ unnamed or names states not in <code>states</code>. Warning if
 <code>maxT</code> is reached with individuals still active (usually a
 zero-probability or non-absorbing cycle in <code>tensor</code>).</p>
 <p><strong>Example</strong></p>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co">## simulate from the model fitted to DIVINE; the first move (no previous</span></span>
 <span><span class="co">## time) uses the empirical matrix of day 0 -&gt; day 1</span></span>
 <span><span class="va">first_moves</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">inner_join</a></span><span class="op">(</span></span>
@@ -2120,7 +2047,7 @@ otherwise <code>a</code>
 </tr>
 </tbody>
 </table>
-<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">Q</span> <span class="op">&lt;-</span> <span class="fu">mstate2</span><span class="fu">:::</span><span class="fu">.pair_matrix</span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">P</span>, <span class="fl">7</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">Q</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 49 49</span></span>
