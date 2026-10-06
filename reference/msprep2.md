@@ -82,6 +82,8 @@ msprep2(
   Optional initial state, entered at the origin: a column of `data` or a
   single state label. Useful when the records only list the changes
   after the start (e.g. the state at admission is in a separate column).
+  With a list of states, a state with no columns (`NULL`) is the initial
+  state of everybody, so `initial` is not needed.
 
 - start:
 
@@ -128,10 +130,14 @@ msprep2(
 
 - trans:
 
-  Optional matrix of allowed transitions, with the states as row and
-  column names: an
-  [`mstate::transMat()`](https://rdrr.io/pkg/mstate/man/transMat.html)
-  matrix (`NA` = not allowed) or a logical or 0/1 matrix.
+  Optional allowed transitions, written as text,
+  `c("Tx -> PR", "Tx -> RelDeath", "PR -> RelDeath")` (a chain
+  `"A -> B -> C"` is allowed); as a named list of destinations,
+  `list(Tx = c("PR", "RelDeath"), PR = "RelDeath", RelDeath = NULL)`; or
+  as a matrix with the states as row and column names
+  ([`mstate::transMat()`](https://rdrr.io/pkg/mstate/man/transMat.html),
+  `NA` = not allowed, or logical or 0/1). It also gives the absorbing
+  states (no exit).
 
 - ties:
 
@@ -467,6 +473,27 @@ msprep2(own, id = "patient", initial = "start_state", absorbing = "dead",
 #>  9     2     2 healthy    72
 #> 10     2     3 healthy    72
 #> # ℹ 17 more rows
+
+# The mstate::msprep() workflow of the ebmt3 data in one call
+if (requireNamespace("mstate", quietly = TRUE)) {
+  data(ebmt3, package = "mstate")
+  bmt <- msprep2(ebmt3,
+                 states = list(Tx = NULL,
+                               PR = Surv(prtime, prstat),
+                               RelDeath = Surv(rfstime, rfsstat)),
+                 trans = c("Tx -> PR -> RelDeath", "Tx -> RelDeath"),
+                 unit = 30.4375)                       # times in days, panel in months
+  bmt
+}
+#> Warning: 110 record(s) were dropped or changed while building the panel (same_unit: 110); see the `issues` table of the result.
+#> <msm2prep>  discrete-time panel ready for prep2()
+#>   layout          : wide
+#>   subjects        : 2204 (841 absorbed, 1363 censored)
+#>   panel rows      : 69537 (time 0 - 93)
+#>   states (3)      : Tx, PR, RelDeath
+#>   absorbing       : RelDeath
+#>   transitions     : 3 types, 1900 in total (0 not allowed by `trans`)
+#>   issues          : 110 record(s) dropped or changed (same_unit: 110); see x$issues
 
 # Wide layout, as in mstate::msprep(): entry time and status per state
 wide <- data.frame(id = 1:3,

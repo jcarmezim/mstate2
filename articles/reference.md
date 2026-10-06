@@ -237,7 +237,7 @@ numeric times and returns the counting-process format of the Cox model.
 | `status` | `NULL` | wide layout: named vector `c(state = "0/1 status column")`; times with status 0 are censoring times, as in `msprep()` |
 | `durations` | `NULL` | sojourn layout: named vector `c(state = "duration column")`, in visiting order |
 | `outcome` | `NULL` | sojourn layout: named vector `c(state = "0/1 indicator")` of the absorbing states |
-| `initial` | `NULL` | state entered at the origin: a column or a single label |
+| `initial` | `NULL` | state entered at the origin: a column or a single label; with a list of states, the state without columns |
 | `start` | `NULL` | origin of time: a column (e.g. admission date) or a value; default the first record (0 for a numeric wide layout) |
 | `end` | `NULL` | end of follow-up of subjects not absorbed: a column or a value |
 | `unit` | `1` | length of a time unit: a number, or `"hour"`, `"day"`, `"week"`, `"month"`, `"year"` for dates |
@@ -245,7 +245,7 @@ numeric times and returns the counting-process format of the Cox model.
 | `recode` | `NULL` | relabelling of the recorded states, `c(old = "new")` |
 | `states` | `NULL` | state space and order (default from `trans`, the layout, or the observed states), or a named list with the time and status columns of each state |
 | `absorbing` | `NULL` | absorbing states; default from `trans`, `outcome`, or the states nobody leaves |
-| `trans` | `NULL` | allowed transitions: [`mstate::transMat()`](https://rdrr.io/pkg/mstate/man/transMat.html) matrix (`NA` = not allowed) or a logical/0-1 matrix |
+| `trans` | `NULL` | allowed transitions: text `c("Tx -> PR -> RelDeath", "Tx -> RelDeath")`, a list of destinations `list(Tx = c("PR", "RelDeath"), PR = "RelDeath", RelDeath = NULL)`, or a matrix ([`mstate::transMat()`](https://rdrr.io/pkg/mstate/man/transMat.html), logical or 0/1); gives the absorbing states |
 | `ties` | `"last"` | state kept when several fall in the same unit (an absorbing state always wins) |
 | `check` | `"warn"` | `"error"` stops at a transition not allowed by `trans` |
 | `keep` | `NULL` | baseline covariates carried into the panel; with conventional names, every other column |

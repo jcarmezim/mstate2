@@ -466,7 +466,8 @@ of the absorbing states</td>
 <tr class="odd">
 <td><code>initial</code></td>
 <td><code>NULL</code></td>
-<td>state entered at the origin: a column or a single label</td>
+<td>state entered at the origin: a column or a single label; with a list
+of states, the state without columns</td>
 </tr>
 <tr class="even">
 <td><code>start</code></td>
@@ -513,8 +514,12 @@ columns of each state</td>
 <tr class="odd">
 <td><code>trans</code></td>
 <td><code>NULL</code></td>
-<td>allowed transitions: <code><a href="https://rdrr.io/pkg/mstate/man/transMat.html" class="external-link">mstate::transMat()</a></code> matrix
-(<code>NA</code> = not allowed) or a logical/0-1 matrix</td>
+<td>allowed transitions: text
+<code>c("Tx -&gt; PR -&gt; RelDeath", "Tx -&gt; RelDeath")</code>, a
+list of destinations
+<code>list(Tx = c("PR", "RelDeath"), PR = "RelDeath", RelDeath = NULL)</code>,
+or a matrix (<code><a href="https://rdrr.io/pkg/mstate/man/transMat.html" class="external-link">mstate::transMat()</a></code>, logical or 0/1); gives the
+absorbing states</td>
 </tr>
 <tr class="even">
 <td><code>ties</code></td>

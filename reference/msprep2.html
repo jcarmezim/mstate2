@@ -106,7 +106,7 @@
 
 
 <dt id="arg-initial">initial<a class="anchor" aria-label="anchor" href="#arg-initial"></a></dt>
-<dd><p>Optional initial state, entered at the origin: a column of <code>data</code> or a single state label. Useful when the records only list the changes after the start (e.g. the state at admission is in a separate column).</p></dd>
+<dd><p>Optional initial state, entered at the origin: a column of <code>data</code> or a single state label. Useful when the records only list the changes after the start (e.g. the state at admission is in a separate column). With a list of states, a state with no columns (<code>NULL</code>) is the initial state of everybody, so <code>initial</code> is not needed.</p></dd>
 
 
 <dt id="arg-start">start<a class="anchor" aria-label="anchor" href="#arg-start"></a></dt>
@@ -138,7 +138,7 @@
 
 
 <dt id="arg-trans">trans<a class="anchor" aria-label="anchor" href="#arg-trans"></a></dt>
-<dd><p>Optional matrix of allowed transitions, with the states as row and column names: an <code><a href="https://rdrr.io/pkg/mstate/man/transMat.html" class="external-link">mstate::transMat()</a></code> matrix (<code>NA</code> = not allowed) or a logical or 0/1 matrix.</p></dd>
+<dd><p>Optional allowed transitions, written as text, <code>c("Tx -&gt; PR", "Tx -&gt; RelDeath", "PR -&gt; RelDeath")</code> (a chain <code>"A -&gt; B -&gt; C"</code> is allowed); as a named list of destinations, <code>list(Tx = c("PR", "RelDeath"), PR = "RelDeath", RelDeath = NULL)</code>; or as a matrix with the states as row and column names (<code><a href="https://rdrr.io/pkg/mstate/man/transMat.html" class="external-link">mstate::transMat()</a></code>, <code>NA</code> = not allowed, or logical or 0/1). It also gives the absorbing states (no exit).</p></dd>
 
 
 <dt id="arg-ties">ties<a class="anchor" aria-label="anchor" href="#arg-ties"></a></dt>
@@ -367,6 +367,27 @@ Each element can also be <code>c("t_ill" = "ill")</code> (time column = status c
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span>     2     2 healthy    72</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span>     2     3 healthy    72</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 17 more rows</span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># The mstate::msprep() workflow of the ebmt3 data in one call</span></span></span>
+<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"mstate"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">ebmt3</span>, package <span class="op">=</span> <span class="st">"mstate"</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="va">bmt</span> <span class="op">&lt;-</span> <span class="fu">msprep2</span><span class="op">(</span><span class="va">ebmt3</span>,</span></span>
+<span class="r-in"><span>                 states <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>Tx <span class="op">=</span> <span class="cn">NULL</span>,</span></span>
+<span class="r-in"><span>                               PR <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/survival/man/Surv.html" class="external-link">Surv</a></span><span class="op">(</span><span class="va">prtime</span>, <span class="va">prstat</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                               RelDeath <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/survival/man/Surv.html" class="external-link">Surv</a></span><span class="op">(</span><span class="va">rfstime</span>, <span class="va">rfsstat</span><span class="op">)</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                 trans <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Tx -&gt; PR -&gt; RelDeath"</span>, <span class="st">"Tx -&gt; RelDeath"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                 unit <span class="op">=</span> <span class="fl">30.4375</span><span class="op">)</span>                       <span class="co"># times in days, panel in months</span></span></span>
+<span class="r-in"><span>  <span class="va">bmt</span></span></span>
+<span class="r-in"><span><span class="op">}</span></span></span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>110 record(s) were dropped or changed while building the panel (same_unit: 110); see the `issues` table of the result.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;msm2prep&gt;  discrete-time panel ready for prep2()</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   layout          : wide</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   subjects        : 2204 (841 absorbed, 1363 censored)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   panel rows      : 69537 (time 0 - 93)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   states (3)      : Tx, PR, RelDeath</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   absorbing       : RelDeath</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   transitions     : 3 types, 1900 in total (0 not allowed by `trans`)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   issues          : 110 record(s) dropped or changed (same_unit: 110); see x$issues</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Wide layout, as in mstate::msprep(): entry time and status per state</span></span></span>
 <span class="r-in"><span><span class="va">wide</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>id <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">3</span>,</span></span>

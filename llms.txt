@@ -298,6 +298,38 @@ status column), `c("t_ill", "ill")` (the 0/1 column is taken as the
 status) or just `"t_ill"` (no status: visited when its time is
 recorded), and the forms can be mixed.
 
+**From `mstate` in one call.** The usual `mstate` preparation of the
+`ebmt3` data needs a transition matrix built with `transMat()` from
+state indices, the time and status columns in two parallel vectors with
+`NA` for the initial state, and the covariates listed in `keep`:
+
+``` r
+
+tmat  <- mstate::transMat(x = list(c(2, 3), c(3), c()), names = c("Tx", "PR", "RelDeath"))
+msbmt <- mstate::msprep(time = c(NA, "prtime", "rfstime"), status = c(NA, "prstat", "rfsstat"),
+                        data = ebmt3, trans = tmat, keep = c("dissub", "age", "drmatch", "tcd", "prtime"))
+```
+
+With
+[`msprep2()`](https://jcarmezim.github.io/mstate2/reference/msprep2.md)
+each state carries its own columns, the state without columns (`Tx`) is
+the initial state, the transitions are written as they are read, and the
+other columns are kept as covariates:
+
+``` r
+
+bmt <- msprep2(ebmt3,
+               states = list(Tx       = NULL,
+                             PR       = Surv(prtime, prstat),
+                             RelDeath = Surv(rfstime, rfsstat)),
+               trans  = c("Tx -> PR -> RelDeath", "Tx -> RelDeath"))
+```
+
+`trans` is optional (without it, the absorbing states are the states
+nobody leaves) and can also be a list of destinations,
+`list(Tx = c("PR", "RelDeath"), PR = "RelDeath", RelDeath = NULL)`, or
+an `mstate` matrix.
+
 Times can be numbers or dates (also text such as `"15/03/2020"`),
 measured from each patient’s origin (`start`, e.g. the admission date)
 in units of `unit` (`"day"`, `"week"`, …). Codes can be relabelled with
@@ -600,7 +632,7 @@ once, so replicates are cheap:
 
 system.time(bt <- P2boot(d, B = 500, seed = 1))
 #>    user  system elapsed 
-#>   0.355   0.270   0.629
+#>   0.333   0.012   0.345
 bt$estimate |>
   filter(j == "SP") |>
   select(h, l, p, se, se.boot)
