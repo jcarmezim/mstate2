@@ -359,133 +359,295 @@ Statistical Software*, 38(7), 1-30.
 ## Examples
 
 ``` r
-# Events layout: one row per state change, with dates
-raw <- data.frame(
-  id    = c(1, 1, 1, 2, 2, 3, 3, 3),
-  date  = c("2020-03-01", "2020-03-03", "2020-03-06",
-            "2020-03-02", "2020-03-09",
-            "2020-03-05", "2020-03-06", "2020-03-12"),
-  state = c("NSP", "SP", "Disch", "SP", "Death", "NSP", "SP", "SP"))
-x <- msprep2(raw, time = "date", state = "state", absorbing = c("Disch", "Death"))
-x
+library(survival)                      # Surv()
+# Same (id, time, state) in two results?
+same <- function(a, b) isTRUE(all.equal(as.data.frame(a$panel[1:3]), as.data.frame(b$panel[1:3]),
+                                        check.attributes = FALSE))
+
+## ---- 1. The same four patients in every layout -------------------------------
+## Illness-death model: healthy -> ill -> dead and healthy -> dead
+##   patient 1: healthy until day 3, ill from day 3, dies on day 7
+##   patient 2: healthy until day 5, dies on day 5
+##   patient 3: ill from day 2, alive at day 9 (censored)
+##   patient 4: healthy until day 6 (censored)
+
+# Sojourn (as DIVINE): days spent in each state, in visiting order, and the outcome
+sojourn <- data.frame(id = 1:4, t_healthy = c(3, 5, 2, 7), t_ill = c(4, 0, 8, 0),
+                      dead = c(1, 1, 0, 0))
+p1 <- msprep2(sojourn, durations = c(healthy = "t_healthy", ill = "t_ill"),
+              outcome = c(dead = "dead"))
+p1                                     # short report
 #> <msm2prep>  discrete-time panel ready for prep2()
-#>   layout          : events
-#>   subjects        : 3 (2 absorbed, 1 censored)
-#>   panel rows      : 22 (time 0 - 7)
-#>   states (4)      : NSP, SP, Disch, Death
-#>   absorbing       : Disch, Death
+#>   layout          : sojourn
+#>   subjects        : 4 (2 absorbed, 2 censored)
+#>   panel rows      : 31 (time 0 - 9)
+#>   states (3)      : healthy, ill, dead
+#>   absorbing       : dead
 #>   transitions     : 3 types, 4 in total
 #>   issues          : none
-x$panel
-#> # A tibble: 22 × 3
-#>       id  time state
-#>    <dbl> <int> <fct>
-#>  1     1     0 NSP  
-#>  2     1     1 NSP  
-#>  3     1     2 SP   
-#>  4     1     3 SP   
-#>  5     1     4 SP   
-#>  6     1     5 Disch
-#>  7     2     0 SP   
-#>  8     2     1 SP   
-#>  9     2     2 SP   
-#> 10     2     3 SP   
-#> # ℹ 12 more rows
-prep2(x)
-#> <msm2data>  second-order counting processes
-#>   subjects        : 3
-#>   observed triples: 16
-#>   time range      : 0 - 7
-#>   states (4)      : NSP, SP, Disch, Death
-#>   absorbing       : Disch, Death
-#>   distinct (h,j)  : 3
+p1$panel                               # one row per patient and day
+#> # A tibble: 31 × 3
+#>       id  time state  
+#>    <int> <int> <fct>  
+#>  1     1     0 healthy
+#>  2     1     1 healthy
+#>  3     1     2 healthy
+#>  4     1     3 ill    
+#>  5     1     4 ill    
+#>  6     1     5 ill    
+#>  7     1     6 ill    
+#>  8     1     7 dead   
+#>  9     2     0 healthy
+#> 10     2     1 healthy
+#> # ℹ 21 more rows
+p1$subjects                            # entry, exit and status of each patient
+#> # A tibble: 4 × 7
+#>      id first  last entry   exit     rows status  
+#>   <int> <int> <int> <chr>   <chr>   <int> <chr>   
+#> 1     1     0     7 healthy dead        8 absorbed
+#> 2     2     0     5 healthy dead        6 absorbed
+#> 3     3     0     9 healthy ill        10 censored
+#> 4     4     0     6 healthy healthy     7 censored
 
-# Conventional names: x_time, x_status and inistat; nothing else to say
-conv <- data.frame(id = 1:4, inistat = c("healthy", "healthy", "ill", "healthy"),
-                   healthy_time = 0, healthy_status = c(1, 1, 0, 1),
-                   ill_time = c(2, 6, 0, 3), ill_status = c(1, 0, 1, 1),
-                   dead_time = c(5, 6, 4, 8), dead_status = c(1, 0, 1, 0),
+# Wide (as mstate::msprep()): time of entry, or of censoring when the status is 0
+wide <- data.frame(id = 1:4, ill_time = c(3, 5, 2, 6), ill_status = c(1, 0, 1, 0),
+                   dead_time = c(7, 5, 9, 6), dead_status = c(1, 1, 0, 0),
                    age = c(60, 72, 55, 49))
-y <- msprep2(conv, absorbing = "dead")
-y
+p2 <- msprep2(wide, states = list(healthy = NULL,     # no columns: the initial state
+                                  ill     = Surv(ill_time, ill_status),
+                                  dead    = Surv(dead_time, dead_status)),
+              trans = c("healthy -> ill -> dead", "healthy -> dead"))
+p2$panel                               # `age` is kept as a covariate
+#> # A tibble: 31 × 4
+#>       id  time state     age
+#>    <int> <int> <fct>   <dbl>
+#>  1     1     0 healthy    60
+#>  2     1     1 healthy    60
+#>  3     1     2 healthy    60
+#>  4     1     3 ill        60
+#>  5     1     4 ill        60
+#>  6     1     5 ill        60
+#>  7     1     6 ill        60
+#>  8     1     7 dead       60
+#>  9     2     0 healthy    72
+#> 10     2     1 healthy    72
+#> # ℹ 21 more rows
+
+# Events: one row per change of state, dates as text and an end of follow-up
+events <- data.frame(id    = c(1, 1, 1, 2, 2, 3, 3, 4),
+                     date  = c("01/03/2020", "04/03/2020", "08/03/2020", "01/03/2020",
+                               "06/03/2020", "01/03/2020", "03/03/2020", "01/03/2020"),
+                     state = c("healthy", "ill", "dead", "healthy", "dead",
+                               "healthy", "ill", "healthy"),
+                     end   = c(NA, NA, NA, NA, NA, "10/03/2020", "10/03/2020", "07/03/2020"))
+p3 <- msprep2(events, time = "date", state = "state", end = "end", absorbing = "dead")
+
+# Codes instead of labels: relabel them with `recode`
+coded <- transform(events, state = c(healthy = "H", ill = "I", dead = "D")[state])
+p3b <- msprep2(coded, time = "date", state = "state", end = "end",
+               recode = c(H = "healthy", I = "ill", D = "dead"), absorbing = "dead",
+               states = c("healthy", "ill", "dead"))
+
+# msdata: the wide data already prepared by mstate::msprep()
+if (requireNamespace("mstate", quietly = TRUE)) {
+  tmat <- mstate::transMat(x = list(c(2, 3), 3, c()), names = c("healthy", "ill", "dead"))
+  ms <- mstate::msprep(time = c(NA, "ill_time", "dead_time"),
+                       status = c(NA, "ill_status", "dead_status"), data = wide, trans = tmat)
+  p4 <- msprep2(ms)                    # recognised by its class; `trans` from its matrix
+  print(same(p1, p4))
+}
+#> [1] TRUE
+
+# All the layouts give the same panel
+c(wide = same(p1, p2), events = same(p1, p3), recoded = same(p1, p3b))
+#>    wide  events recoded 
+#>    TRUE    TRUE    TRUE 
+
+## ---- 2. Other ways of writing the wide layout --------------------------------
+# Conventional names (<state>_time, <state>_status, inistat): no arguments needed
+conv <- data.frame(wide, inistat = "healthy")
+msprep2(conv, absorbing = "dead")
 #> <msm2prep>  discrete-time panel ready for prep2()
 #>   layout          : wide
 #>   subjects        : 4 (2 absorbed, 2 censored)
-#>   panel rows      : 27 (time 0 - 8)
+#>   panel rows      : 31 (time 0 - 9)
 #>   states (3)      : healthy, ill, dead
 #>   absorbing       : dead
-#>   transitions     : 2 types, 4 in total
+#>   transitions     : 3 types, 4 in total
 #>   issues          : none
-y$panel
-#> # A tibble: 27 × 4
-#>       id  time state     age
-#>    <int> <int> <fct>   <dbl>
-#>  1     1     0 healthy    60
-#>  2     1     1 healthy    60
-#>  3     1     2 ill        60
-#>  4     1     3 ill        60
-#>  5     1     4 ill        60
-#>  6     1     5 dead       60
-#>  7     2     0 healthy    72
-#>  8     2     1 healthy    72
-#>  9     2     2 healthy    72
-#> 10     2     3 healthy    72
-#> # ℹ 17 more rows
 
-# Any column names: a list giving the time and status columns of each state
-own <- data.frame(patient = 1:4, start_state = c("healthy", "healthy", "ill", "healthy"),
-                  t_ill = c(2, 6, 0, 3), ill = c(1, 0, 1, 1),
-                  t_dth = c(5, 6, 4, 8), dth = c(1, 0, 1, 0), age = c(60, 72, 55, 49))
-msprep2(own, id = "patient", initial = "start_state", absorbing = "dead",
-        states = list(healthy = NULL,
-                      ill     = c(time = "t_ill", status = "ill"),
-                      dead    = c(time = "t_dth", status = "dth")))$panel
-#> # A tibble: 27 × 4
-#>       id  time state     age
-#>    <int> <int> <fct>   <dbl>
-#>  1     1     0 healthy    60
-#>  2     1     1 healthy    60
-#>  3     1     2 ill        60
-#>  4     1     3 ill        60
-#>  5     1     4 ill        60
-#>  6     1     5 dead       60
-#>  7     2     0 healthy    72
-#>  8     2     1 healthy    72
-#>  9     2     2 healthy    72
-#> 10     2     3 healthy    72
-#> # ℹ 17 more rows
+# Column names in quotes (e.g. from a Shiny app), in any of these forms: c(time =, status =),
+# c("time column" = "status column"), c("ill_status", "ill_time") (the 0/1 column is the
+# status) or just the time column (visited when its time is recorded); Surv() can be mixed in
+# and contain expressions, e.g. Surv(dead_time, dead_status == 1)
+q <- msprep2(wide, states = list(healthy = NULL,
+                                 ill     = c(time = "ill_time", status = "ill_status"),
+                                 dead    = c("dead_time" = "dead_status")))
+same(p2, q)
+#> [1] TRUE
 
-# The same with Surv(): column names without quotes, expressions allowed
-library(survival)
-msprep2(own, id = "patient", initial = "start_state", absorbing = "dead",
-        states = list(healthy = NULL,
-                      ill     = Surv(t_ill, ill),
-                      dead    = Surv(t_dth, dth == 1)))$panel
-#> # A tibble: 27 × 4
-#>       id  time state     age
-#>    <int> <int> <fct>   <dbl>
-#>  1     1     0 healthy    60
-#>  2     1     1 healthy    60
-#>  3     1     2 ill        60
-#>  4     1     3 ill        60
-#>  5     1     4 ill        60
-#>  6     1     5 dead       60
-#>  7     2     0 healthy    72
-#>  8     2     1 healthy    72
-#>  9     2     2 healthy    72
-#> 10     2     3 healthy    72
-#> # ℹ 17 more rows
+# Or with the arguments `times` and `status`
+q <- msprep2(wide, times = c(ill = "ill_time", dead = "dead_time"),
+             status = c(ill = "ill_status", dead = "dead_status"), initial = "healthy",
+             states = c("healthy", "ill", "dead"), absorbing = "dead")
+same(p2, q)
+#> [1] TRUE
 
-# The mstate::msprep() workflow of the ebmt3 data in one call
+# The transitions as text, as a list of destinations, as a matrix (mstate::transMat(),
+# logical or 0/1) or not given (the absorbing states are then the states nobody leaves)
+tr <- msprep2(wide, states = list(healthy = NULL, ill = "ill_time", dead = "dead_time"),
+              trans = list(healthy = c("ill", "dead"), ill = "dead", dead = NULL))
+#> Warning: 2 record(s) were dropped or changed while building the panel (same_unit: 2); see the `issues` table of the result.
+tr$trans                               # `dead` has no exit: absorbing
+#>         healthy   ill  dead
+#> healthy   FALSE  TRUE  TRUE
+#> ill       FALSE FALSE  TRUE
+#> dead      FALSE FALSE FALSE
+
+## ---- 3. What msprep2() reports ----------------------------------------------
+## Every record dropped or changed is listed in `issues`, with one warning.
+
+# rounded_to_zero: patient 2 spent 0.4 days ill, which rounds to 0 days
+bad <- sojourn
+bad$t_ill[2] <- 0.4
+msprep2(bad, durations = c(healthy = "t_healthy", ill = "t_ill"),
+        outcome = c(dead = "dead"))$issues
+#> Warning: 1 record(s) were dropped or changed while building the panel (rounded_to_zero: 1); see the `issues` table of the result.
+#> # A tibble: 1 × 5
+#>      id issue           state time  detail                        
+#>   <int> <chr>           <chr> <chr> <chr>                         
+#> 1     2 rounded_to_zero ill   NA    duration 0.4 rounds to 0 units
+rnd(c(0.4, 0.5, 1.5))                  # halves away from zero ...
+#> [1] 0 1 2
+round(c(0.4, 0.5, 1.5))                # ... not to the even integer
+#> [1] 0 0 2
+
+# same_unit: in weeks (unit = 7; with dates, also unit = "week"), patients 1 and 3
+# become ill in the week of admission, so `healthy` occupies no week
+msprep2(wide, states = list(healthy = NULL, ill = Surv(ill_time, ill_status),
+                            dead = Surv(dead_time, dead_status)), unit = 7)$issues
+#> Warning: 2 record(s) were dropped or changed while building the panel (same_unit: 2); see the `issues` table of the result.
+#> # A tibble: 2 × 5
+#>      id issue     state   time  detail                        
+#>   <int> <chr>     <chr>   <chr> <chr>                         
+#> 1     1 same_unit healthy 0     same time unit as ill (unit 0)
+#> 2     3 same_unit healthy 0     same time unit as ill (unit 0)
+
+# missing: status 1 without a time (patient 1), and a status code 9 that Surv()
+# turns into NA (patient 2)
+bad <- wide
+bad$ill_time[1] <- NA
+bad$dead_status[2] <- 9
+msprep2(bad, states = list(healthy = NULL, ill = Surv(ill_time, ill_status),
+                           dead = Surv(dead_time, dead_status)))$issues
+#> Warning: Invalid status value, converted to NA
+#> Warning: 2 record(s) were dropped or changed while building the panel (missing: 2); see the `issues` table of the result.
+#> # A tibble: 2 × 5
+#>      id issue   state time  detail                                              
+#>   <int> <chr>   <chr> <chr> <chr>                                               
+#> 1     1 missing ill   NA    visited (status 1) but without a time               
+#> 2     2 missing dead  5     time recorded but status missing: not taken as a vi…
+
+# A status coded 1/2 is read as in survival::Surv() (1 = censored, 2 = event)
+w12 <- transform(wide, dead_status = dead_status + 1)
+same(p2, msprep2(w12, states = list(healthy = NULL, ill = Surv(ill_time, ill_status),
+                                    dead = Surv(dead_time, dead_status))))
+#> Warning: A status coded 1/2 is read as in survival::Surv(): 1 = censored, 2 = event.
+#> [1] TRUE
+
+# A status written as text is not guessed: say which value is the event
+wtxt <- transform(wide, dead_status = ifelse(dead_status == 1, "yes", "no"))
+try(msprep2(wtxt, states = list(healthy = NULL, ill = Surv(ill_time, ill_status),
+                                dead = Surv(dead_time, dead_status))))
+#> Error : The status of Surv() must be 0/1, 1/2 or TRUE/FALSE, not text (values: yes, no). Say which value is the event, e.g. Surv(time, status == "yes").
+msprep2(wtxt, states = list(healthy = NULL, ill = Surv(ill_time, ill_status),
+                            dead = Surv(dead_time, dead_status == "yes")))
+#> <msm2prep>  discrete-time panel ready for prep2()
+#>   layout          : wide
+#>   subjects        : 4 (2 absorbed, 2 censored)
+#>   panel rows      : 31 (time 0 - 9)
+#>   states (3)      : healthy, ill, dead
+#>   absorbing       : dead
+#>   transitions     : 3 types, 4 in total
+#>   issues          : none
+
+# not_allowed: healthy -> dead (patient 2) is not in `trans`: kept and listed ...
+msprep2(wide, states = list(healthy = NULL, ill = Surv(ill_time, ill_status),
+                            dead = Surv(dead_time, dead_status)),
+        trans = "healthy -> ill -> dead")$issues
+#> Warning: 1 record(s) were dropped or changed while building the panel (not_allowed: 1); see the `issues` table of the result.
+#> # A tibble: 1 × 5
+#>      id issue       state time  detail                   
+#>   <int> <chr>       <chr> <chr> <chr>                    
+#> 1     2 not_allowed dead  NA    healthy -> dead at unit 5
+# ... or an error with check = "error"
+try(msprep2(wide, states = list(healthy = NULL, ill = Surv(ill_time, ill_status),
+                                dead = Surv(dead_time, dead_status)),
+            trans = "healthy -> ill -> dead", check = "error"))
+#> Error : 1 transition(s) not allowed by `trans`: healthy -> dead.
+
+# Events: a record without a date (missing), one before admission (before_start),
+# one after the end of follow-up (after_end), one after death (after_absorbing),
+# two states on the day of admission (same_unit) and a patient with no usable
+# record (no_data)
+bad <- rbind(events,
+             data.frame(id    = c(1, 2, 4, 1, 5),
+                        date  = c(NA, "20/02/2020", "09/03/2020", "12/03/2020", NA),
+                        state = "ill",
+                        end   = c(NA, NA, "07/03/2020", NA, NA)))
+bad$date[bad$id == 3 & bad$state == "ill"] <- "01/03/2020"
+y <- msprep2(bad, time = "date", state = "state", end = "end", start = "01/03/2020",
+             absorbing = "dead")
+#> Warning: 7 record(s) were dropped or changed while building the panel (after_absorbing: 1, after_end: 1, before_start: 1, missing: 2, no_data: 1, same_unit: 1); see the `issues` table of the result.
+y$issues
+#> # A tibble: 7 × 5
+#>      id issue           state   time       detail                               
+#>   <dbl> <chr>           <chr>   <chr>      <chr>                                
+#> 1     1 missing         ill     NA         missing id, time or state            
+#> 2     5 missing         ill     NA         missing id, time or state            
+#> 3     2 before_start    ill     2020-02-20 before the origin                    
+#> 4     4 after_end       ill     2020-03-09 after the end of follow-up           
+#> 5     1 after_absorbing ill     2020-03-12 after the entry into an absorbing st…
+#> 6     3 same_unit       healthy 2020-03-01 same time unit as ill (unit 0)       
+#> 7     5 no_data         NA      NA         no usable record                     
+summary(y)                             # transitions, follow-up and issues by type
+#> <msm2prep summary>
+#> 
+#> Observed transitions (from rows to columns):
+#>          to
+#> from      healthy ill dead
+#>   healthy       0   1    1
+#>   ill           0   0    1
+#>   dead          0   0    0
+#> 
+#> Time units observed per subject (rows of the panel), by status:
+#> # A tibble: 2 × 5
+#>   status   subjects   min median   max
+#>   <chr>       <int> <dbl>  <dbl> <dbl>
+#> 1 absorbed        2     6    7       8
+#> 2 censored        2     7    8.5    10
+#> 
+#> Records dropped or changed:
+#> # A tibble: 6 × 2
+#>   issue               n
+#>   <chr>           <int>
+#> 1 after_absorbing     1
+#> 2 after_end           1
+#> 3 before_start        1
+#> 4 missing             2
+#> 5 no_data             1
+#> 6 same_unit           1
+
+## ---- 4. The mstate::msprep() workflow of ebmt3 in one call -----------------
 if (requireNamespace("mstate", quietly = TRUE)) {
   data(ebmt3, package = "mstate")
   bmt <- msprep2(ebmt3,
-                 states = list(Tx = NULL,
-                               PR = Surv(prtime, prstat),
+                 states = list(Tx       = NULL,
+                               PR       = Surv(prtime, prstat),
                                RelDeath = Surv(rfstime, rfsstat)),
-                 trans = c("Tx -> PR -> RelDeath", "Tx -> RelDeath"),
-                 unit = 30.4375)                       # times in days, panel in months
-  bmt
+                 trans  = c("Tx -> PR -> RelDeath", "Tx -> RelDeath"),
+                 unit   = 30.4375)     # times in days, panel in months
+  print(bmt)
 }
 #> Warning: 110 record(s) were dropped or changed while building the panel (same_unit: 110); see the `issues` table of the result.
 #> <msm2prep>  discrete-time panel ready for prep2()
@@ -497,33 +659,13 @@ if (requireNamespace("mstate", quietly = TRUE)) {
 #>   transitions     : 3 types, 1900 in total (0 not allowed by `trans`)
 #>   issues          : 110 record(s) dropped or changed (same_unit: 110); see x$issues
 
-# Wide layout, as in mstate::msprep(): entry time and status per state
-wide <- data.frame(id = 1:3,
-                   ill.t = c(2, 5, 4), ill.s = c(1, 0, 1),
-                   dth.t = c(6, 5, 4.5), dth.s = c(1, 0, 1))
-msprep2(wide, times = c(ill = "ill.t", dead = "dth.t"),
-        status = c(ill = "ill.s", dead = "dth.s"), initial = "healthy",
-        states = c("healthy", "ill", "dead"), absorbing = "dead")$panel
-#> # A tibble: 19 × 3
-#>       id  time state  
-#>    <int> <int> <fct>  
-#>  1     1     0 healthy
-#>  2     1     1 healthy
-#>  3     1     2 ill    
-#>  4     1     3 ill    
-#>  5     1     4 ill    
-#>  6     1     5 ill    
-#>  7     1     6 dead   
-#>  8     2     0 healthy
-#>  9     2     1 healthy
-#> 10     2     2 healthy
-#> 11     2     3 healthy
-#> 12     2     4 healthy
-#> 13     2     5 healthy
-#> 14     3     0 healthy
-#> 15     3     1 healthy
-#> 16     3     2 healthy
-#> 17     3     3 healthy
-#> 18     3     4 ill    
-#> 19     3     5 dead   
+## ---- 5. The result goes straight into prep2() --------------------------------
+prep2(p2)
+#> <msm2data>  second-order counting processes
+#>   subjects        : 4
+#>   observed triples: 23
+#>   time range      : 0 - 9
+#>   states (3)      : healthy, ill, dead
+#>   absorbing       : dead
+#>   distinct (h,j)  : 3
 ```
