@@ -11,6 +11,9 @@
 #'   \item \strong{Prediction.} \code{\link{ckequations}} (extended Chapman-Kolmogorov relation, with evolution intervals).
 #'   \item \strong{Does the previous time matter, and for how long?} \code{\link{compare2}} and \code{\link{overlap_step}}.
 #'   \item \strong{Bootstrap intervals.} \code{\link{P2boot}} resamples patients; \code{ckequations()} and \code{compare2()} then report percentile bootstrap intervals.
+#'   \item \strong{Testing the Markov order.} \code{\link{markov_test}}.
+#'   \item \strong{Covariates.} \code{\link{P2reg}} and \code{\link{P2reg_all}} (discrete-time hazard regression and covariate-adjusted prediction).
+#'   \item \strong{First versus second order.} \code{\link{P1est}}, \code{\link{probtrans2}}, \code{\link{compare_order}}, \code{\link{divergence}}, \code{\link{divergence_table}} and \code{\link{as_tmat}}.
 #'   \item \strong{Simulation.} \code{\link{simulate2}} (the simulation design of the paper).
 #' }
 #'
@@ -34,5 +37,5 @@ utils::globalVariables(c(
   "t_max", ".col", ".scol", ".ord", ".t", "tval", "step", "end_step",
   ".first", ".k", ".n", "prev", "kept_state", ".abs", ".next", ".len", ".i",
   "total", "Tstart", "Tstop", "status", ".seen", "end", ".nxt", ".has",
-  ".run", ".pos", "d", "K", "Yh", "Yj", "Nh", "pbar", "p.value", "w", "pooled", "statistic", "hs", "separated_steps", "max_abs_diff", ".y", "n.moves", "dest", "modelled"
+  ".run", ".pos", "d", "K", "Yh", "Yj", "Nh", "pbar", "p.value", "w", "pooled", "statistic", "hs", "separated_steps", "max_abs_diff", ".y", "n.moves", "dest", "modelled", "L", "df", "estimate", "key"
 ))
