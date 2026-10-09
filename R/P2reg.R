@@ -178,7 +178,14 @@ P2reg <- function(object, h, j, l = NULL, formula = ~1,
   fm <- stats::as.formula(paste0(".y ~ ", deparse1(rhs)), env = environment(formula))
   fit_one <- function(tgt) {
     dat <- dplyr::mutate(risk, .y = as.integer(as.character(l) == tgt))
-    fit <- stats::glm(fm, data = dat, family = family, ...)
+    fit <- tryCatch(stats::glm(fm, data = dat, family = family, ...),
+                    error = function(e) {
+                      # a categorical covariate with a single level in this risk set cannot be estimated: say so clearly
+                      if (grepl("contrasts can be applied only to factors", conditionMessage(e)))
+                        stop("A categorical covariate takes a single value in the risk set of (h, j) = (", hlab, ", ", jlab,
+                             "), so its effect cannot be estimated there.", call. = FALSE)
+                      stop(e)
+                    })
     if (cluster) fit$P2reg.vcov <- sandwich::vcovCL(fit, cluster = dat$id)
     fit
   }
@@ -384,7 +391,7 @@ plot.P2reg <- function(x, conf.level = 0.95, terms = NULL, col = "#1E2761",
 #'   \code{P2reg} per fitted history, named \code{"h|j"}), \code{rpe} (the
 #'   \code{P2est} fit used for the rows that are not modelled), \code{pairs}
 #'   (data frame of histories, whether each was modelled, and which terms were
-#'   not estimable in it), \code{formula},
+#'   not estimable in it or why it was not modelled), \code{formula},
 #'   \code{family}, \code{states}, \code{absorbing}.
 #' @section Why this construction:
 #' Each move is modelled as in \code{\link{P2reg}} and staying in \eqn{j} is
@@ -443,18 +450,25 @@ P2reg_all <- function(object, formula = ~1, family = stats::binomial("cloglog"),
                   modelled = n.moves >= min.events)
 
   # P2reg() for every history with enough moves; terms that cannot be estimated in a history (glm() returns NA, typically a covariate constant in its risk set) are recorded.
+  # A history where the model cannot be fitted at all (a categorical covariate with a single level in its risk set) keeps the RPE, and the reason is recorded.
   fit_one <- function(hh, jj, dest) {
-    P2reg(object, h = hh, j = jj, l = dest, formula = formula, family = family, cluster = cluster, ...)
+    tryCatch(P2reg(object, h = hh, j = jj, l = dest, formula = formula, family = family, cluster = cluster, ...),
+             error = function(e) if (grepl("single value", conditionMessage(e))) NULL else stop(e))
   }
   modelled <- dplyr::filter(histories, modelled)
   fits <- stats::setNames(purrr::pmap(list(modelled$h, modelled$j, modelled$dest), fit_one),
                           paste(modelled$h, modelled$j, sep = "|"))
+  failed <- names(fits)[purrr::map_lgl(fits, is.null)]
+  fits <- purrr::compact(fits)
   aliased <- purrr::map_chr(fits, \(fit) {
     na_terms <- unique(unlist(purrr::map(fit$models, \(m) names(which(is.na(stats::coef(m)))))))
     paste(na_terms, collapse = ", ")
   })
   pairs <- histories |>
-    dplyr::mutate(aliased = dplyr::coalesce(aliased[paste(h, j, sep = "|")], "")) |>
+    dplyr::mutate(key = paste(h, j, sep = "|"),
+                  modelled = modelled & !key %in% failed,
+                  aliased = dplyr::coalesce(aliased[key], ""),
+                  aliased = dplyr::if_else(key %in% failed, "a categorical covariate with a single level (kept at the RPE)", aliased)) |>
     dplyr::select("h", "j", "modelled", "aliased") |>
     as.data.frame()
 
@@ -468,12 +482,15 @@ P2reg_all <- function(object, formula = ~1, family = stats::binomial("cloglog"),
 print.P2reg_all <- function(x, ...) {
   cat(sprintf("<P2reg_all>  covariate-adjusted second-order model (%s link)\n", x$family$link))
   cat(sprintf("  covariates  : %s\n", deparse1(x$formula[[length(x$formula)]])))
-  cat(sprintf("  histories   : %d modelled, %d kept at the RPE (too few moves)\n",
+  cat(sprintf("  histories   : %d modelled, %d kept at the RPE\n",
               sum(x$pairs$modelled), sum(!x$pairs$modelled)))
-  al <- x$pairs[nzchar(x$pairs$aliased), , drop = FALSE]
+  al <- x$pairs[x$pairs$modelled & nzchar(x$pairs$aliased), , drop = FALSE]
   if (nrow(al))
     cat(sprintf("  not estimable (constant in the risk set; set to 0 in predictions): %s\n",
                 paste0("(", al$h, ", ", al$j, ") ", al$aliased, collapse = "; ")))
+  kept <- x$pairs[!x$pairs$modelled & nzchar(x$pairs$aliased), , drop = FALSE]
+  if (nrow(kept))
+    cat(sprintf("  not modelled: %s\n", paste0("(", kept$h, ", ", kept$j, ") ", kept$aliased, collapse = "; ")))
   invisible(x)
 }
 
@@ -534,7 +551,7 @@ predict.P2reg_all <- function(object, newdata, ...) {
   if (rescaled)
     warning("Predicted move probabilities summed to more than 1 for some history; ",
             "they were rescaled.", call. = FALSE)
-  if (any(nzchar(object$pairs$aliased)))
+  if (any(object$pairs$modelled & nzchar(object$pairs$aliased)))
     warning("Some terms are not estimable in some histories (the covariate is constant ",
             "in their risk set) and were set to 0; see print(object).", call. = FALSE)
   if (length(out) == 1L) out[[1L]] else out

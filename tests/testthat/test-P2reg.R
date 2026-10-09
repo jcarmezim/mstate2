@@ -211,3 +211,18 @@ test_that("P2reg works on the covariates of an msprep2() result", {
   expect_equal(d$covariates, "age")
   expect_s3_class(P2reg(d, h = "healthy", j = "healthy", formula = ~ age), "P2reg")
 })
+
+test_that("a categorical covariate with a single level in a history is reported, not fatal", {
+  pan <- toy_panel(1500, seed = 14)
+  ## subjects that reach the history (B, B); a factor with a level that never occurs in its risk set
+  bb <- unique(pan$id[pan$state == "B" & dplyr::lag(pan$state) == "B" & dplyr::lag(pan$id) == pan$id])
+  pan$g2 <- ifelse(pan$id %in% bb, "in_bb", "never_bb")
+  d2 <- prep2(pan, states = c("A", "B", "C"), covariates = "g2")
+  expect_error(P2reg(d2, h = "B", j = "B", formula = ~ factor(g2)), "single value")
+  ## (in (A, B) g2 separates the destinations perfectly by construction, hence glm()'s convergence warning)
+  a <- suppressWarnings(P2reg_all(d2, formula = ~ factor(g2)))
+  expect_false(a$pairs$modelled[a$pairs$h == "B" & a$pairs$j == "B"])
+  expect_output(print(a), "not modelled")
+  P <- predict(a, newdata = data.frame(g2 = "in_bb"))
+  expect_equal(P["B", , "B"], P2est(d2)$P["B", , "B"])   # kept at the RPE
+})

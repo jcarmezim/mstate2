@@ -53,7 +53,7 @@ An object of class "P2reg_all": a list with \code{fits} (one
   \code{P2reg} per fitted history, named \code{"h|j"}), \code{rpe} (the
   \code{P2est} fit used for the rows that are not modelled), \code{pairs}
   (data frame of histories, whether each was modelled, and which terms were
-  not estimable in it), \code{formula},
+  not estimable in it or why it was not modelled), \code{formula},
   \code{family}, \code{states}, \code{absorbing}.
 }
 \description{
