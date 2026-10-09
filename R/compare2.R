@@ -8,7 +8,7 @@
 #' @param l Target state.
 #' @param nsteps Number of steps (default 9).
 #' @param bounds If TRUE (default) also compute evolution-interval bounds; FALSE returns curves only and skips two thirds of the work. If \code{object} is a \code{\link{P2boot}} fit, the bounds are percentile bootstrap intervals instead of evolution intervals.
-#' @return An object of class "msm2pred" (a data frame): columns h, n, estimate and, when bounds = TRUE, lower and upper; one block of \code{nsteps} rows per previous state, in the order given in \code{h}.
+#' @return An object of class "msm2pred" (a data frame): columns h, n, estimate and, when bounds = TRUE, lower and upper; one block of \code{nsteps} rows per previous state, in the order given in \code{h}. With a \code{P2boot} fit, the replicate curves of every group are kept (attribute \code{boot_curves}), so that \code{\link{overlap_step}} can also test the paired difference between groups.
 #' @examples
 #' st <- c("A", "B", "C") # C is absorbing
 #' tens <- array(0, c(3, 3, 3), dimnames = list(st, st, st))
@@ -46,38 +46,47 @@ compare2 <- function(object, h, j, l, nsteps = 9L, bounds = TRUE) {
     Qu <- .pair_matrix(object$P.upper, M)
   }
 
-  # One curve per previous state h: the n-step probability of l from the pair (h, j) and, if requested, its interval
+  # One curve per previous state h: the n-step probability of l from the pair (h, j) and, if requested, its interval. With bootstrap intervals the replicate curves are kept too.
   one_curve <- function(hh) {
     hi <- .resolve(hh, states)
     if (is.na(hi)) stop("preceding state '", hh, "' not found.", call. = FALSE)
     out <- tibble::tibble(h = lab(hh), n = seq_len(nsteps),
                           estimate = .propagate(Q, hi, ji, nsteps, M)[, li])
+    cv <- NULL
     if (bounds && boot) {
-      bb <- .boot_bands(object$boot, hi, ji, li, nsteps, object$conf.level)
+      cv <- .boot_curves(object$boot, hi, ji, li, nsteps)
+      bb <- .boot_bands(object$boot, hi, ji, li, nsteps, object$conf.level, curves = cv)
       out <- dplyr::mutate(out, lower = bb$lower, upper = bb$upper)
     } else if (bounds) {
       out <- dplyr::mutate(out,
                            lower = pmax(0, .propagate(Ql, hi, ji, nsteps, M)[, li]),
                            upper = pmin(1, .propagate(Qu, hi, ji, nsteps, M)[, li]))
     }
-    out
+    list(curve = out, replicates = cv)
   }
-  curves <- purrr::map(h, one_curve) |>
+  parts <- purrr::map(h, one_curve)
+  curves <- purrr::map(parts, "curve") |>
     purrr::list_rbind()
+  replicates <- stats::setNames(purrr::map(parts, "replicates"), purrr::map_chr(h, lab)) |>
+    purrr::compact()
 
   # Return a data frame of class "msm2pred"
   structure(as.data.frame(curves), class = c("msm2pred", "data.frame"),
             j = lab(j), l = lab(l), bounds = bounds,
             bands = if (!bounds) "none" else if (boot) "bootstrap" else "evolution",
-            estimator = object$estimator, conf.level = object$conf.level)
+            estimator = object$estimator, conf.level = object$conf.level,
+            boot_curves = if (length(replicates)) replicates else NULL)
 }
 
 #' First step at which two evolution intervals overlap
 #'
 #' Scans the two curves of a \code{\link{compare2}} comparison forward from \eqn{n = 1} and returns the first step at which their intervals overlap: before it, the state at the previous time changes the prediction.
 #'
+#' Non-overlap of two intervals is the criterion of the methods paper. It is conservative: two estimates whose intervals overlap can still differ significantly (Schenker and Gentleman, 2001). When the two curves come from the same bootstrap replicates (\code{compare2()} on a \code{\link{P2boot}} fit, or \code{\link{compare_order}} with a \code{\link{P1est}} built from that fit), the paired difference is also tested directly with a percentile bootstrap interval (\code{diff_steps}).
+#'
 #' @param x A two-group "msm2pred" with interval bounds.
-#' @return A list: first overlapping step \code{n} and time \code{s = n + 1}; the leading separated-step count \code{separated_steps}; per-step \code{overlap} and signed \code{separation} (= max lower - min upper, > 0 when separated); and the two \code{groups}.
+#' @return A list: first overlapping step \code{n} and time \code{s = n + 1}; the leading separated-step count \code{separated_steps}; per-step \code{overlap} and signed \code{separation} (= max lower - min upper, > 0 when separated); the two \code{groups}; and, when bootstrap replicate curves are available, \code{diff_steps} (leading steps whose percentile interval of the paired difference excludes 0; \code{NA} otherwise) and \code{diff} (per-step interval of the difference, or \code{NULL}).
+#' @references Schenker, N. and Gentleman, J. F. (2001). On judging the significance of differences by examining the overlap between confidence intervals. \emph{The American Statistician}, 55(3), 182-186.
 #' @examples
 #' st <- c("A", "B", "C") # C is absorbing
 #' tens <- array(0, c(3, 3, 3), dimnames = list(st, st, st))
@@ -120,13 +129,20 @@ overlap_step <- function(x) {
   # First step, scanning forward from n = 1, at which they overlap: from then on the previous state no longer changes the prediction significantly. NA if they never overlap within the horizon.
   first <- if (any(overlap)) which(overlap)[1L] else NA_integer_
 
-  # Return the step n, its time s = n + 1 (step n predicts X_{n+1}), the number of leading separated steps, and the per-step detail.
+  # With the replicate curves of both groups (same resamples), the paired difference is tested directly: percentile interval of the difference at every step.
+  bc <- attr(x, "boot_curves")
+  pd <- if (!is.null(bc) && all(groups %in% names(bc)))
+    .boot_diff(bc[[groups[1]]], bc[[groups[2]]], attr(x, "conf.level") %||% 0.95)
+
+  # Return the step n, its time s = n + 1 (step n predicts X_{n+1}), the number of leading separated steps, the per-step detail and the paired test.
   list(n = if (is.na(first)) NA_integer_ else a$n[first],
        s = if (is.na(first)) NA_integer_ else a$n[first] + 1L,
        separated_steps = if (is.na(first)) length(a$n) else first - 1L,
        overlap = stats::setNames(overlap,    a$n),
        separation = stats::setNames(separation, a$n),
-       groups = groups)
+       groups = groups,
+       diff_steps = if (is.null(pd)) NA_integer_ else pd$steps,
+       diff = if (is.null(pd)) NULL else pd$diff)
 }
 
 # Printed form of a comparison
@@ -164,6 +180,8 @@ summary.msm2pred <- function(object, ...) {
     else
       cat(sprintf("  intervals first overlap at step %d (time s = %d); significant for the first %d step(s).\n",
                   os$n, os$s, os$separated_steps))
+    if (!is.na(os$diff_steps))
+      cat(sprintf("  paired bootstrap test of the difference: significant for the first %d step(s).\n", os$diff_steps))
   } else if (!has_ci) {
     cat("  (no bounds: run compare2(bounds = TRUE) for the overlap analysis)\n")
   }

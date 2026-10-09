@@ -26,7 +26,7 @@ test_that("compare2 on a P2boot fit uses bootstrap bands, narrower than evolutio
   expect_equal(cb$estimate, ce$estimate)
   expect_true(mean(cb$upper - cb$lower) < mean(ce$upper - ce$lower))
   os <- overlap_step(cb)
-  expect_setequal(names(os), c("n", "s", "separated_steps", "overlap", "separation", "groups"))
+  expect_setequal(names(os), c("n", "s", "separated_steps", "overlap", "separation", "groups", "diff_steps", "diff"))
   expect_output(summary(cb), "bootstrap intervals")
 })
 

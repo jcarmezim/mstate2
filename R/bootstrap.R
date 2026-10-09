@@ -166,11 +166,30 @@ print.P2boot <- function(x, ...) {
     matrix(nrow = nsteps)
 }
 
-# internal: percentile intervals of the n-step curves -> For every step, the alpha/2 and 1 - alpha/2 quantiles (and the standard deviation) of the replicate curves.
-.boot_bands <- function(boot, hi, ji, li, nsteps, conf.level) {
-  curves <- .boot_curves(boot, hi, ji, li, nsteps)
+# internal: n-step curves of every first-order replicate -> nsteps x B matrix: column b is P(X_{n+1} = l | X_1 = j) under the b-th first-order matrix. A first-order matrix is a second-order tensor whose slices are all equal, so the same pair-chain propagation is used.
+.boot_curves_first <- function(boot1, ji, li, nsteps) {
+  M <- dim(boot1)[1L]
+  purrr::map(seq_len(dim(boot1)[3L]), \(b)
+    .propagate(.pair_matrix(array(boot1[, , b], c(M, M, M)), M), 1L, ji, nsteps, M)[, li]) |>
+    unlist() |>
+    matrix(nrow = nsteps)
+}
+
+# internal: percentile intervals of the n-step curves -> For every step, the alpha/2 and 1 - alpha/2 quantiles (and the standard deviation) of the replicate curves (computed here unless given).
+.boot_bands <- function(boot, hi, ji, li, nsteps, conf.level, curves = .boot_curves(boot, hi, ji, li, nsteps)) {
   a <- (1 - conf.level) / 2
   list(lower = apply(curves, 1L, stats::quantile, probs = a, names = FALSE),
        upper = apply(curves, 1L, stats::quantile, probs = 1 - a, names = FALSE),
        se    = apply(curves, 1L, stats::sd))
+}
+
+# internal: percentile interval of a paired difference -> Given the replicate curves of two groups computed on the SAME resamples, the percentile interval of their difference at every step, and the number of leading steps whose interval excludes 0.
+.boot_diff <- function(c1, c2, conf.level) {
+  dd <- c1 - c2
+  a <- (1 - conf.level) / 2
+  lo <- apply(dd, 1L, stats::quantile, probs = a, names = FALSE)
+  up <- apply(dd, 1L, stats::quantile, probs = 1 - a, names = FALSE)
+  sep <- lo > 0 | up < 0
+  list(diff = tibble::tibble(n = seq_len(nrow(dd)), lower = lo, upper = up),
+       steps = if (all(sep)) length(sep) else which(!sep)[1L] - 1L)
 }

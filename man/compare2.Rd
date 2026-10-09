@@ -20,7 +20,7 @@ compare2(object, h, j, l, nsteps = 9L, bounds = TRUE)
 \item{bounds}{If TRUE (default) also compute evolution-interval bounds; FALSE returns curves only and skips two thirds of the work. If \code{object} is a \code{\link{P2boot}} fit, the bounds are percentile bootstrap intervals instead of evolution intervals.}
 }
 \value{
-An object of class "msm2pred" (a data frame): columns h, n, estimate and, when bounds = TRUE, lower and upper; one block of \code{nsteps} rows per previous state, in the order given in \code{h}.
+An object of class "msm2pred" (a data frame): columns h, n, estimate and, when bounds = TRUE, lower and upper; one block of \code{nsteps} rows per previous state, in the order given in \code{h}. With a \code{P2boot} fit, the replicate curves of every group are kept (attribute \code{boot_curves}), so that \code{\link{overlap_step}} can also test the paired difference between groups.
 }
 \description{
 For a fixed current state \eqn{j} and target \eqn{\ell}, computes the n-step transition probabilities for several preceding states \eqn{h}, with their evolution intervals. This is the construction of the RPE curves: it assesses whether, and for how long, the state at the previous time affects the future trajectory.

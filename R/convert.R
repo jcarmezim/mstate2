@@ -80,3 +80,42 @@ sojourn_to_panel <- function(data, id, segments, absorbing, round_fun = rnd) {
     dplyr::mutate(time = dplyr::row_number() - 1L, .by = ".row") |>
     dplyr::select("id", "time", "state")
 }
+
+#' Transition matrix of the observed moves, in mstate format
+#'
+#' Builds the transition matrix of every move \eqn{j \to \ell} (\eqn{\ell \neq j}) observed in the data, including each subject's first move, in the format of \code{mstate::transMat()}: integers numbering the transitions row by row, \code{NA} elsewhere, dimnames \code{from}/\code{to}. A first-order \pkg{mstate} analysis built on it (\code{msprep()}, \code{msfit()}, \code{probtrans()}) uses the same state space, in the same order, as the second-order fit, which \code{\link{compare_order}} requires. The \pkg{mstate} package is not needed.
+#'
+#' @param object An "msm2data" object from \code{\link{prep2}}, an "msm2prep" object from \code{\link{msprep2}}, or a panel data frame.
+#' @param ... Passed to \code{\link{prep2}} when \code{object} is not an "msm2data" object.
+#' @return A transition matrix as returned by \code{mstate::transMat()}.
+#' @seealso \code{\link{compare_order}}
+#' @examples
+#' st <- c("A", "B", "C")   # C is absorbing
+#' tens <- array(0, c(3, 3, 3), dimnames = list(st, st, st))
+#' tens["B", "B", "A"] <- 0.6
+#' tens["B", "C", "A"] <- 0.4
+#' tens["B", "B", "B"] <- 0.3
+#' tens["B", "C", "B"] <- 0.7
+#' tens["C", "C", ] <- 1
+#' first <- matrix(0, 3, 3, dimnames = list(st, st))
+#' first["A", "B"] <- 1
+#'
+#' set.seed(1)
+#' panel <- simulate2(200, tens, first, init = c(A = 1, B = 0, C = 0))
+#' as_tmat(prep2(panel))   # A -> B (first move only) and B -> C
+#' @export
+as_tmat <- function(object, ...) {
+
+  # The counting processes, with every observed one-step move (pairs), including first moves that have no triple.
+  if (!inherits(object, "msm2data")) object <- prep2(object, ...)
+  states <- object$states
+  moves <- object$pairs |>
+    dplyr::filter(as.character(from) != as.character(to)) |>
+    dplyr::transmute(from = match(as.character(from), states), to = match(as.character(to), states)) |>
+    dplyr::arrange(from, to)
+
+  # Number the transitions row by row, as mstate::transMat() does.
+  tmat <- matrix(NA_integer_, length(states), length(states), dimnames = list(from = states, to = states))
+  if (nrow(moves)) tmat[cbind(moves$from, moves$to)] <- seq_len(nrow(moves))
+  tmat
+}

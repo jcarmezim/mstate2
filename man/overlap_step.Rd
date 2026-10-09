@@ -10,10 +10,13 @@ overlap_step(x)
 \item{x}{A two-group "msm2pred" with interval bounds.}
 }
 \value{
-A list: first overlapping step \code{n} and time \code{s = n + 1}; the leading separated-step count \code{separated_steps}; per-step \code{overlap} and signed \code{separation} (= max lower - min upper, > 0 when separated); and the two \code{groups}.
+A list: first overlapping step \code{n} and time \code{s = n + 1}; the leading separated-step count \code{separated_steps}; per-step \code{overlap} and signed \code{separation} (= max lower - min upper, > 0 when separated); the two \code{groups}; and, when bootstrap replicate curves are available, \code{diff_steps} (leading steps whose percentile interval of the paired difference excludes 0; \code{NA} otherwise) and \code{diff} (per-step interval of the difference, or \code{NULL}).
 }
 \description{
 Scans the two curves of a \code{\link{compare2}} comparison forward from \eqn{n = 1} and returns the first step at which their intervals overlap: before it, the state at the previous time changes the prediction.
+}
+\details{
+Non-overlap of two intervals is the criterion of the methods paper. It is conservative: two estimates whose intervals overlap can still differ significantly (Schenker and Gentleman, 2001). When the two curves come from the same bootstrap replicates (\code{compare2()} on a \code{\link{P2boot}} fit, or \code{\link{compare_order}} with a \code{\link{P1est}} built from that fit), the paired difference is also tested directly with a percentile bootstrap interval (\code{diff_steps}).
 }
 \examples{
 st <- c("A", "B", "C") # C is absorbing
@@ -31,4 +34,7 @@ panel <- simulate2(500, tens, first, init = c(A = 1, B = 0, C = 0))
 fit <- P2est(prep2(panel))
 cmp <- compare2(fit, h = c("A", "B"), j = "B", l = "B", nsteps = 6)
 overlap_step(cmp)
+}
+\references{
+Schenker, N. and Gentleman, J. F. (2001). On judging the significance of differences by examining the overlap between confidence intervals. \emph{The American Statistician}, 55(3), 182-186.
 }
