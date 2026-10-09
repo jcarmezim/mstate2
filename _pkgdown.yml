@@ -45,6 +45,31 @@ reference:
   - compare2
   - overlap_step
   - plot.msm2pred
+  - markov_test
+
+- title: Covariates
+  desc: >
+    Discrete-time cause-specific hazard regression for each history, and
+    covariate-adjusted multi-step prediction.
+  contents:
+  - P2reg
+  - predict.P2reg
+  - plot.P2reg
+  - P2reg_all
+  - predict.P2reg_all
+
+- title: First versus second order
+  desc: >
+    The first-order model from the same data, predictions in mstate's
+    format, and how long the second-order predictions diverge from it.
+  contents:
+  - P1est
+  - probtrans2
+  - plot.probtrans2
+  - compare_order
+  - divergence
+  - divergence_table
+  - as_tmat
 
 - title: Simulation
   contents:

@@ -67,7 +67,9 @@ ordinary transition matrix.
 | Counting processes | `prep2()` | `msm2data` |
 | Estimation | `P2est()`, `P2boot()` | `P2est`, `P2boot` |
 | Prediction | `ckequations()` | vector / matrix / tibble |
-| Does the previous time matter? | `compare2()`, `overlap_step()` | `msm2pred`, list |
+| Does the previous time matter? | `compare2()`, `overlap_step()`, `markov_test()` | `msm2pred`, list, `markov_test` |
+| Covariates | `P2reg()`, `P2reg_all()` | `P2reg`, `P2reg_all` |
+| First versus second order | `P1est()`, `probtrans2()`, `compare_order()`, `divergence()`, `divergence_table()`, `as_tmat()` | `P1est`, `probtrans2`, `msm2pred`, data frame |
 
 # 2. The DIVINE cohort
 
@@ -445,6 +447,7 @@ d
 #>   states (7)      : NSP, SP, Recov, NIMV, IMV, Disch, Death
 #>   absorbing       : Disch, Death
 #>   distinct (h,j)  : 12
+#>   covariates      : none
 head(d$N)
 #> # A tibble: 6 × 5
 #>   h     j     l         s     N
@@ -630,7 +633,7 @@ computed once, so replicates are cheap:
 ```r
 system.time(bt <- P2boot(d, B = 500, seed = 1))
 #>    user  system elapsed 
-#>   0.291   0.016   0.308
+#>   0.338   0.059   0.404
 bt$estimate |>
   filter(j == "SP") |>
   select(h, l, p, se, se.boot)
@@ -737,6 +740,54 @@ ckequations(bt, h = "NSP", j = "SP", l = "NIMV", nsteps = 9, bounds = TRUE)
 #> 9     9   0.0689 0.0530 0.0850
 ```
 
+## `probtrans2()`: predictions in `mstate`'s format
+
+```r
+probtrans2(x, h = NULL, j = NULL, nsteps = 9)
+plot(x, from = NULL, type = c("filled", "stacked", "single", "separate"), ...)
+```
+
+`probtrans2()` returns the same predictions with the structure of an
+`mstate::probtrans()` object: one data frame per starting state, with columns
+`time`, `pstate1`, ..., `pstateM` and `se1`, ..., `seM` (bootstrap standard
+deviations for a `P2boot` fit), plus `trans`, `method`, `predt = 1` and
+`direction`. Following `mstate`, the list is indexed by the position of the
+current state (`SP` is state 2):
+
+
+```r
+pt_nsp <- probtrans2(bt, h = "NSP", j = "SP", nsteps = 20)
+pt_sp  <- probtrans2(bt, h = "SP",  j = "SP", nsteps = 20)
+round(head(pt_nsp[[2]][, c("time", paste0("pstate", 1:7))], 4), 3)
+#>   time pstate1 pstate2 pstate3 pstate4 pstate5 pstate6 pstate7
+#> 1    1       0   1.000   0.000   0.000   0.000   0.000   0.000
+#> 2    2       0   0.616   0.007   0.224   0.151   0.000   0.002
+#> 3    3       0   0.532   0.067   0.182   0.204   0.001   0.015
+#> 4    4       0   0.460   0.132   0.159   0.217   0.005   0.028
+```
+
+The `plot()` method uses `mstate`'s plot types:
+
+
+```r
+op <- par(mfrow = c(1, 2))
+plot(pt_nsp, type = "filled", xlab = "day")
+plot(pt_sp,  type = "filled", xlab = "day")
+```
+
+<div class="figure" style="text-align: center">
+<img src="figures/guide-probtrans2-plot-1.png" alt="plot of chunk probtrans2-plot"  />
+<p class="caption">plot of chunk probtrans2-plot</p>
+</div>
+
+```r
+par(op)
+```
+
+A patient in `SP` who was in `NSP` at the previous time (left) goes through
+ventilation much more often during the first week than one who was already in
+`SP` (right).
+
 # 6. Does the previous time matter?
 
 ## `compare2()` and `overlap_step()`: for how long?
@@ -798,6 +849,7 @@ summary(cmp_b)
 #> Trajectory comparison (RPE, 95% bootstrap intervals)
 #>   target 'NIMV' via current state 'SP'; preceding: NSP, SP
 #>   intervals first overlap at step 8 (time s = 9); significant for the first 7 step(s).
+#>   paired bootstrap test of the difference: significant for the first 9 step(s).
 plot(cmp_b, dualaxis = FALSE, xlab = "steps (n)", main = "SP -> NIMV (bootstrap)")
 ```
 
@@ -806,7 +858,396 @@ plot(cmp_b, dualaxis = FALSE, xlab = "steps (n)", main = "SP -> NIMV (bootstrap)
 <p class="caption">plot of chunk compare2-boot</p>
 </div>
 
-# 7. Methodological choices
+The bootstrap replicates also allow a direct test of the difference between
+the two curves: both come from the same resamples, so the percentile interval
+of their paired difference is computed at every step (`diff_steps` in
+`overlap_step()`, last line of `summary()`). Non-overlap of two separate
+intervals is a more conservative criterion (Schenker and Gentleman, 2001).
+
+## `markov_test()`: a formal test of the first-order assumption
+
+```r
+markov_test(object, min.h = 2, method = c("wald", "lrt"),
+            by = c("transition", "state"), p.adjust = "holm")
+```
+
+$H_0$: $P_{hj\ell}$ does not depend on $h$, i.e. the process is first order.
+
+* `method = "wald"`: for each transition $j \to \ell$, a Cochran-type
+  heterogeneity statistic on the estimates and standard errors of `P2est()`,
+  $Q_{j\ell} = \sum_h w_h(\hat P_{hj\ell} - \bar P_{j\ell})^2 \sim \chi^2_{K-1}$,
+  with $w_h = 1/\mathrm{se}^2_{hj\ell}$. Histories with $\mathrm{se} = 0$ are
+  dropped.
+* `method = "lrt"`: the likelihood-ratio test of Anderson and Goodman (1957),
+  computed from the counts; it keeps histories with no events.
+* `by = "transition"` gives one test per $j \to \ell$ ($K - 1$ degrees of
+  freedom); `by = "state"` one joint test per current state $j$, with all the
+  destinations ($(K-1)(L-1)$ degrees of freedom).
+
+Both rely on the likelihood factorising over histories, which makes the
+estimates for different states at the previous time asymptotically
+independent. The column `pooled` is the first-order estimate under $H_0$, and
+`p.adj` the Holm-adjusted p-value (Holm, 1979), which controls the family-wise
+error rate over all the tests of the table.
+
+**Why.** The likelihood-ratio test is the classical test of the order of a
+Markov chain observed on many subjects (Anderson and Goodman, 1957;
+Billingsley, 1961); the Wald version is Cochran's (1954) heterogeneity
+statistic applied to the estimates of the different histories. Both are
+specific to each transition or state, unlike global tests of the Markov
+property for continuous-time multistate models (Titman and Putter, 2022).
+
+
+```r
+markov_test(fit, method = "lrt", by = "state")
+#> <markov_test>  Likelihood-ratio test of the first-order Markov assumption (RPE-based)
+#>   H0 (per current state j): P(X_s = . | X_{s-1} = j) does not depend on X_{s-2} = h
+#>   4 test(s); sorted by ascending p-value
+#> 
+#>      j K L df statistic p.value  p.adj
+#>     SP 2 5  4   357.879  0.0000 0.0000
+#>   NIMV 2 4  3    47.474  0.0000 0.0000
+#>  Recov 4 3  6    47.029  0.0000 0.0000
+#>    IMV 3 3  4     3.494  0.4788 0.4788
+markov_test(fit, method = "lrt")
+#> <markov_test>  Likelihood-ratio test of the first-order Markov assumption (RPE-based)
+#>   H0 (per transition): P(X_s = l | X_{s-1} = j) does not depend on X_{s-2} = h
+#>   15 test(s); sorted by ascending p-value
+#> 
+#>      j     l K df statistic p.value pooled  p.adj
+#>     SP  NIMV 2  1   187.440  0.0000 0.0520 0.0000
+#>     SP    SP 2  1   130.707  0.0000 0.8314 0.0000
+#>     SP   IMV 2  1   118.112  0.0000 0.0361 0.0000
+#>     SP Recov 2  1    45.441  0.0000 0.0724 0.0000
+#>  Recov Recov 4  3    46.011  0.0000 0.8903 0.0000
+#>  Recov Disch 4  3    44.014  0.0000 0.1069 0.0000
+#>   NIMV   IMV 2  1    31.113  0.0000 0.1001 0.0000
+#>   NIMV Recov 2  1    19.491  0.0000 0.0991 0.0001
+#>   NIMV  NIMV 2  1     3.479  0.0621 0.7900 0.4350
+#>     SP Death 2  1     2.523  0.1122 0.0081 0.6732
+#>   NIMV Death 2  1     1.382  0.2398 0.0108 1.0000
+#>    IMV Death 3  2     2.077  0.3540 0.0273 1.0000
+#>    IMV   IMV 3  2     1.820  0.4025 0.9427 1.0000
+#>  Recov Death 4  3     2.794  0.4245 0.0028 1.0000
+#>    IMV Recov 3  2     1.425  0.4904 0.0299 1.0000
+```
+
+The first-order assumption is rejected for severe pneumonia, non-invasive
+ventilation and recovery, but not for invasive ventilation: once a patient is
+in `IMV`, the state at the previous time does not change the next day's
+prognosis. The conclusions hold after Holm's adjustment.
+
+# 7. Covariates
+
+## `P2reg()`: discrete-time hazard regression
+
+```r
+P2reg(object, h, j, l = NULL, formula = ~1, family = binomial("cloglog"),
+      cluster = FALSE, ...)
+```
+
+| Argument | Meaning |
+|---|---|
+| `object` | `msm2data` built with `prep2(..., covariates = )` (or from an `msprep2()` result, which passes its covariates) |
+| `h`, `j` | the history that defines the risk set |
+| `l` | destinations (default: all the moves observed from $(h, j)$) |
+| `formula` | one-sided formula with baseline covariates, `s` (time) and `d` (days in the current state) |
+| `family` | GLM family; the default complementary log-log link gives hazard ratios |
+| `cluster` | robust standard errors clustered by patient (needs `sandwich`) |
+
+For the history $(h, j)$, each row of `triples` is a patient-day at risk. For
+each move $\ell \neq j$ (by default; staying is the complement), `P2reg()` fits
+a binary GLM with response "moves to $\ell$" versus "stays or moves
+elsewhere":
+
+$$
+\mathrm{cloglog}\,P(X_s = \ell \mid X_{s-1} = j, X_{s-2} = h, Z) = \gamma_{hj\ell} + \beta^\top_{hj\ell} Z .
+$$
+
+The probability modelled is the discrete-time cause-specific hazard of
+moving to $\ell$ (Tutz and Schmid, 2016). With the cloglog link, $e^\beta$ is
+the ratio of $-\log(1-\lambda)$ between two covariate values: exactly a hazard
+ratio when there is one type of event and time is grouped (Prentice and
+Gloeckler, 1978), and approximately the cause-specific hazard ratio when the
+daily probabilities of moving are small. With `formula = ~1` the fitted
+probability is exactly the RPE of `P2est()`.
+
+**Why.** Each indicator "moves to $\ell$" is a Bernoulli variable with
+probability $\lambda_{hj\ell}(Z)$, the marginal of the multinomial transition,
+so each binomial likelihood is a valid marginal likelihood and gives
+consistent estimates (a composite-likelihood argument; Varin, Reid and Firth,
+2011). The price is some efficiency and that the fitted probabilities are not
+forced to sum to at most one; a multinomial model would impose it. Given the
+model, the days of a patient are conditionally independent, so model-based
+standard errors are valid; `cluster = TRUE` (standard errors clustered by
+patient; Liang and Zeger, 1986) protects against correlation beyond the model,
+such as unobserved frailty, and is the recommended choice for reporting.
+
+The panel of `msprep2()` keeps `inistat`, the state at admission; we use it as
+a baseline covariate:
+
+
+```r
+panel_cov <- mutate(panel, ingreso_SP = as.integer(inistat == 2))   # admitted in severe pneumonia
+dc <- prep2(panel_cov, states = estados, covariates = "ingreso_SP")
+```
+
+
+```r
+r1 <- P2reg(dc, h = "SP", j = "SP", formula = ~ ingreso_SP, cluster = TRUE)
+summary(r1)
+#> <P2reg>  discrete-time cause-specific hazard regression, (h, j) = (SP, SP)
+#>   link: cloglog (exp(coef) is a hazard ratio)
+#>   95% CIs; cluster-robust (subject id) standard errors
+#>      l        term estimate     se     HR HR.lower HR.upper p.value
+#>  Death (Intercept)  -4.9620 0.2868 0.0070   0.0040   0.0123  0.0000
+#>  Death  ingreso_SP   0.6772 0.4316 1.9684   0.8448   4.5865  0.1166
+#>    IMV (Intercept)  -4.1212 0.1957 0.0162   0.0111   0.0238  0.0000
+#>    IMV  ingreso_SP   0.3880 0.3179 1.4740   0.7904   2.7486  0.2224
+#>   NIMV (Intercept)  -3.7814 0.1688 0.0228   0.0164   0.0317  0.0000
+#>   NIMV  ingreso_SP   0.3663 0.2873 1.4424   0.8213   2.5332  0.2023
+#>  Recov (Intercept)  -2.3597 0.0618 0.0945   0.0837   0.1066  0.0000
+#>  Recov  ingreso_SP  -0.3454 0.1205 0.7079   0.5590   0.8964  0.0041
+```
+
+Among patients in `SP` at the previous and the current time, those admitted
+directly in severe pneumonia recover less (hazard ratio
+0.71). The intercept row gives
+$e^\gamma$, the baseline one-day cumulative hazard, not a hazard ratio.
+
+`predict()` gives the 1-step probabilities of each move for covariate
+profiles; the probability of staying in `SP` is one minus their sum:
+
+
+```r
+predict(r1, newdata = data.frame(ingreso_SP = c(0, 1)))
+#>      Death     IMV    NIMV   Recov
+#> 1 0.006974 0.01609 0.02253 0.09013
+#> 2 0.013682 0.02363 0.03234 0.06468
+```
+
+## Time scales: non-homogeneous and semi-Markov baselines
+
+The formula may use `s`, the time of follow-up (a **non-homogeneous**
+baseline), and `d`, the days already spent in the current state (a
+**semi-Markov** baseline), for example `~ splines::ns(s, 3)` or `~ log(d)`:
+
+
+```r
+r2 <- P2reg(dc, h = "SP", j = "SP", l = c("Recov", "NIMV", "Death"),
+            formula = ~ log(d) + s, cluster = TRUE)
+summary(r2)
+#> <P2reg>  discrete-time cause-specific hazard regression, (h, j) = (SP, SP)
+#>   link: cloglog (exp(coef) is a hazard ratio)
+#>   95% CIs; cluster-robust (subject id) standard errors
+#>      l        term estimate     se     HR HR.lower HR.upper p.value
+#>  Recov (Intercept)  -4.0042 0.2641 0.0182   0.0109   0.0306  0.0000
+#>  Recov      log(d)   1.0868 0.2049 2.9647   1.9842   4.4297  0.0000
+#>  Recov           s  -0.0546 0.0151 0.9469   0.9192   0.9754  0.0003
+#>   NIMV (Intercept)  -1.6131 0.2784 0.1993   0.1155   0.3439  0.0000
+#>   NIMV      log(d)  -1.4091 0.4301 0.2444   0.1052   0.5677  0.0011
+#>   NIMV           s   0.0134 0.0622 1.0135   0.8972   1.1449  0.8291
+#>  Death (Intercept)  -3.1629 0.5573 0.0423   0.0142   0.1261  0.0000
+#>  Death      log(d)   0.3488 0.6630 1.4173   0.3865   5.1978  0.5988
+#>  Death           s  -0.2929 0.1107 0.7461   0.6005   0.9269  0.0082
+```
+
+The longer a patient has been in severe pneumonia, the higher the hazard of
+recovery and the lower the hazard of non-invasive ventilation. `plot()` draws
+the hazard ratios:
+
+
+```r
+plot(r2)
+```
+
+<div class="figure" style="text-align: center">
+<img src="figures/guide-p2reg-plot-1.png" alt="plot of chunk p2reg-plot"  />
+<p class="caption">plot of chunk p2reg-plot</p>
+</div>
+
+## `P2reg_all()`: covariate-adjusted multi-step prediction
+
+```r
+P2reg_all(object, formula = ~1, family = binomial("cloglog"), cluster = FALSE,
+          min.events = 5, ...)
+predict(object, newdata)
+```
+
+`P2reg_all()` fits `P2reg()` for every history $(h, j)$ with a transient $j$,
+modelling the moves $j \to \ell$ ($\ell \neq j$); histories with fewer than
+`min.events` moves keep their RPE. `predict()` assembles, for a covariate
+profile, the full tensor `P[j, l, h]` (staying = 1 minus the moves), which
+`ckequations()` uses like any estimated tensor. With `formula = ~1` the tensor
+is exactly that of `P2est()`.
+
+
+```r
+a <- P2reg_all(dc, formula = ~ ingreso_SP)
+a
+#> <P2reg_all>  covariate-adjusted second-order model (cloglog link)
+#>   covariates  : ingreso_SP
+#>   histories   : 10 modelled, 2 kept at the RPE
+#>   not estimable (constant in the risk set; set to 0 in predictions): (NSP, NSP) ingreso_SP; (NSP, SP) ingreso_SP
+```
+
+`ingreso_SP` is constant in the histories $(\mathrm{NSP}, \mathrm{NSP})$ and
+$(\mathrm{NSP}, \mathrm{SP})$ (every patient there was admitted in `NSP`), so
+its effect cannot be estimated there; the package reports it and uses 0 for
+those terms.
+
+Probability of death within 7, 14 and 30 days for a patient in `SP` at the
+previous and the current time, by state at admission:
+
+
+```r
+T0 <- predict(a, data.frame(ingreso_SP = 0))
+#> Warning: Some terms are not estimable in some histories (the covariate is constant in
+#> their risk set) and were set to 0; see print(object).
+T1 <- predict(a, data.frame(ingreso_SP = 1))
+#> Warning: Some terms are not estimable in some histories (the covariate is constant in
+#> their risk set) and were set to 0; see print(object).
+rbind(admitted_NSP = ckequations(T0, "SP", "SP", "Death", 30)[c(7, 14, 30)],
+      admitted_SP  = ckequations(T1, "SP", "SP", "Death", 30)[c(7, 14, 30)])
+#>                 [,1]    [,2]   [,3]
+#> admitted_NSP 0.04780 0.08612 0.1333
+#> admitted_SP  0.08336 0.14823 0.2391
+```
+
+# 8. First versus second order
+
+## `as_tmat()`: the transition matrix for `mstate`
+
+```r
+as_tmat(object, ...)
+```
+
+Builds the transition matrix of the observed moves, in exactly the format of
+`mstate::transMat()` (transitions numbered by rows), including moves that only
+occur as a patient's first move. A first-order `mstate` analysis then uses the
+same state space, in the same order, as the second-order model.
+
+
+```r
+as_tmat(d)
+#>        to
+#> from    NSP SP Recov NIMV IMV Disch Death
+#>   NSP    NA  1    NA   NA  NA     2     3
+#>   SP     NA NA     4    5   6    NA     7
+#>   Recov  NA NA    NA   NA  NA     8     9
+#>   NIMV   NA NA    10   NA  11    NA    12
+#>   IMV    NA NA    13   NA  NA    NA    14
+#>   Disch  NA NA    NA   NA  NA    NA    NA
+#>   Death  NA NA    NA   NA  NA    NA    NA
+```
+
+## `P1est()`: the first-order model from the same data
+
+```r
+P1est(object, B = 200, conf.level = 0.95, seed = NULL)
+```
+
+The first-order model estimated from the **same patients and days** pools the
+counts over the state at the previous time:
+
+$$
+\hat P^{(1)}_{j\ell} = \frac{\sum_h \sum_s \tilde N_{hj\ell}(s)}{\sum_h \sum_s \tilde Y_{hj}(s-1)}.
+$$
+
+It is the model under $H_0$ of `markov_test()` (it equals the `pooled` column
+of its likelihood-ratio version). Given a `P2boot` object it reuses its
+replicates.
+
+**Why.** Pooling the counts over the previous state is the maximum
+likelihood estimator under the first-order hypothesis (Anderson and Goodman,
+1957). Being estimated from the same patients, days and time scale, it isolates
+the effect of the order: a difference with the second-order model cannot come
+from a different time scale or estimator.
+
+
+```r
+p1 <- P1est(bt)
+round(p1$P, 3)
+#>         NSP    SP Recov  NIMV   IMV Disch Death
+#> NSP   0.843 0.024 0.000 0.000 0.000 0.129 0.003
+#> SP    0.000 0.831 0.072 0.052 0.036 0.000 0.008
+#> Recov 0.000 0.000 0.890 0.000 0.000 0.107 0.003
+#> NIMV  0.000 0.000 0.099 0.790 0.100 0.000 0.011
+#> IMV   0.000 0.000 0.030 0.000 0.943 0.000 0.027
+#> Disch 0.000 0.000 0.000 0.000 0.000 1.000 0.000
+#> Death 0.000 0.000 0.000 0.000 0.000 0.000 1.000
+```
+
+## `compare_order()` and `divergence()`
+
+```r
+compare_order(x, pt, h, j, l, nsteps = 9, conf.level = NULL)
+divergence(x)
+```
+
+`compare_order()` compares, step by step, the second-order prediction for each
+state at the previous time with the first-order prediction, which ignores it.
+`pt` is a `P1est` fit with bootstrap replicates, or an `mstate::probtrans()`
+object of a continuous-time first-order model computed with `predt = 1` on the
+same states (see `as_tmat()`). The result is an `msm2pred` object with an
+extra baseline curve. `divergence()` reports, for each state at the previous
+time, the number of leading steps in which its interval does not overlap the
+first-order interval (the **memory horizon**), the number of leading steps in
+which the paired bootstrap interval of the difference excludes 0
+(`diff_steps`, available when the baseline is `P1est()` of the same `P2boot`
+fit) and the largest difference between the curves.
+
+
+```r
+co <- compare_order(bt, p1, h = c("NSP", "SP"), j = "SP", l = "NIMV")
+divergence(co)
+#>     h  n  s separated_steps diff_steps max_abs_diff
+#> 1  SP NA NA               9          9      0.05486
+#> 2 NSP  4  5               3          5      0.17188
+plot(co, dualaxis = FALSE, xlab = "steps (n)", main = "SP -> NIMV: first versus second order")
+```
+
+<div class="figure" style="text-align: center">
+<img src="figures/guide-compare-order-1.png" alt="plot of chunk compare-order"  />
+<p class="caption">plot of chunk compare-order</p>
+</div>
+
+The first-order curve lies between the two second-order curves and represents
+neither of them.
+
+## `divergence_table()`: all transitions at once
+
+```r
+divergence_table(x, pt, nsteps = 9, min.h = 2, targets = NULL)
+```
+
+Applies `compare_order()` and `divergence()` to every current state reached
+from at least `min.h` states at the previous time and to every target, and
+sorts the result by the number of separated steps and the size of the
+difference:
+
+
+```r
+head(divergence_table(bt, p1), 10)
+#>        j     l    h  n  s separated_steps diff_steps max_abs_diff
+#> 1     SP   IMV   SP NA NA               9          9      0.07966
+#> 2     SP  NIMV   SP NA NA               9          9      0.05486
+#> 3     SP   IMV  NSP  8  9               7          9      0.13461
+#> 4     SP    SP  NSP  5  6               4          7      0.21587
+#> 5     SP  NIMV  NSP  4  5               3          5      0.17188
+#> 6  Recov Recov NIMV  4  5               3          9      0.10974
+#> 7  Recov Disch NIMV  4  5               3          9      0.10691
+#> 8     SP Recov  NSP  4  5               3          5      0.06513
+#> 9  Recov Recov  IMV  3  4               2          8      0.08832
+#> 10 Recov Disch  IMV  3  4               2          7      0.08548
+```
+
+For patients in `SP` who were already in `SP` at the previous time, the
+first-order predictions of `IMV` and `NIMV` do not overlap the second-order
+ones on any of the 9 days; for those who were in `NSP`, the differences reach
+13 to 22 percentage points.
+
+# 9. Methodological choices
 
 | Choice | Why | Reference |
 |---|---|---|
@@ -818,19 +1259,33 @@ plot(cmp_b, dualaxis = FALSE, xlab = "steps (n)", main = "SP -> NIMV (bootstrap)
 | First overlap of the intervals | the criterion of the methods paper | Najera-Zuloaga et al. (2025) |
 | Bootstrap of whole patients | patients are the independent units | Davison and Hinkley (1997); Field and Welsh (2007) |
 | Percentile intervals for $n$-step predictions | non-linear functions of all the estimates | Efron and Tibshirani (1993) |
+| Paired test of the difference between curves | overlap of intervals is conservative | Schenker and Gentleman (2001) |
+| Likelihood-ratio and Wald tests of the order | classical tests of Markov order; heterogeneity of estimates | Anderson and Goodman (1957); Cochran (1954) |
+| Holm adjustment | many transitions tested at once | Holm (1979) |
+| First-order model from the same counts | maximum likelihood under $H_0$; isolates the effect of the order | Anderson and Goodman (1957) |
+| Cloglog hazard regression per destination | discrete-time analogue of Cox; valid marginal likelihoods | Prentice and Gloeckler (1978); Varin, Reid and Firth (2011) |
+| Time `s` and duration `d` in the baseline | non-homogeneous and semi-Markov hazards | Allison (1982); Putter, Fiocco and Geskus (2007) |
+| Cluster-robust standard errors | correlation within patient beyond the model | Liang and Zeger (1986) |
+| Histories with fewer than 5 moves keep the RPE in `P2reg_all()` | too few events per parameter for a regression | Vittinghoff and McCulloch (2007) |
+| `mstate` formats (`probtrans`, `transMat`) | direct use with first-order analyses | de Wreede, Fiocco and Putter (2011) |
 | Tables handled with the tidyverse and returned as tibbles; tensors as arrays | readable data handling; the predictions are linear algebra | Wickham et al. (2019) |
 
-# 8. Summary
+# 10. Summary
 
 | Question | Function |
 |---|---|
 | How do I build the daily panel from my raw data? | `msprep2()`, `rnd()` |
 | What are the counts? | `prep2()`, `summary()` |
 | What is $P_{hj\ell}$? | `P2est()`, `P2boot()` |
-| Where will a patient be in $n$ days? | `ckequations()` |
-| Does the state at the previous time matter, and for how long? | `compare2()`, `overlap_step()` |
+| Where will a patient be in $n$ days? | `ckequations()`, `probtrans2()` |
+| Does the state at the previous time matter, and for how long? | `compare2()`, `overlap_step()`, `markov_test()` |
+| How do covariates, time and duration act? | `P2reg()`, `P2reg_all()` |
+| How wrong is a first-order model? | `P1est()`, `compare_order()`, `divergence()`, `divergence_table()`, `as_tmat()` |
 
 # References
+
+Allison, P. D. (1982). Discrete-time methods for the analysis of event
+histories. *Sociological Methodology*, 13, 61–98.
 
 Anderson, T. W. and Goodman, L. A. (1957). Statistical inference about Markov
 chains. *The Annals of Mathematical Statistics*, 28(1), 89–110.
@@ -841,8 +1296,14 @@ stochastic process for higher-order data. *SIAM Review*, 59(2), 321–345.
 Besalú, M. and Gómez Melis, G. (2024). Second order Markov multistate models.
 *SORT*, 48(2), 209–234.
 
+Billingsley, P. (1961). Statistical methods in Markov chains. *The Annals of
+Mathematical Statistics*, 32(1), 12–40.
+
 Brown, L. D., Cai, T. T. and DasGupta, A. (2001). Interval estimation for a
 binomial proportion. *Statistical Science*, 16(2), 101–133.
+
+Cochran, W. G. (1954). The combination of estimates from different
+experiments. *Biometrics*, 10(1), 101–129.
 
 Davison, A. C. and Hinkley, D. V. (1997). *Bootstrap Methods and their
 Application*. Cambridge University Press.
@@ -853,9 +1314,44 @@ Chapman and Hall.
 Field, C. A. and Welsh, A. H. (2007). Bootstrapping clustered data. *Journal
 of the Royal Statistical Society: Series B*, 69(3), 369–390.
 
+Holm, S. (1979). A simple sequentially rejective multiple test procedure.
+*Scandinavian Journal of Statistics*, 6(2), 65–70.
+
+Liang, K.-Y. and Zeger, S. L. (1986). Longitudinal data analysis using
+generalized linear models. *Biometrika*, 73(1), 13–22.
+
 Najera-Zuloaga, J., Besalú, M. and Gómez Melis, G. (2025). Second-order Markov
 multistate models: nonparametric estimation and inference. Manuscript
 submitted for publication.
 
+Prentice, R. L. and Gloeckler, L. A. (1978). Regression analysis of grouped
+survival data with application to breast cancer data. *Biometrics*, 34(1),
+57–67.
+
+Putter, H., Fiocco, M. and Geskus, R. B. (2007). Tutorial in biostatistics:
+competing risks and multi-state models. *Statistics in Medicine*, 26(11),
+2389–2430.
+
+Schenker, N. and Gentleman, J. F. (2001). On judging the significance of
+differences by examining the overlap between confidence intervals. *The
+American Statistician*, 55(3), 182–186.
+
+Titman, A. C. and Putter, H. (2022). General tests of the Markov property in
+multi-state models. *Biostatistics*, 23(2), 380–396.
+
+Tutz, G. and Schmid, M. (2016). *Modeling Discrete Time-to-Event Data*.
+Springer.
+
+Varin, C., Reid, N. and Firth, D. (2011). An overview of composite likelihood
+methods. *Statistica Sinica*, 21(1), 5–42.
+
+Vittinghoff, E. and McCulloch, C. E. (2007). Relaxing the rule of ten events
+per variable in logistic and Cox regression. *American Journal of
+Epidemiology*, 165(6), 710–718.
+
 Wickham, H. et al. (2019). Welcome to the tidyverse. *Journal of Open Source
 Software*, 4(43), 1686.
+
+de Wreede, L. C., Fiocco, M. and Putter, H. (2011). mstate: an R package for
+the analysis of competing risks and multi-state models. *Journal of
+Statistical Software*, 38(7), 1–30.

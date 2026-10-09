@@ -54,6 +54,7 @@ d
 #>   states (7)      : NSP, SP, Recov, NIMV, IMV, Disch, Death
 #>   absorbing       : Disch, Death
 #>   distinct (h,j)  : 12
+#>   covariates      : inistat
 ```
 
 **2. Estimation.** The probability of moving from severe pneumonia (SP) to non-invasive (NIMV) or invasive (IMV) ventilation depends strongly on the state at the previous time:

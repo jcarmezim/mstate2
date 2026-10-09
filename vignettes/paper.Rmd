@@ -126,6 +126,7 @@ d
 #>   states (7)      : NSP, SP, Recov, NIMV, IMV, Disch, Death
 #>   absorbing       : Disch, Death
 #>   distinct (h,j)  : 12
+#>   covariates      : none
 ```
 
 The 23 584 triples are the 27 736 rows of the panel minus the first two days of
