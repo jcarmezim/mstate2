@@ -16,7 +16,7 @@ P2boot(object, B = 200, conf.level = 0.95, seed = NULL)
 \item{seed}{Optional integer seed, for reproducible replicates.}
 }
 \value{
-An object of class \code{c("P2boot", "P2est")}: all the components of \code{P2est(object, conf.level)} plus \code{boot}, an \eqn{M \times M \times M \times B} array of replicate tensors (layout \code{[j, l, h, b]}), and \code{B}. The \code{estimate} table gains a column \code{se.boot} (bootstrap standard deviation).
+An object of class \code{c("P2boot", "P2est")}: all the components of \code{P2est(object, conf.level)} plus \code{boot}, an \eqn{M \times M \times M \times B} array of replicate tensors (layout \code{[j, l, h, b]}), \code{boot1}, the \eqn{M \times M \times B} array of first-order (history-pooled) matrices of the same resamples (used by \code{\link{P1est}} and \code{\link{compare_order}}), and \code{B}. The \code{estimate} table gains a column \code{se.boot} (bootstrap standard deviation).
 }
 \description{
 Resamples subjects with replacement and recomputes the RPE of every 1-step second-order transition probability in each replicate. The resulting object behaves like a \code{\link{P2est}} fit, but carries the bootstrap tensors, so that \code{\link{ckequations}} and \code{\link{compare2}} report \strong{percentile bootstrap intervals} for the \eqn{n}-step probabilities instead of the evolution intervals obtained by propagating the one-step confidence limits.

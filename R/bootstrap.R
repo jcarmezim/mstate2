@@ -10,7 +10,7 @@
 #' @param B Number of bootstrap replicates. Default 200.
 #' @param conf.level Confidence level of the intervals. Default 0.95.
 #' @param seed Optional integer seed, for reproducible replicates.
-#' @return An object of class \code{c("P2boot", "P2est")}: all the components of \code{P2est(object, conf.level)} plus \code{boot}, an \eqn{M \times M \times M \times B} array of replicate tensors (layout \code{[j, l, h, b]}), and \code{B}. The \code{estimate} table gains a column \code{se.boot} (bootstrap standard deviation).
+#' @return An object of class \code{c("P2boot", "P2est")}: all the components of \code{P2est(object, conf.level)} plus \code{boot}, an \eqn{M \times M \times M \times B} array of replicate tensors (layout \code{[j, l, h, b]}), \code{boot1}, the \eqn{M \times M \times B} array of first-order (history-pooled) matrices of the same resamples (used by \code{\link{P1est}} and \code{\link{compare_order}}), and \code{B}. The \code{estimate} table gains a column \code{se.boot} (bootstrap standard deviation).
 #' @seealso \code{\link{ckequations}}, \code{\link{compare2}}
 #' @section Why a bootstrap of subjects:
 #' Patients are the independent units; the days of one patient are not. Resampling whole patients keeps that within-patient dependence, which is the standard non-parametric bootstrap for clustered data (Davison and Hinkley, 1997; Field and Welsh, 2007). The n-step predictions are non-linear (polynomial) functions of all the estimated probabilities, so a delta-method variance would be cumbersome; propagating each replicate and taking percentiles (Efron and Tibshirani, 1993) gives their intervals directly.
@@ -56,14 +56,19 @@ P2boot <- function(object, B = 200, conf.level = 0.95, seed = NULL) {
   ct <- .id_counts(object)
   n <- nrow(ct$mat)
 
-  # Replicates. Each one draws n subjects with replacement; w is the number of times each subject is drawn, so the replicate's count of every triple is the weighted sum w %*% mat, without rebuilding the data. The counts are then turned into a tensor of probabilities.
+  # First-order (history-pooled) point estimate, the fallback of a replicate in which a state has nobody at risk.
+  P1_point <- .first_from_counts(colSums(ct$mat), ct, object, NULL)
+
+  # Replicates. Each one draws n subjects with replacement; w is the number of times each subject is drawn, so the replicate's count of every triple is the weighted sum w %*% mat, without rebuilding the data. The counts are then turned into a tensor of probabilities and, from the same resample, into the first-order matrix used by P1est() and compare_order().
   one_replicate <- function(b) {
     w <- tabulate(sample.int(n, n, replace = TRUE), n)
     tot <- as.vector(w %*% ct$mat)
-    .tensor_from_counts(tot, ct, object, fit$P)
+    list(second = .tensor_from_counts(tot, ct, object, fit$P),
+         first = .first_from_counts(tot, ct, object, P1_point))
   }
-  boot <- purrr::map(seq_len(B), one_replicate) |>
-    simplify2array() # M x M x M x B array
+  reps <- purrr::map(seq_len(B), one_replicate)
+  boot <- simplify2array(purrr::map(reps, "second"))  # M x M x M x B array
+  boot1 <- simplify2array(purrr::map(reps, "first"))  # M x M x B array
 
   # Bootstrap standard deviation of every estimated probability, added to the estimates table next to the analytic standard error.
   key <- cbind(match(as.character(fit$estimate$j), object$states),
@@ -72,8 +77,9 @@ P2boot <- function(object, B = 200, conf.level = 0.95, seed = NULL) {
   fit$estimate <- fit$estimate |>
     dplyr::mutate(se.boot = apply(boot, 1:3, stats::sd)[key])
 
-  # Return the fit with the replicate tensors with class "P2boot"
+  # Return the fit with the replicate tensors (and first-order matrices) with class "P2boot"
   fit$boot <- boot
+  fit$boot1 <- boot1
   fit$B <- B
   class(fit) <- c("P2boot", "P2est")
   fit
@@ -107,7 +113,8 @@ print.P2boot <- function(x, ...) {
   tj <- ((ucode - 1L) %/% M) %% M + 1L
   tl <- (ucode - 1L) %% M + 1L
   list(mat = mat, h = th, j = tj, l = tl,
-       pair = (th - 1L) * M + tj) # (h, j) pair of each triple
+       pair = (th - 1L) * M + tj,  # (h, j) pair of each triple
+       first = (tj - 1L) * M + tl) # (j, l) first-order transition of each triple
 }
 
 # internal: replicate counts -> tensor of probabilities -> The RPE of one replicate: each triple's count divided by the count of its (h, j) pair.
@@ -128,6 +135,26 @@ print.P2boot <- function(x, ...) {
   # Absorbing states stay absorbing.
   for (a in match(object$absorbing, object$states)) P[a, a, ] <- 1
   P
+}
+
+# internal: replicate counts -> first-order matrix -> The first-order RPE of one replicate: the counts of every (j, l) transition pooled over the previous state h, divided by the subject-instants at risk in j. A state with nobody at risk in the replicate keeps the point estimate (`P1_point`); absorbing states keep probability 1.
+.first_from_counts <- function(tot, ct, object, P1_point) {
+  M <- length(object$states)
+  N1 <- tapply(tot, ct$first, sum)                    # pooled over h
+  code <- as.integer(names(N1))
+  jj <- (code - 1L) %/% M + 1L
+  ll <- (code - 1L) %% M + 1L
+  Y1 <- tapply(as.numeric(N1), jj, sum)               # at risk in j
+  den <- as.numeric(Y1[as.character(jj)])
+  P1 <- matrix(0, M, M, dimnames = list(object$states, object$states))
+  P1[cbind(jj, ll)] <- ifelse(den > 0, as.numeric(N1) / den, 0)
+  if (!is.null(P1_point))
+    for (j0 in unique(jj[den == 0])) P1[j0, ] <- P1_point[j0, ]
+  for (a in match(object$absorbing, object$states)) {
+    P1[a, ] <- 0
+    P1[a, a] <- 1
+  }
+  P1
 }
 
 #  internal: n-step curves of every bootstrap replicate -> nsteps x B matrix: column b is P(X_{n+1} = l | X_1 = j, X_0 = h) under the b-th replicate tensor.
