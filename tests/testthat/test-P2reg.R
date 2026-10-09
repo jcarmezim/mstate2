@@ -192,6 +192,10 @@ test_that("P2reg_all reports terms that are constant within a history's risk set
   d <- prep2(pan, states = c("A", "B", "C"), covariates = "z")
   a <- P2reg_all(d, formula = ~ z)
   expect_true(any(nzchar(a$pairs$aliased)))
+  ## the summary aligns the standard errors with the terms: NA for a term not estimable
+  sm <- summary(a)
+  expect_true(all(is.na(sm$se[is.na(sm$estimate)])))
+  expect_true(all(!is.na(sm$se[!is.na(sm$estimate)])))
   expect_output(print(a), "not estimable")
   expect_warning(P <- predict(a, newdata = data.frame(z = 1)), "not estimable")
   rs <- apply(P, c(1, 3), sum)

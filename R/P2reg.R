@@ -253,7 +253,7 @@ summary.P2reg <- function(object, conf.level = 0.95, ...) {
   one_model <- function(fit, tgt) {
     V <- if (!is.null(fit$P2reg.vcov)) fit$P2reg.vcov else stats::vcov(fit)
     b <- stats::coef(fit)
-    se <- sqrt(diag(V))
+    se <- sqrt(diag(V))[names(b)]   # terms not estimable (NA coefficient) have no variance: NA
     tibble::tibble(l = tgt, term = names(b), estimate = unname(b), se = unname(se)) |>
       dplyr::mutate(exp.coef = exp(estimate),
                     exp.lower = exp(estimate - z * se),
