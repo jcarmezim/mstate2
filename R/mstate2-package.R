@@ -34,5 +34,5 @@ utils::globalVariables(c(
   "t_max", ".col", ".scol", ".ord", ".t", "tval", "step", "end_step",
   ".first", ".k", ".n", "prev", "kept_state", ".abs", ".next", ".len", ".i",
   "total", "Tstart", "Tstop", "status", ".seen", "end", ".nxt", ".has",
-  ".run", ".pos", "d", "n.trans", "at.risk"
+  ".run", ".pos", "d", "K", "Yh", "Yj", "Nh", "pbar", "p.value", "w", "pooled", "statistic"
 ))
