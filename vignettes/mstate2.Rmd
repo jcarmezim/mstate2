@@ -1,0 +1,864 @@
+---
+title: "mstate2: second-order Markov multistate models with the DIVINE cohort"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{mstate2: second-order Markov multistate models with the DIVINE cohort}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+<!-- This vignette is precomputed: edit mstate2.Rmd.orig and run
+     vignettes/precompile.R with the DIVINE data available. -->
+
+
+
+This vignette shows how to analyse a multistate process with **second-order
+Markov models** in `mstate2`, using the DIVINE cohort of patients hospitalised
+with COVID-19, the real-data illustration of Najera-Zuloaga, Besalú and Gómez
+Melis (2025). It reproduces the analysis of the paper step by step and adds
+bootstrap intervals for the predictions. Each function is introduced where
+the analysis needs it, with its arguments, what it computes and how to read
+its output. A complete function reference is in `vignette("reference")`.
+
+# 1. Second-order models
+
+A classical multistate model (e.g. with `mstate`) assumes the **first-order
+Markov property**: the state at the next time depends on the past only through
+the state at the current time. `mstate2` adds one step of memory: the state at
+the next time depends on the state at the current time **and at the previous
+time**. In discrete time, the basic quantity is the **1-step second-order
+transition probability**
+
+$$
+P_{hj\ell} = P(X_s = \ell \mid X_{s-1} = j,\; X_{s-2} = h),
+$$
+
+where $h$ is the state at the previous time, $j$ the state at the current time
+and $\ell$ the state at the next time. States at earlier times are assumed
+irrelevant. The pair $(h, j)$ is called the **history**.
+
+Assumptions:
+
+1. **Discrete time**: the process is observed on a regular grid (here, days).
+2. **Second order**: the next state depends on $(X_{s-2}, X_{s-1})$ only.
+3. **Time homogeneity**: $P_{hj\ell}$ does not depend on $s$.
+4. **Independent patients**.
+
+## Notation
+
+| Symbol | Meaning | In the package |
+|---|---|---|
+| $X_s$ | state occupied at time $s$ | `state` column of a panel |
+| $\tilde N_{hj\ell}(s)$ | patients with $X_{s-2} = h$, $X_{s-1} = j$, $X_s = \ell$ | table `N` of `prep2()` |
+| $\tilde Y_{hj}(s-1)$ | patients at risk: $X_{s-2} = h$, $X_{s-1} = j$ | table `Y` of `prep2()` |
+| $P_{hj\ell}$ | 1-step second-order transition probability | `P2est()$P[j, l, h]` |
+| $P_{hj\ell}(1, n)$ | $P(X_{n+1} = \ell \mid X_1 = j, X_0 = h)$, the $n$-step probability | `ckequations()` |
+
+**Tensor layout.** Probabilities are stored in an $M \times M \times M$ array
+indexed **`P[j, l, h]`**: rows = state at the current time, columns = state at
+the next time, slices = state at the previous time. Each slice `P[, , h]` is an
+ordinary transition matrix.
+
+## Package map
+
+| Stage | Function | Output (class) |
+|---|---|---|
+| Data | `msprep2()`, `rnd()` | daily panel, a tibble `(id, time, state)` (`msm2prep` with its report) |
+| Counting processes | `prep2()` | `msm2data` |
+| Estimation | `P2est()`, `P2boot()` | `P2est`, `P2boot` |
+| Prediction | `ckequations()` | vector / matrix / tibble |
+| Does the previous time matter? | `compare2()`, `overlap_step()` | `msm2pred`, list |
+
+# 2. The DIVINE cohort
+
+DIVINE followed 2076 patients hospitalised with COVID-19. The multistate
+extract is distributed by the DIVINE project
+([`msm_data/MSM_Data.RData`](https://github.com/bruigtp/DIVINE/tree/main/msm_data))
+and is not included in `mstate2`. It is a data frame `MSM` with one row per
+patient:
+
+| Column | Content |
+|---|---|
+| `id` | patient identifier |
+| `inistat` | state at admission (1 = non-severe pneumonia, 2 = severe pneumonia) |
+| `t.nosp`, `t.sp`, `t.nimv`, `t.mv`, `t.recov` | days spent in each state |
+| `disch.s`, `death.s` | 0/1 indicators of discharge and death |
+
+The states are non-severe pneumonia (`NSP`), severe pneumonia (`SP`),
+non-invasive and invasive mechanical ventilation (`NIMV`, `IMV`), recovery after
+respiratory support (`Recov`), discharge (`Disch`) and death (`Death`).
+
+
+```r
+library(mstate2)
+library(dplyr)
+load("MSM_Data.RData")
+```
+
+
+
+
+```r
+dim(MSM)
+#> [1] 2076    9
+count(MSM, inistat)                                   # state at admission
+#>   inistat    n
+#> 1       1 1855
+#> 2       2  221
+summarise(MSM, discharged = sum(disch.s), died = sum(death.s))
+#>   discharged died
+#> 1       1858  218
+```
+
+# 3. Preparing the data
+
+All the functions of the package work on a **daily panel**: one row per
+patient and day, with columns `id`, `time` and `state`. Any data in that form
+can be passed to `prep2()`. `msprep2()` builds it from the data and reports
+every record it has to change.
+
+## `msprep2()`: from the data to the daily panel
+
+```r
+msprep2(data, states = NULL, trans = NULL, durations = NULL, outcome = NULL,
+        id = "id", keep = NULL, unit = 1)
+```
+
+`msprep2()` plays the role of `mstate::msprep()` for second-order models. The
+data can be given in three ways:
+
+| Data | One row per | Arguments |
+|---|---|---|
+| sojourn (as DIVINE) | patient, with the days spent in each state and how follow-up ended | `durations`, `outcome` |
+| wide (as `mstate::msprep()`) | patient, with the time and status of each state | `states = list(initial = NULL, state = Surv(time, status), ...)`, `trans` |
+| `msdata` | an object made by `mstate::msprep()` | — |
+
+| Argument | Meaning |
+|---|---|
+| `states` | wide data: the states in order, each one `Surv(time, status)` or `NULL` (the initial state); sojourn data: optionally, the order of the states |
+| `trans` | allowed transitions as text, `c("A -> B -> C", "A -> C")`, or a `mstate::transMat()` matrix; the states with no exit are absorbing |
+| `durations`, `outcome` | sojourn data: the column with the days spent in each transient state (in visiting order) and the 0/1 indicator of each absorbing state |
+| `id` | patient id column (if missing, the rows are numbered) |
+| `keep` | covariates carried into the panel (default: every column that is not used) |
+| `unit` | length of a time unit in the units of the data (e.g. `30.4375` from days to months) |
+
+DIVINE gives, for every patient, the days spent in each state
+(`durations`, in visiting order) and how follow-up ended (`outcome`, 0/1
+indicators of the absorbing states); `states` gives the order of the states
+in the tables:
+
+
+```r
+segs  <- c(NSP = "t.nosp", SP = "t.sp", NIMV = "t.nimv", IMV = "t.mv", Recov = "t.recov")
+absb  <- c(Disch = "disch.s", Death = "death.s")
+x <- msprep2(MSM, durations = segs, outcome = absb,
+             states = c("NSP", "SP", "Recov", "NIMV", "IMV", "Disch", "Death"))
+x
+#> <msm2prep>  discrete-time panel ready for prep2()
+#>   layout          : sojourn
+#>   subjects        : 2076 (2076 absorbed, 0 censored)
+#>   panel rows      : 27736 (time 0 - 138)
+#>   states (7)      : NSP, SP, Recov, NIMV, IMV, Disch, Death
+#>   absorbing       : Disch, Death
+#>   transitions     : 14 types, 3433 in total
+#>   issues          : none
+panel <- x$panel
+count(panel, state)
+#> # A tibble: 7 × 2
+#>   state     n
+#>   <fct> <int>
+#> 1 NSP   12432
+#> 2 SP     3300
+#> 3 Recov  4228
+#> 4 NIMV   1019
+#> 5 IMV    4681
+#> 6 Disch  1858
+#> 7 Death   218
+```
+
+For each patient, every duration is rounded to whole days, each state is
+repeated as many days as its duration, in the order of `durations`, and the
+absorbing state whose indicator is 1 is appended. A patient with no event is
+right-censored. Because only total durations are available, the order of the
+visits is the one given by `durations` and each state is visited at most once.
+`count()` gives the patient-days in each state. The column that is not used,
+`inistat`, is kept as a covariate.
+
+## `rnd()`: rounding half away from zero
+
+
+```r
+rnd(c(0.5, 1.5, 2.5))
+#> [1] 1 2 3
+round(c(0.5, 1.5, 2.5))
+#> [1] 0 2 2
+```
+
+`round()` sends halves to the nearest even integer, so a stay of half a day
+would vanish. `rnd()` sends them away from zero, as in the DIVINE analysis.
+In DIVINE, 146 severe-pneumonia
+stays last a whole number of days plus one half. If a positive stay rounds
+to 0 days, `msprep2()` drops it and reports it (`rounded_to_zero`), because
+the transitions into and out of that state would be lost; this never happens
+in DIVINE.
+
+## Wide data: from `mstate` in one call
+
+The usual `mstate` preparation of the `ebmt3` data needs a transition matrix
+built with `transMat()` from state numbers, the time and status columns in two
+parallel vectors with `NA` for the initial state, and the covariates listed in
+`keep`:
+
+```r
+library(mstate)
+data(ebmt3)
+tmat  <- transMat(x = list(c(2, 3), c(3), c()), names = c("Tx", "PR", "RelDeath"))
+covs  <- c("dissub", "age", "drmatch", "tcd", "prtime")
+msbmt <- msprep(time = c(NA, "prtime", "rfstime"), status = c(NA, "prstat", "rfsstat"),
+                data = ebmt3, trans = tmat, keep = covs)
+```
+
+With `msprep2()` each state carries its own `Surv(time, status)` (column
+names without quotes; **survival** does not need to be attached), the state
+given as `NULL` is the initial state, the transitions are written as they are
+read, and the other columns are kept as covariates:
+
+```r
+bmt <- msprep2(ebmt3,
+               states = list(Tx       = NULL,
+                             PR       = Surv(prtime, prstat),
+                             RelDeath = Surv(rfstime, rfsstat)),
+               trans  = c("Tx -> PR -> RelDeath", "Tx -> RelDeath"))
+```
+
+`trans` is optional: without it, the absorbing states are the states nobody
+leaves. The `msdata` object made by `msprep()` is also accepted, with its
+covariates: `msprep2(msbmt)`.
+
+`Surv()` checks the time and the status as `survival::Surv()` does: the time
+must be numeric and the status 0/1, `TRUE`/`FALSE` or 1/2 (1 = censored,
+2 = event, with a warning). A status written as text is not guessed: say
+which value is the event, e.g. `Surv(dead_time, dead_status == "yes")`.
+
+## The same patients in the three layouts
+
+Four invented patients of an illness-death model (`healthy` → `ill` →
+`dead`, and `healthy` → `dead`):
+
+* patient 1 is healthy until day 3, ill from day 3 and dies on day 7;
+* patient 2 is healthy until day 5 and dies on day 5;
+* patient 3 is ill from day 2 and still alive at the end (day 9, censored);
+* patient 4 stays healthy until the end of follow-up (day 6, censored).
+
+
+```r
+# Sojourn: days spent in each state and how follow-up ended
+sojourn <- data.frame(id = 1:4, t_healthy = c(3, 5, 2, 7), t_ill = c(4, 0, 8, 0),
+                      dead = c(1, 1, 0, 0))
+p1 <- msprep2(sojourn, durations = c(healthy = "t_healthy", ill = "t_ill"),
+              outcome = c(dead = "dead"))
+
+# Wide: time of entry (or of censoring, when the status is 0) of each state
+wide <- data.frame(id = 1:4, ill_time = c(3, 5, 2, 6), ill_status = c(1, 0, 1, 0),
+                   dead_time = c(7, 5, 9, 6), dead_status = c(1, 1, 0, 0),
+                   age = c(60, 72, 55, 49))
+p2 <- msprep2(wide,
+              states = list(healthy = NULL,
+                            ill     = Surv(ill_time, ill_status),
+                            dead    = Surv(dead_time, dead_status)),
+              trans  = c("healthy -> ill -> dead", "healthy -> dead"))
+
+# msdata: the wide data prepared with mstate::msprep()
+tmat <- mstate::transMat(x = list(c(2, 3), 3, c()), names = c("healthy", "ill", "dead"))
+ms <- mstate::msprep(time = c(NA, "ill_time", "dead_time"),
+                     status = c(NA, "ill_status", "dead_status"), data = wide, trans = tmat)
+p3 <- msprep2(ms)
+
+p2
+#> <msm2prep>  discrete-time panel ready for prep2()
+#>   layout          : wide
+#>   subjects        : 4 (2 absorbed, 2 censored)
+#>   panel rows      : 31 (time 0 - 9)
+#>   states (3)      : healthy, ill, dead
+#>   absorbing       : dead
+#>   transitions     : 3 types, 4 in total (0 not allowed by `trans`)
+#>   issues          : none
+p2$panel |> filter(id == 1)
+#> # A tibble: 8 × 4
+#>      id  time state     age
+#>   <int> <int> <fct>   <dbl>
+#> 1     1     0 healthy    60
+#> 2     1     1 healthy    60
+#> 3     1     2 healthy    60
+#> 4     1     3 ill        60
+#> 5     1     4 ill        60
+#> 6     1     5 ill        60
+#> 7     1     6 ill        60
+#> 8     1     7 dead       60
+p2$subjects
+#> # A tibble: 4 × 7
+#>      id first  last entry   exit     rows status  
+#>   <int> <int> <int> <chr>   <chr>   <int> <chr>   
+#> 1     1     0     7 healthy dead        8 absorbed
+#> 2     2     0     5 healthy dead        6 absorbed
+#> 3     3     0     9 healthy ill        10 censored
+#> 4     4     0     6 healthy healthy     7 censored
+
+# The three panels are identical
+identical(p1$panel$state, p2$panel$state)
+#> [1] TRUE
+identical(p1$panel$state, p3$panel$state)
+#> [1] TRUE
+```
+
+## What `msprep2()` reports
+
+`msprep2()` never changes the data silently. Every record it drops or
+changes is listed in `issues`, with the patient, the state, the time and the
+reason, and a single warning gives the counts by type:
+
+| Issue | Meaning |
+|---|---|
+| `missing` | a state with status 1 but no time, or a time without a valid status (wide) |
+| `rounded_to_zero` | a positive stay that rounds to 0 units (sojourn) |
+| `same_unit` | two different states in the same time unit: the last one (or an absorbing one) is kept |
+| `after_absorbing` | a state entered after the absorbing state |
+| `before_start` | a negative time |
+| `not_allowed` | a transition not allowed by `trans` (kept) |
+| `no_data` | a patient with no usable record |
+
+The same four patients, with typical problems:
+
+
+```r
+# Sojourn: patient 2 spent 0.4 days ill, which rounds to 0 days
+bad <- sojourn
+bad$t_ill[2] <- 0.4
+msprep2(bad, durations = c(healthy = "t_healthy", ill = "t_ill"),
+        outcome = c(dead = "dead"))$issues
+#> Warning: 1 record(s) were dropped or changed while building the panel (rounded_to_zero:
+#> 1); see the `issues` table of the result.
+#> # A tibble: 1 × 5
+#>      id issue           state time  detail                        
+#>   <int> <chr>           <chr> <chr> <chr>                         
+#> 1     2 rounded_to_zero ill   <NA>  duration 0.4 rounds to 0 units
+```
+
+
+```r
+# Wide: patient 1 became ill but the time is missing; patient 2 has status 9
+bad <- wide
+bad$ill_time[1] <- NA
+bad$dead_status[2] <- 9
+msprep2(bad, states = list(healthy = NULL, ill = Surv(ill_time, ill_status),
+                           dead = Surv(dead_time, dead_status)))$issues
+#> Warning in survival::Surv(time, event): Invalid status value, converted to NA
+#> Warning: 2 record(s) were dropped or changed while building the panel (missing: 2); see
+#> the `issues` table of the result.
+#> # A tibble: 2 × 5
+#>      id issue   state time  detail                                                
+#>   <int> <chr>   <chr> <chr> <chr>                                                 
+#> 1     1 missing ill   <NA>  visited (status 1) but without a time                 
+#> 2     2 missing dead  5     time recorded but status missing: not taken as a visit
+
+# In weeks: patients 1 and 3 become ill in the week of admission
+msprep2(wide, states = list(healthy = NULL, ill = Surv(ill_time, ill_status),
+                            dead = Surv(dead_time, dead_status)),
+        unit = 7)$issues
+#> Warning: 2 record(s) were dropped or changed while building the panel (same_unit: 2); see
+#> the `issues` table of the result.
+#> # A tibble: 2 × 5
+#>      id issue     state   time  detail                        
+#>   <int> <chr>     <chr>   <chr> <chr>                         
+#> 1     1 same_unit healthy 0     same time unit as ill (unit 0)
+#> 2     3 same_unit healthy 0     same time unit as ill (unit 0)
+
+# A transition that is not allowed: healthy -> dead (patient 2)
+y <- msprep2(wide, states = list(healthy = NULL, ill = Surv(ill_time, ill_status),
+                                 dead = Surv(dead_time, dead_status)),
+             trans = "healthy -> ill -> dead")
+#> Warning: 1 record(s) were dropped or changed while building the panel (not_allowed: 1);
+#> see the `issues` table of the result.
+y$issues
+#> # A tibble: 1 × 5
+#>      id issue       state time  detail                   
+#>   <int> <chr>       <chr> <chr> <chr>                    
+#> 1     2 not_allowed dead  <NA>  healthy -> dead at unit 5
+summary(y)
+#> <msm2prep summary>
+#> 
+#> Observed transitions (from rows to columns):
+#>          to
+#> from      healthy ill dead
+#>   healthy       0   2    1
+#>   ill           0   0    1
+#>   dead          0   0    0
+#> 
+#> Time units observed per subject (rows of the panel), by status:
+#> # A tibble: 2 × 5
+#>   status   subjects   min median   max
+#>   <chr>       <int> <dbl>  <dbl> <dbl>
+#> 1 absorbed        2     6    7       8
+#> 2 censored        2     7    8.5    10
+#> 
+#> Records dropped or changed:
+#> # A tibble: 1 × 2
+#>   issue           n
+#>   <chr>       <int>
+#> 1 not_allowed     1
+```
+
+The result goes straight into `prep2()`, which takes the states and absorbing
+states from it.
+
+## `prep2()`: the second-order counting processes
+
+```r
+prep2(data, id = "id", time = "time", state = "state",
+      states = NULL, absorbing = NULL, drop.na = FALSE, check.consecutive = TRUE)
+```
+
+| Argument | Meaning |
+|---|---|
+| `data` | daily panel |
+| `id`, `time`, `state` | column names |
+| `states` | state space **and its order** (default: observed states) |
+| `absorbing` | absorbing states (default: states that are never left) |
+| `drop.na` | drop rows with missing values (with a warning) instead of failing |
+| `check.consecutive` | warn if a patient's days are not consecutive |
+
+`prep2()` forms, for every patient, all triples of consecutive days
+$(X_{s-2}, X_{s-1}, X_s) = (h, j, \ell)$, and counts them: $\tilde N_{hj\ell}(s)$
+is the number of patients with history $(h, j)$ that are in $\ell$ at time $s$,
+and $\tilde Y_{hj}(s-1) = \sum_\ell \tilde N_{hj\ell}(s)$ the number at risk.
+The first two days of each patient have no complete history and form no triple.
+
+
+```r
+estados <- c("NSP", "SP", "Recov", "NIMV", "IMV", "Disch", "Death")
+d <- prep2(panel, states = estados)
+d
+#> <msm2data>  second-order counting processes
+#>   subjects        : 2076
+#>   observed triples: 23584
+#>   time range      : 0 - 138
+#>   states (7)      : NSP, SP, Recov, NIMV, IMV, Disch, Death
+#>   absorbing       : Disch, Death
+#>   distinct (h,j)  : 12
+head(d$N)
+#> # A tibble: 6 × 5
+#>   h     j     l         s     N
+#>   <fct> <fct> <fct> <int> <int>
+#> 1 NSP   NSP   NSP       2  1505
+#> 2 NSP   NSP   NSP       3  1306
+#> 3 NSP   NSP   NSP       4  1147
+#> 4 NSP   NSP   NSP       5   955
+#> 5 NSP   NSP   NSP       6   788
+#> 6 NSP   NSP   NSP       7   610
+head(d$Y)
+#> # A tibble: 6 × 4
+#>   h     j         s     Y
+#>   <fct> <fct> <int> <int>
+#> 1 NSP   NSP       2  1658
+#> 2 NSP   NSP       3  1505
+#> 3 NSP   NSP       4  1306
+#> 4 NSP   NSP       5  1147
+#> 5 NSP   NSP       6   955
+#> 6 NSP   NSP       7   788
+```
+
+Besides `N` and `Y`, the object contains `triples`, one row per patient and
+day at risk (`id, h, j, l, s`), which `P2boot()` uses to resample patients.
+
+**Why.** The likelihood of a second-order Markov chain depends on the data
+only through these counts (Anderson and Goodman, 1957): they are computed
+once and every other function reuses them.
+
+`summary()` reports the exposure of each history $(h, j)$: the number of
+patient-days at risk (the denominator of the estimator) and the range of
+times:
+
+
+```r
+expo <- summary(d)
+#> <msm2data summary>
+#>   2076 subjects, 23584 triples, time 0-138
+#>   exposure per (h, j) pair:
+#> # A tibble: 12 × 5
+#>    h     j     total_at_risk s_min s_max
+#>    <fct> <fct>         <int> <int> <int>
+#>  1 NSP   NSP           10577     2    43
+#>  2 NSP   SP              411     2    37
+#>  3 SP    SP             2668     2    50
+#>  4 SP    Recov           223     3    51
+#>  5 SP    NIMV            214     2    37
+#>  6 SP    IMV             166     2    38
+#>  7 Recov Recov          3764     4   138
+#>  8 NIMV  Recov           101     3    36
+#>  9 NIMV  NIMV            805     3    41
+#> 10 NIMV  IMV             102     3    21
+#> 11 IMV   Recov           140     4    97
+#> 12 IMV   IMV            4413     3    96
+```
+
+Histories such as $(\mathrm{NSP}, \mathrm{NSP})$ accumulate more than 10000
+patient-days, while $(\mathrm{NIMV}, \mathrm{Recov})$ has
+101: the second will have much
+wider confidence intervals.
+
+# 4. Estimation
+
+## `P2est()`: the relative probability estimator
+
+```r
+P2est(object, conf.level = 0.95, ci = c("wald", "logit"), clip = TRUE)
+```
+
+| Argument | Meaning |
+|---|---|
+| `object` | an `msm2data` object |
+| `conf.level` | confidence level |
+| `ci` | `"wald"` (symmetric) or `"logit"` (delta method on the log-odds scale) |
+| `clip` | truncate Wald intervals to $[0, 1]$ |
+
+Each probability is estimated with the **relative probability estimator**
+(RPE), which pools all transitions and all patient-days at risk of the
+history:
+
+$$
+\tilde P_{hj\ell} = \frac{\sum_s \tilde N_{hj\ell}(s)}{\sum_s \tilde Y_{hj}(s-1)},
+\qquad
+\mathrm{se} = \sqrt{\frac{\tilde P_{hj\ell}(1-\tilde P_{hj\ell})}{\sum_s \tilde Y_{hj}(s-1)}}.
+$$
+
+The standard error comes from the asymptotic variance of the estimator, and
+the Wald interval is $\tilde P_{hj\ell} \pm z\,\mathrm{se}$. On DIVINE, the
+estimates coincide with those of the paper's code.
+
+For every absorbing state $a$, `P[a, a, h]` is set to 1 for every $h$, so that
+no probability is lost when predictions are propagated.
+
+
+```r
+fit <- P2est(d)
+fit
+#> <P2est>  RPE estimates of 1-step second-order transition probabilities
+#>   states: NSP, SP, Recov, NIMV, IMV, Disch, Death
+#>   95% wald confidence intervals; 2076 subjects
+#>   39 estimated transition probabilities (h -> j -> l)
+```
+
+The `estimate` table has one row per observed $(h, j, \ell)$, with the
+estimate, standard error, interval, number of transitions (`n.trans`) and
+patient-days at risk (`at.risk`). For patients in severe pneumonia at the
+current time:
+
+
+```r
+fit$estimate |>
+  filter(j == "SP")
+#> # A tibble: 10 × 9
+#>    h     j     l           p      se   lower   upper n.trans at.risk
+#>    <fct> <fct> <fct>   <dbl>   <dbl>   <dbl>   <dbl>   <int>   <int>
+#>  1 NSP   SP    SP    0.616   0.0240  0.569   0.663       253     411
+#>  2 NSP   SP    Recov 0.00730 0.00420 0       0.0155        3     411
+#>  3 NSP   SP    NIMV  0.224   0.0206  0.184   0.264        92     411
+#>  4 NSP   SP    IMV   0.151   0.0177  0.116   0.185        62     411
+#>  5 NSP   SP    Death 0.00243 0.00243 0       0.00720       1     411
+#>  6 SP    SP    SP    0.865   0.00662 0.852   0.878      2307    2668
+#>  7 SP    SP    Recov 0.0825  0.00533 0.0720  0.0929      220    2668
+#>  8 SP    SP    NIMV  0.0255  0.00305 0.0195  0.0315       68    2668
+#>  9 SP    SP    IMV   0.0184  0.00260 0.0133  0.0235       49    2668
+#> 10 SP    SP    Death 0.00900 0.00183 0.00541 0.0126       24    2668
+```
+
+A patient in `SP` who was in `NSP` at the previous time (who has just
+worsened) has a probability of
+0.224 of non-invasive ventilation the next
+day; one who was already in `SP` at the previous time, of
+0.025. A first-order model would give them the
+same probability.
+
+The tensor holds the same estimates; `P["SP", , ]` shows, for each state at the
+previous time (columns), the distribution of the next state (rows):
+
+
+```r
+round(fit$P["SP", , c("NSP", "SP")], 3)
+#>         NSP    SP
+#> NSP   0.000 0.000
+#> SP    0.616 0.865
+#> Recov 0.007 0.082
+#> NIMV  0.224 0.025
+#> IMV   0.151 0.018
+#> Disch 0.000 0.000
+#> Death 0.002 0.009
+```
+
+**Logit intervals** stay inside $(0, 1)$ and are preferable for small
+probabilities:
+
+
+```r
+fit_lg <- P2est(d, ci = "logit")
+fit_lg$estimate |>
+  filter(j == "SP", l == "Death") |>
+  select(h, l, p, lower, upper)
+#> # A tibble: 2 × 5
+#>   h     l           p    lower  upper
+#>   <fct> <fct>   <dbl>    <dbl>  <dbl>
+#> 1 NSP   Death 0.00243 0.000343 0.0171
+#> 2 SP    Death 0.00900 0.00604  0.0134
+```
+
+## `P2boot()`: bootstrap of patients
+
+```r
+P2boot(object, B = 200, conf.level = 0.95, seed = NULL)
+```
+
+A patient contributes many days to the same history, and the $n$-step
+predictions of the next section need intervals that account for the uncertainty of
+all the estimates at once. `P2boot()` resamples **whole patients** with
+replacement and re-estimates every probability in each of the `B` replicates.
+The result is a `P2est` object with the replicates attached and an extra
+column `se.boot`; every function that takes a `P2est` also takes a `P2boot`
+and then uses **percentile bootstrap intervals**. The per-patient counts are
+computed once, so replicates are cheap:
+
+
+```r
+system.time(bt <- P2boot(d, B = 500, seed = 1))
+#>    user  system elapsed 
+#>   0.291   0.016   0.308
+bt$estimate |>
+  filter(j == "SP") |>
+  select(h, l, p, se, se.boot)
+#> # A tibble: 10 × 5
+#>    h     l           p      se se.boot
+#>    <fct> <fct>   <dbl>   <dbl>   <dbl>
+#>  1 NSP   SP    0.616   0.0240  0.0244 
+#>  2 NSP   Recov 0.00730 0.00420 0.00419
+#>  3 NSP   NIMV  0.224   0.0206  0.0198 
+#>  4 NSP   IMV   0.151   0.0177  0.0180 
+#>  5 NSP   Death 0.00243 0.00243 0.00238
+#>  6 SP    SP    0.865   0.00662 0.00736
+#>  7 SP    Recov 0.0825  0.00533 0.00430
+#>  8 SP    NIMV  0.0255  0.00305 0.00347
+#>  9 SP    IMV   0.0184  0.00260 0.00275
+#> 10 SP    Death 0.00900 0.00183 0.00199
+```
+
+**Why.** Patients are the independent units and their days are not, so
+whole patients are resampled, the standard bootstrap for clustered data
+(Davison and Hinkley, 1997; Field and Welsh, 2007). The $n$-step predictions
+are non-linear functions of all the estimates; propagating every replicate
+and taking percentiles (Efron and Tibshirani, 1993) avoids a cumbersome
+delta-method variance.
+
+# 5. Prediction
+
+## `ckequations()`: the extended Chapman–Kolmogorov relation
+
+```r
+ckequations(x, h, j, l = NULL, nsteps = 9, bounds = FALSE)
+```
+
+| Argument | Meaning |
+|---|---|
+| `x` | a `P2est` or `P2boot` object, or any $M \times M \times M$ tensor |
+| `h`, `j` | state at time 0 (the previous time) and at time 1 (the current time) |
+| `l` | target state(s); `NULL` = the whole distribution |
+| `nsteps` | horizon $n$ |
+| `bounds` | add intervals: evolution intervals for a `P2est`, percentile intervals for a `P2boot` |
+
+It computes $P_{hj\ell}(1, n) = P(X_{n+1} = \ell \mid X_1 = j, X_0 = h)$. The
+second-order chain is rewritten as a first-order chain on **pairs**
+$Z_s = (X_{s-1}, X_s)$, with transition matrix
+$Q_{(a,b) \to (b,c)} = P_{abc}$; the distribution of the pair is multiplied by
+$Q$ once per step, which is exact and linear in $n$.
+
+Distribution of the state over the next 9 days for a patient in `SP` who was
+in `NSP` at the previous time:
+
+
+```r
+round(ckequations(fit, h = "NSP", j = "SP", nsteps = 9), 3)
+#>       NSP    SP Recov  NIMV   IMV Disch Death
+#>  [1,]   0 0.616 0.007 0.224 0.151 0.000 0.002
+#>  [2,]   0 0.532 0.067 0.182 0.204 0.001 0.015
+#>  [3,]   0 0.460 0.132 0.159 0.217 0.005 0.028
+#>  [4,]   0 0.398 0.183 0.138 0.226 0.015 0.040
+#>  [5,]   0 0.344 0.220 0.120 0.231 0.032 0.052
+#>  [6,]   0 0.298 0.247 0.105 0.234 0.054 0.063
+#>  [7,]   0 0.257 0.264 0.091 0.235 0.079 0.074
+#>  [8,]   0 0.222 0.275 0.079 0.234 0.106 0.084
+#>  [9,]   0 0.192 0.279 0.069 0.231 0.135 0.094
+```
+
+Each row sums to 1. With one target and `bounds = TRUE`, the paper's
+**evolution intervals** propagate the lower and upper confidence tensors:
+
+
+```r
+ckequations(fit, h = "NSP", j = "SP", l = "NIMV", nsteps = 9, bounds = TRUE)
+#> # A tibble: 9 × 4
+#>       n estimate  lower upper
+#>   <int>    <dbl>  <dbl> <dbl>
+#> 1     1   0.224  0.184  0.264
+#> 2     2   0.182  0.137  0.233
+#> 3     3   0.159  0.114  0.211
+#> 4     4   0.138  0.0958 0.190
+#> 5     5   0.120  0.0804 0.172
+#> 6     6   0.105  0.0675 0.154
+#> 7     7   0.0912 0.0568 0.139
+#> 8     8   0.0793 0.0478 0.124
+#> 9     9   0.0689 0.0403 0.111
+```
+
+These intervals are conservative: they assume that all the probabilities are
+simultaneously at their lower (or upper) limit, so they widen quickly with $n$.
+With a `P2boot` object the intervals are bootstrap percentiles:
+
+
+```r
+ckequations(bt, h = "NSP", j = "SP", l = "NIMV", nsteps = 9, bounds = TRUE)
+#> # A tibble: 9 × 4
+#>       n estimate  lower  upper
+#>   <int>    <dbl>  <dbl>  <dbl>
+#> 1     1   0.224  0.183  0.261 
+#> 2     2   0.182  0.150  0.213 
+#> 3     3   0.159  0.133  0.185 
+#> 4     4   0.138  0.116  0.161 
+#> 5     5   0.120  0.0989 0.141 
+#> 6     6   0.105  0.0858 0.124 
+#> 7     7   0.0912 0.0743 0.109 
+#> 8     8   0.0793 0.0626 0.0968
+#> 9     9   0.0689 0.0530 0.0850
+```
+
+# 6. Does the previous time matter?
+
+## `compare2()` and `overlap_step()`: for how long?
+
+```r
+compare2(object, h, j, l, nsteps = 9, bounds = TRUE)
+overlap_step(x)
+```
+
+`compare2()` computes the $n$-step curves $P_{hj\ell}(1, n)$ for several states
+at the previous time `h`, with a common current state `j` and target `l`, and
+returns an `msm2pred` object with `print()`, `summary()` and `plot()` methods.
+`overlap_step()` finds, for two curves, the **first step at which their
+intervals overlap**: from then on, the state at the previous time no longer
+changes the prediction significantly. It returns the step `n`, the time
+`s = n + 1`, the number of leading steps with separated intervals and the
+separation $\max(L_1, L_2) - \min(U_1, U_2)$ at each step.
+
+With the **evolution intervals** of the paper:
+
+
+```r
+cmp_nimv <- compare2(fit, h = c("NSP", "SP"), j = "SP", l = "NIMV")
+cmp_imv  <- compare2(fit, h = c("NSP", "SP"), j = "SP", l = "IMV")
+summary(cmp_nimv)
+#> Trajectory comparison (RPE, 95% evolution intervals)
+#>   target 'NIMV' via current state 'SP'; preceding: NSP, SP
+#>   intervals first overlap at step 5 (time s = 6); significant for the first 4 step(s).
+summary(cmp_imv)
+#> Trajectory comparison (RPE, 95% evolution intervals)
+#>   target 'IMV' via current state 'SP'; preceding: NSP, SP
+#>   intervals first overlap at step 7 (time s = 8); significant for the first 6 step(s).
+```
+
+
+```r
+op <- par(mfrow = c(1, 2))
+plot(cmp_nimv, dualaxis = FALSE, xlab = "steps (n)", main = "SP -> NIMV")
+plot(cmp_imv,  dualaxis = FALSE, xlab = "steps (n)", main = "SP -> IMV")
+```
+
+<div class="figure" style="text-align: center">
+<img src="figures/guide-compare2-plot-1.png" alt="plot of chunk compare2-plot"  />
+<p class="caption">plot of chunk compare2-plot</p>
+</div>
+
+```r
+par(op)
+```
+
+The dotted line marks the first overlap: 5 days for `NIMV` and 7 for `IMV`,
+as in the paper. With a `P2boot` fit the same comparison uses bootstrap
+intervals, which are narrower than the evolution intervals:
+
+
+```r
+cmp_b <- compare2(bt, h = c("NSP", "SP"), j = "SP", l = "NIMV")
+summary(cmp_b)
+#> Trajectory comparison (RPE, 95% bootstrap intervals)
+#>   target 'NIMV' via current state 'SP'; preceding: NSP, SP
+#>   intervals first overlap at step 8 (time s = 9); significant for the first 7 step(s).
+plot(cmp_b, dualaxis = FALSE, xlab = "steps (n)", main = "SP -> NIMV (bootstrap)")
+```
+
+<div class="figure" style="text-align: center">
+<img src="figures/guide-compare2-boot-1.png" alt="plot of chunk compare2-boot"  />
+<p class="caption">plot of chunk compare2-boot</p>
+</div>
+
+# 7. Methodological choices
+
+| Choice | Why | Reference |
+|---|---|---|
+| Discrete time, second order | memory of one previous time with a manageable number of parameters | Besalú and Gómez Melis (2024) |
+| Counting processes computed once | they are sufficient statistics of the model | Anderson and Goodman (1957) |
+| Relative probability estimator only | more efficient than the conditional probability estimator | Najera-Zuloaga et al. (2025) |
+| Logit intervals as an option | Wald intervals behave poorly near 0 or 1 | Brown, Cai and DasGupta (2001) |
+| Prediction through the chain on pairs | exact, linear in the horizon | Benson, Gleich and Lim (2017) |
+| First overlap of the intervals | the criterion of the methods paper | Najera-Zuloaga et al. (2025) |
+| Bootstrap of whole patients | patients are the independent units | Davison and Hinkley (1997); Field and Welsh (2007) |
+| Percentile intervals for $n$-step predictions | non-linear functions of all the estimates | Efron and Tibshirani (1993) |
+| Tables handled with the tidyverse and returned as tibbles; tensors as arrays | readable data handling; the predictions are linear algebra | Wickham et al. (2019) |
+
+# 8. Summary
+
+| Question | Function |
+|---|---|
+| How do I build the daily panel from my raw data? | `msprep2()`, `rnd()` |
+| What are the counts? | `prep2()`, `summary()` |
+| What is $P_{hj\ell}$? | `P2est()`, `P2boot()` |
+| Where will a patient be in $n$ days? | `ckequations()` |
+| Does the state at the previous time matter, and for how long? | `compare2()`, `overlap_step()` |
+
+# References
+
+Anderson, T. W. and Goodman, L. A. (1957). Statistical inference about Markov
+chains. *The Annals of Mathematical Statistics*, 28(1), 89–110.
+
+Benson, A. R., Gleich, D. F. and Lim, L.-H. (2017). The spacey random walk: a
+stochastic process for higher-order data. *SIAM Review*, 59(2), 321–345.
+
+Besalú, M. and Gómez Melis, G. (2024). Second order Markov multistate models.
+*SORT*, 48(2), 209–234.
+
+Brown, L. D., Cai, T. T. and DasGupta, A. (2001). Interval estimation for a
+binomial proportion. *Statistical Science*, 16(2), 101–133.
+
+Davison, A. C. and Hinkley, D. V. (1997). *Bootstrap Methods and their
+Application*. Cambridge University Press.
+
+Efron, B. and Tibshirani, R. J. (1993). *An Introduction to the Bootstrap*.
+Chapman and Hall.
+
+Field, C. A. and Welsh, A. H. (2007). Bootstrapping clustered data. *Journal
+of the Royal Statistical Society: Series B*, 69(3), 369–390.
+
+Najera-Zuloaga, J., Besalú, M. and Gómez Melis, G. (2025). Second-order Markov
+multistate models: nonparametric estimation and inference. Manuscript
+submitted for publication.
+
+Wickham, H. et al. (2019). Welcome to the tidyverse. *Journal of Open Source
+Software*, 4(43), 1686.

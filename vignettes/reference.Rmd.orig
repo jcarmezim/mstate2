@@ -1,0 +1,808 @@
+---
+title: "mstate2 function reference"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{mstate2 function reference}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+<!-- This vignette is precomputed: edit reference.Rmd.orig and run
+     vignettes/precompile.R with the DIVINE data available. -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 6.5, fig.height = 4,
+                      fig.align = "center", fig.path = "figures/ref-", dpi = 96)
+options(width = 90, digits = 4)
+divine_path <- Sys.getenv("MSTATE2_DIVINE_DATA", "MSM_Data.RData")
+```
+
+This document is the reference for the analysis functions of `mstate2`. The
+package implements the methods of Najera-Zuloaga, Besalú and Gómez Melis
+(2025) and adds subject-level bootstrap intervals for the predictions. The
+document lists the functions of the analysis, their S3 methods, the object
+classes and the internal helpers, each with the same structure:
+
+* **Definition**: the exact signature, with default values.
+* **What it does**: its purpose in one paragraph.
+* **Arguments**: every argument, its default and its meaning.
+* **Value**: what is returned, including every component of the object.
+* **How it works**: the algorithm and formulas.
+* **Errors and warnings**: every condition the function checks.
+* **Example**: an example on the DIVINE cohort.
+
+For a guided analysis that uses all these functions together, see
+`vignette("mstate2")`.
+
+# Notation and conventions
+
+| Symbol | Meaning |
+|---|---|
+| $X_s$ | state occupied at discrete time $s$ |
+| $h, j, \ell$ | state at the previous time ($X_{s-2}$), at the current time ($X_{s-1}$) and at the next time ($X_s$) |
+| $P_{hj\ell}$ | $P(X_s = \ell \mid X_{s-1} = j, X_{s-2} = h)$, the 1-step second-order transition probability |
+| $\tilde N_{hj\ell}(s)$ | number of subjects observed going $h \to j \to \ell$, arriving in $\ell$ at $s$ |
+| $\tilde Y_{hj}(s-1)$ | number of subjects at risk: in $h$ at $s-2$ and in $j$ at $s-1$; equals $\sum_\ell \tilde N_{hj\ell}(s)$ |
+| $P_{hj\ell}(1, n)$ | $P(X_{n+1} = \ell \mid X_1 = j, X_0 = h)$, the $n$-step probability |
+
+Conventions used throughout the package:
+
+* **Tensor layout.** Second-order probabilities are stored in an
+  $M \times M \times M$ array indexed `P[j, l, h]` = $P_{hj\ell}$: rows =
+  state at the current time, columns = state at the next time, slices = state
+  at the previous time. Each slice
+  `P[, , h]` is an ordinary transition matrix.
+* **States by label or index.** Arguments `h`, `j`, `l` accept either state
+  labels or integer positions in the state space.
+* **Steps and time.** A prediction of $n$ steps starts from $X_0 = h$,
+  $X_1 = j$ and refers to time $s = n + 1$.
+* **Absorbing states** satisfy `P[a, a, h] = 1` for every `h`.
+* **Tables and arrays.** Data handling uses the tidyverse (`dplyr`, `tidyr`,
+  `purrr`, `tibble`) and every table is returned as a tibble. The tensors and
+  the Chapman–Kolmogorov propagation are plain arrays and matrices, because
+  they are linear algebra.
+
+## Example data used in this document
+
+All the examples use the DIVINE cohort of 2076 patients hospitalised with
+COVID-19 (Najera-Zuloaga, Besalú and Gómez Melis, 2025). The data are
+distributed by the DIVINE project
+([`msm_data/MSM_Data.RData`](https://github.com/bruigtp/DIVINE/tree/main/msm_data))
+and are not included in `mstate2`. `MSM` has one row per patient with the
+state at admission (`inistat`: 1 = `NSP`, 2 = `SP`), the days spent in each
+state and the 0/1 indicators of discharge and death. The states are
+non-severe and severe pneumonia (`NSP`, `SP`), non-invasive and invasive
+ventilation (`NIMV`, `IMV`), recovery (`Recov`), discharge (`Disch`) and death
+(`Death`).
+
+```{r load-shown, eval = FALSE}
+library(mstate2)
+library(dplyr)
+load("MSM_Data.RData")
+```
+
+```{r load-run, include = FALSE}
+library(mstate2)
+library(dplyr)
+load(divine_path)
+```
+
+```{r setup}
+estados <- c("NSP", "SP", "Recov", "NIMV", "IMV", "Disch", "Death")
+segs    <- c(NSP = "t.nosp", SP = "t.sp", NIMV = "t.nimv", IMV = "t.mv", Recov = "t.recov")
+absb    <- c(Disch = "disch.s", Death = "death.s")
+dim(MSM)
+```
+
+# Data preparation
+
+## `rnd()`
+
+**Definition**
+
+```r
+rnd(x)
+```
+
+**What it does.** Rounds numbers to the nearest integer, sending halves
+**away from zero** (0.5 → 1, 2.5 → 3, −0.5 → −1). It is the default
+discretisation of `msprep2()` and the same function, with the same
+name, that the code of the methods paper uses to turn the DIVINE sojourn
+times into days.
+
+**Arguments**
+
+| Argument | Default | Meaning |
+|---|---|---|
+| `x` | — | numeric vector |
+
+**Value.** A numeric vector of the same length: `trunc(x + sign(x) * 0.5)`.
+
+**How it works.** Adding $\pm 0.5$ in the direction of the sign and
+truncating towards zero. Base R's `round()` instead sends halves to the
+nearest *even* integer (IEC 60559), so `round(0.5) = 0` would make a half-day
+stay vanish. Only `rnd()` reproduces the published estimates.
+
+**Errors and warnings.** None.
+
+**Example**
+
+```{r rnd}
+rnd(c(-2.5, -0.5, 0.4, 0.5, 1.5, 2.5))
+round(c(-2.5, -0.5, 0.4, 0.5, 1.5, 2.5))
+MSM |> filter(t.sp %% 1 == 0.5) |> nrow()   # half-day stays in severe pneumonia
+```
+
+## `msprep2()`
+
+**Definition**
+
+```r
+msprep2(data, states = NULL, trans = NULL, durations = NULL, outcome = NULL,
+        id = "id", keep = NULL, unit = 1)
+```
+
+**What it does.** Turns multistate data into the daily panel of `prep2()`,
+and reports every record it had to drop or change. It plays the role of
+`mstate::msprep()`, which needs the transition matrix from state numbers and
+returns the counting-process format of the Cox model.
+
+**Arguments**
+
+| Argument | Default | Meaning |
+|---|---|---|
+| `data` | — | a data frame, or an `msdata` object from `mstate::msprep()` |
+| `states` | `NULL` | wide data: named list with the states in order, each one `Surv(time, status)` or `NULL` (the initial state of everybody); sojourn data: optionally, the order of the states (character vector) |
+| `trans` | `NULL` | allowed transitions as text, `c("Tx -> PR -> RelDeath", "Tx -> RelDeath")` (a chain `"A -> B -> C"` gives A → B and B → C), or a `mstate::transMat()` matrix; the states with no exit are absorbing |
+| `durations` | `NULL` | sojourn data: named vector `c(state = "duration column")`, in visiting order |
+| `outcome` | `NULL` | sojourn data: named vector `c(state = "0/1 indicator")` of the absorbing states |
+| `id` | `"id"` | subject id column (if missing, the rows are numbered) |
+| `keep` | `NULL` | covariates carried into the panel; default every column that is not used |
+| `unit` | `1` | length of a time unit in the units of the data (e.g. `30.4375` from days to months) |
+
+**The three kinds of data**
+
+| Data | One row per | Arguments |
+|---|---|---|
+| sojourn (as DIVINE) | subject, with the time spent in each state and the outcome | `durations`, `outcome` |
+| wide (as `mstate::msprep()`) | subject, with the time of entry (or of censoring, when the status is 0) of each state | `states = list(...)` with `Surv()`, `trans` |
+| `msdata` | subject and possible transition (`mstate::msprep()`) | — (its matrix is used) |
+
+`Surv(time, status)` is evaluated on the columns of `data` (names without
+quotes, expressions allowed, **survival** need not be attached) and checks
+its arguments as `survival::Surv()`: the time must be numeric and the status
+0/1, `TRUE`/`FALSE` or 1/2 (1 = censored, 2 = event, with a warning); other
+codes become `NA`. A text status must say which value is the event,
+`Surv(t, status == "yes")`.
+
+**Value.** An object of class **`msm2prep`**, a list with:
+
+| Component | Content |
+|---|---|
+| `panel` | tibble `(id, time, state, covariates…)`: one row per subject and unit, `state` a factor with levels `states` |
+| `states`, `absorbing` | state space and absorbing states |
+| `trans` | logical matrix of allowed transitions, or `NULL` |
+| `transitions` | tibble `(from, to, n, allowed)` with the observed transitions |
+| `subjects` | tibble with first and last unit, entry and exit state, rows and `status` (`"absorbed"` or `"censored"`) of each subject |
+| `issues` | tibble `(id, issue, state, time, detail)`: every record dropped or changed |
+| `settings` | layout and unit |
+
+`print()` shows a short report and `summary()` the table of transitions
+(from × to, as `mstate::events()`), the follow-up and the issues by type.
+`prep2()` accepts the object directly.
+
+**How it works.**
+
+1. Each kind of data is read into the same form: one record per subject and
+   state entered, with its time. Wide data: the initial state at time 0 and
+   every state with status 1 at its time; follow-up ends at the largest time
+   recorded (entry or censoring), as in `msprep()`. Sojourn data: the visits
+   one after the other, then the absorbing state whose indicator is 1.
+   `msdata`: the starting state and every transition with status 1.
+2. Times are divided by `unit` and rounded with `rnd()` (sojourn data: each
+   duration separately, as in the paper's code).
+3. In time order, the first absorbing state ends follow-up; states entered
+   later are dropped.
+4. When several states fall in the same unit, the last one is kept (an
+   absorbing state is always kept); the other one occupies no unit and its
+   transitions are lost.
+5. Each state is expanded over the units it occupies: until the unit before
+   the next state; the last state until the end of follow-up (one unit if
+   absorbing).
+6. The observed transitions are counted and checked against `trans`.
+
+**Errors and warnings.** Error if a column is missing, if the list of states
+is not named, has no state or more than one state as `NULL`, or a state that
+is not `Surv(time, status)`, if a state in `trans` is not in `states`, if the
+data have duplicated ids, or if `unit` is not a positive number. One warning
+gives the number of records dropped or changed, by type:
+
+| Issue | Meaning |
+|---|---|
+| `missing` | status 1 without a time, or a time without a valid status (wide) |
+| `rounded_to_zero` | a positive duration rounds to 0 units (sojourn) |
+| `same_unit` | another state was kept in the same time unit |
+| `after_absorbing` | a state entered after the absorbing state |
+| `before_start` | a negative time |
+| `not_allowed` | transition not allowed by `trans` (kept) |
+| `no_data` | subject with no usable record |
+
+**Example**
+
+```{r msprep2}
+x <- msprep2(MSM, durations = segs, outcome = absb, states = estados)
+x
+summary(x)
+panel <- x$panel
+count(panel, state)         # patient-days in each state
+```
+
+Every DIVINE patient ends in `Disch` or `Death`, so no follow-up is censored.
+In sojourn data the order of the visits and repeated visits cannot be
+recovered from the durations: the order is that of `durations` and each
+state is visited at most once.
+
+Wide data, as they go into `mstate::msprep()`:
+
+```{r msprep2-wide}
+wide <- data.frame(id = 1:4, ill_time = c(3, 5, 2, 6), ill_status = c(1, 0, 1, 0),
+                   dead_time = c(7, 5, 9, 6), dead_status = c(1, 1, 0, 0),
+                   age = c(60, 72, 55, 49))
+w <- msprep2(wide,
+             states = list(healthy = NULL,
+                           ill     = Surv(ill_time, ill_status),
+                           dead    = Surv(dead_time, dead_status)),
+             trans  = c("healthy -> ill -> dead", "healthy -> dead"))
+w
+w$panel |> filter(id == 1)
+```
+
+## `prep2()`
+
+**Definition**
+
+```r
+prep2(data, id = "id", time = "time", state = "state",
+      states = NULL, absorbing = NULL, drop.na = FALSE, check.consecutive = TRUE)
+```
+
+**What it does.** Builds the **second-order counting processes**
+$\tilde N_{hj\ell}(s)$ and $\tilde Y_{hj}(s-1)$ from panel data, plus the
+individual-level table of second-order triples. Its output is the input of
+`P2est()` and `P2boot()`.
+
+**Arguments**
+
+| Argument | Default | Meaning |
+|---|---|---|
+| `data` | — | panel data frame (one row per subject and time), or an `msm2prep` object from `msprep2()` (its panel, states and absorbing states are used) |
+| `id`, `time`, `state` | `"id"`, `"time"`, `"state"` | column names |
+| `states` | `NULL` | state space **and order**; default: observed states (factor levels, or sorted values) |
+| `absorbing` | `NULL` | absorbing states; default: inferred |
+| `drop.na` | `FALSE` | if `TRUE`, drop rows with `NA` in id/time/state with a warning instead of an error |
+| `check.consecutive` | `TRUE` | warn when some subject's times are not consecutive integers |
+
+**Value.** An object of class **`msm2data`**, a list with:
+
+| Component | Content |
+|---|---|
+| `N` | tibble `(h, j, l, s, N)`: $\tilde N_{hj\ell}(s)$, $s$ = time of the destination |
+| `Y` | tibble `(h, j, s, Y)`: $\tilde Y_{hj}(s-1)$, indexed by the same $s$ |
+| `triples` | tibble `(id, h, j, l, s)`: one row per subject per at-risk instant; used by `P2boot()` to resample subjects |
+| `states` | the state space, in order |
+| `absorbing` | absorbing states (character) |
+| `n` | number of subjects |
+| `ntriples` | number of triples (rows of `triples`) |
+| `time.range` | range of observed times |
+
+The columns `h`, `j`, `l` are factors with levels `states`.
+
+**How it works.**
+
+1. Validates the columns and `NA`s and renames them to `id`, `time`,
+   `state`. Converts `state` to a factor with levels `states`.
+2. Sorts by `(id, time)` and, if requested, checks that times within each
+   subject increase by exactly 1.
+3. Within each subject, `h = lag(state, 2)` and `j = lag(state, 1)`. The
+   first two rows of each subject (incomplete history) are dropped; the
+   remaining rows are the triples, with the current row's state as `l`.
+4. `N` counts triples by `(h, j, l, s)` (`count()`); `Y` sums `N` over `l`.
+   These are the counting processes of the paper. With
+   complete follow-up, $\sum_\ell \tilde N_{hj\ell}(s)$ is exactly the
+   number of subjects in $h$ at $s-2$ and $j$ at $s-1$; a subject whose
+   follow-up stops in $j$ (right-censored) is not counted at risk, because
+   its next state is not observed.
+5. If `absorbing` is `NULL`, a state is absorbing when it is occupied but
+   never left ($j \to \ell$ with $\ell \ne j$ never observed).
+
+**Why it is done this way.** The likelihood of a second-order Markov chain
+depends on the data only through $\tilde N_{hj\ell}$ and $\tilde Y_{hj}$
+(Anderson and Goodman, 1957), so they are computed once and every other
+function reuses them.
+
+**Errors and warnings.**
+
+* Error: a column in `id`/`time`/`state` is missing.
+* Error: `NA` in id/time/state with `drop.na = FALSE` (warning and drop with
+  `drop.na = TRUE`).
+* Error: an observed state is not in `states`.
+* Error: no triples at all (every subject has fewer than 3 observations).
+* Warning: non-consecutive times (triples are still formed from consecutive
+  **rows**).
+
+**Example**
+
+```{r prep2}
+d <- prep2(panel, states = estados)
+d
+head(d$N)
+head(d$Y)
+names(d$triples)      # one row per patient-day at risk (not printed)
+```
+
+## `print.msm2data()` and `summary.msm2data()`
+
+**Definition**
+
+```r
+## S3 method for class 'msm2data'
+print(x, ...)
+## S3 method for class 'msm2data'
+summary(object, ...)
+```
+
+**What they do.** `print()` shows the number of subjects and triples, time
+range, states, absorbing states and number of distinct $(h, j)$ pairs. `summary()` prints and invisibly returns the **exposure per
+$(h, j)$ pair**.
+
+**Value.** `print()` returns `x` invisibly. `summary()` returns invisibly a
+tibble with one row per $(h, j)$ and columns `total_at_risk`
+($\sum_s \tilde Y_{hj}(s-1)$, the RPE denominator, in subject-instants),
+`s_min` and `s_max`.
+
+**Example**
+
+```{r prep2-summary}
+expo <- summary(d)
+```
+
+# Estimation
+
+## `P2est()`
+
+**Definition**
+
+```r
+P2est(object, conf.level = 0.95, ci = c("wald", "logit"), clip = TRUE)
+```
+
+**What it does.** Estimates every observed 1-step second-order transition
+probability $P_{hj\ell}$ nonparametrically, with standard errors and
+confidence intervals, with the relative probability estimator (RPE), and
+arranges them as tensors.
+
+**Arguments**
+
+| Argument | Default | Meaning |
+|---|---|---|
+| `object` | — | an `msm2data` object |
+| `conf.level` | `0.95` | confidence level, strictly in (0, 1) |
+| `ci` | `"wald"` | `"wald"` or `"logit"` interval |
+| `clip` | `TRUE` | truncate Wald intervals to [0, 1] |
+
+**Value.** An object of class **`P2est`**, a list with:
+
+| Component | Content |
+|---|---|
+| `estimate` | tibble, one row per observed $(h, j, \ell)$: `h, j, l, p, se, lower, upper, n.trans, at.risk` |
+| `P` | $M \times M \times M$ tensor of estimates, layout `[j, l, h]` (as in the paper's code) |
+| `P.lower`, `P.upper` | tensors of the confidence limits |
+| `P.se` | tensor of standard errors |
+| `states`, `absorbing` | state space and absorbing states |
+| `estimator` (always `"RPE"`), `conf.level`, `ci` | settings used |
+| `n` | number of subjects |
+
+with `n.trans` $= \sum_s \tilde N_{hj\ell}(s)$ and `at.risk`
+$= \sum_s \tilde Y_{hj}(s-1)$.
+
+**How it works.**
+
+$$
+\tilde P_{hj\ell} = \frac{\sum_s \tilde N_{hj\ell}(s)}{\sum_s \tilde Y_{hj}(s-1)},
+\qquad
+\mathrm{se} = \sqrt{\frac{\tilde P_{hj\ell}(1-\tilde P_{hj\ell})}{\sum_s \tilde Y_{hj}(s-1)}}.
+$$
+
+The estimator is the RPE of the paper; the standard error is
+$\tilde\varsigma_{hj\ell}/\sqrt{n}$, with the estimator of its asymptotic
+variance, because $\hat\pi_{hj}(s-1) = \tilde Y_{hj}(s-1)/n$.
+The RPE pools all exposure and weighs every subject-instant equally (the
+paper shows that it is more efficient than the conditional probability
+estimator, which is therefore not implemented). Intervals:
+Wald $\tilde P \pm z\,\mathrm{se}$ (clipped if `clip`, as in the paper's
+code), or logit
+$\mathrm{expit}(\mathrm{logit}\,\hat p \pm z\,\mathrm{se}/(\hat p(1-\hat p)))$,
+which degenerates to $[\hat p, \hat p]$ when $\hat p \in \{0, 1\}$. Finally,
+for every absorbing state $a$ and every $h$, `P[a, a, h]`, `P.lower[a, a, h]`
+and `P.upper[a, a, h]` are set to 1, so that absorbing states keep their
+probability mass during propagation. Unobserved $(h, j)$ pairs are left at 0,
+as the paper prescribes when nobody is at risk.
+
+**Agreement with the paper's code.** On DIVINE, the 343 entries of `P`
+coincide with the tensor of the paper's illustration code. The only
+differences are (i) $z$ is computed exactly (`qnorm(0.975)` = 1.959964,
+against 1.96 in the paper's code), which changes the confidence limits by
+about $10^{-6}$, and (ii) `P[a, a, h] = 1` also for pairs $(h, a)$ that never
+occur (e.g. SP → Disch), which the paper's code leaves at 0; those pairs
+have probability 0 of being reached, so no prediction changes.
+
+**Errors and warnings.** Error if `object` is not an `msm2data` or if
+`conf.level` is not a single number strictly between 0 and 1.
+
+**Example**
+
+```{r p2est}
+fit <- P2est(d)
+fit
+fit$estimate |> filter(j == "SP")             # patients in SP at the current time
+round(fit$P[, , "NSP"], 3)     # transition matrix for patients in NSP at the previous time
+```
+
+## `print.P2est()`
+
+**Definition**
+
+```r
+## S3 method for class 'P2est'
+print(x, ...)
+```
+
+**What it does.** Prints the estimator, states, interval type and level,
+number of subjects and number of estimated probabilities. Returns `x`
+invisibly. The estimates themselves are in `x$estimate`.
+
+## `P2boot()`
+
+**Definition**
+
+```r
+P2boot(object, B = 200, conf.level = 0.95, seed = NULL)
+```
+
+**What it does.** Subject-level bootstrap of the RPE: resamples subjects with
+replacement and recomputes every $\hat P_{hj\ell}$ in each replicate. The
+result behaves like a `P2est` fit; `ckequations()` and `compare2()` then use
+**percentile bootstrap intervals** for the $n$-step probabilities instead
+of the evolution intervals.
+
+**Arguments**
+
+| Argument | Default | Meaning |
+|---|---|---|
+| `object` | — | an `msm2data` object |
+| `B` | `200` | number of replicates (at least 2) |
+| `conf.level` | `0.95` | confidence level of the intervals |
+| `seed` | `NULL` | optional seed for reproducible replicates |
+
+**Value.** An object of class **`c("P2boot", "P2est")`**: every component of
+`P2est(object)`, plus `boot` ($M \times M \times M \times B$ array of
+replicate tensors, layout `[j, l, h, b]`), `B`, and a column `se.boot`
+(bootstrap SD) in `estimate`.
+
+**How it works.** The per-subject counts of every observed $(h, j, \ell)$
+triple are tabulated once (an $n \times K$ matrix). A replicate draws subject
+multiplicities $w$ and computes the totals $w^\top C$, from which the RPE
+tensor follows by grouped sums; pairs with nobody
+at risk in a replicate keep the point-estimate row, and absorbing states keep
+probability 1. For an $n$-step band, each replicate tensor is propagated with
+the pair-chain machinery and the $\alpha/2$ and $1-\alpha/2$ quantiles are
+taken step by step. Resampling subjects keeps their within-subject dependence.
+
+**Why it is done this way.** Patients are the independent units and their days are not,
+so whole patients are resampled: the standard non-parametric bootstrap for
+clustered data (Davison and Hinkley, 1997; Field and Welsh, 2007). The $n$-step
+predictions are non-linear functions of all the estimated probabilities, so
+propagating each replicate and taking percentiles (Efron and Tibshirani, 1993)
+is simpler and more reliable than a delta-method variance.
+
+**Errors and warnings.** Error if `object` is not an `msm2data`, if `B < 2`
+or if `conf.level` is not in (0, 1).
+
+**Example**
+
+```{r p2boot}
+bt <- P2boot(d, B = 500, seed = 1)
+bt
+bt$estimate |> filter(j == "SP") |> select(h, l, p, se, se.boot)
+ckequations(bt, h = "NSP", j = "SP", l = "NIMV", nsteps = 5, bounds = TRUE)
+```
+
+# Prediction
+
+## `ckequations()`
+
+**Definition**
+
+```r
+ckequations(x, h, j, l = NULL, nsteps = 9L, bounds = FALSE)
+```
+
+**What it does.** Computes the $n$-step second-order transition
+probabilities $P_{hj\ell}(1, n) = P(X_{n+1} = \ell \mid X_1 = j, X_0 = h)$,
+$n = 1, \dots,$ `nsteps`, with the extended Chapman–Kolmogorov relation.
+Optionally adds evolution-interval bounds.
+
+**Arguments**
+
+| Argument | Default | Meaning |
+|---|---|---|
+| `x` | — | a `P2est` or `P2boot` object, or an $M \times M \times M$ tensor in `[j, l, h]` layout |
+| `h` | — | state at time 0 (label or index) |
+| `j` | — | state at time 1 (label or index) |
+| `l` | `NULL` | target state(s); `NULL` = all states |
+| `nsteps` | `9L` | number of steps |
+| `bounds` | `FALSE` | with a `P2est` and a single `l`, also propagate the confidence-limit tensors |
+
+**Value.** Depends on the arguments:
+
+| `l` | `bounds` | Returned value |
+|---|---|---|
+| one state | `FALSE` | numeric vector of length `nsteps` |
+| several states | `FALSE` | matrix `nsteps × length(l)` |
+| `NULL` | ignored | matrix `nsteps × M` (each row sums to 1) |
+| one state | `TRUE` | tibble with columns `n, estimate, lower, upper` |
+
+**How it works.** The second-order chain $X$ is lifted to the first-order
+chain of pairs $Z_s = (X_{s-1}, X_s)$, with $M^2 \times M^2$ transition matrix
+$Q_{(a,b) \to (b,c)} = P_{abc}$ (and 0 for pairs not sharing $b$). Starting
+from a point mass on $(h, j)$, the pair distribution is multiplied by $Q$ once
+per step. After each step it is summed over the first element of the pair,
+which gives the distribution of $X_{m+1}$. This is exact, and costs one
+matrix–vector product per step. Writing a second-order chain as a first-order
+chain on pairs of consecutive states is the standard representation of
+higher-order Markov chains (e.g. Benson, Gleich and Lim, 2017). It gives
+exactly the sum over paths of the extended Chapman–Kolmogorov relation of the
+paper: with `nsteps = 9`, the
+result equals the nine values of the `Chapman.Kolmogorov(P, h, j, l)`
+function of the paper's code (differences below $10^{-16}$ on DIVINE).
+
+With `bounds = TRUE`, the same propagation is applied to `P.lower` and
+`P.upper`: these are the **evolution intervals** of the paper.
+As the paper explains, they are not confidence intervals; they are built to
+contain them, so that two evolution intervals that do not overlap indicate a
+significant difference. The rows of the limit tensors do not sum to 1, so the
+bounds are also clipped to [0, 1] (on DIVINE this changes nothing). If `x`
+is a `P2boot` fit, the bounds are instead percentile bootstrap intervals
+(every replicate tensor is propagated), with close to nominal coverage.
+
+**Errors and warnings.**
+
+* Error: `x` is neither a `P2est` nor a 3-dimensional array.
+* Error: `nsteps < 1`.
+* Error: `h`, `j` or `l` not found in the state space.
+* Warning: `bounds = TRUE` with `l = NULL` (estimates only are returned).
+* Error: `bounds = TRUE` with more than one `l`.
+* With a bare tensor, `bounds` is silently ignored (there are no limits to
+  propagate).
+
+**Example**
+
+```{r ck}
+ckequations(fit, h = "NSP", j = "SP", l = "NIMV", nsteps = 5)
+round(ckequations(fit, h = "NSP", j = "SP", nsteps = 5), 3)            # full distribution
+ckequations(fit, h = "NSP", j = "SP", l = "NIMV", nsteps = 5, bounds = TRUE)
+ckequations(fit$P, h = "NSP", j = "SP", l = "NIMV", nsteps = 5)        # a bare tensor
+```
+
+# Comparing histories
+
+## `compare2()`
+
+**Definition**
+
+```r
+compare2(object, h, j, l, nsteps = 9L, bounds = TRUE)
+```
+
+**What it does.** For a common current state $j$ and target $\ell$, computes
+the $n$-step curves $P_{hj\ell}(1, n)$ for **several previous states** $h$,
+with their evolution intervals. It shows whether, and for how long, the
+previous state changes the forecast.
+
+**Arguments**
+
+| Argument | Default | Meaning |
+|---|---|---|
+| `object` | — | a `P2est` or `P2boot` object |
+| `h` | — | vector of previous states to compare |
+| `j` | — | common current state |
+| `l` | — | target state |
+| `nsteps` | `9L` | horizon |
+| `bounds` | `TRUE` | compute evolution intervals; `FALSE` returns curves only |
+
+**Value.** An object of class **`msm2pred`** (also a data frame), with
+columns `h`, `n`, `estimate` and, if `bounds = TRUE`, `lower`, `upper`; and
+attributes `j`, `l`, `bounds`, `bands`, `estimator`, `conf.level`.
+
+**How it works.** Builds $Q$ (and, with bounds, $Q_{\text{lower}}$ and
+$Q_{\text{upper}}$) once, and propagates it from each $(h, j)$ as in
+`ckequations()`, with the bounds clipped to [0, 1]. With a `P2boot` fit the
+bounds are percentile bootstrap intervals, and the attribute `bands` records
+which kind was used (`"evolution"` or `"bootstrap"`). The curves are stacked in
+long format (`purrr::map()` and `purrr::list_rbind()`).
+
+**Errors and warnings.** Error if `object` is not a `P2est`, or if `j`, `l`
+or any `h` is not in the state space.
+
+**Example**
+
+```{r compare2}
+cmp <- compare2(fit, h = c("NSP", "SP"), j = "SP", l = "NIMV")
+cmp
+```
+
+## `overlap_step()`
+
+**Definition**
+
+```r
+overlap_step(x)
+```
+
+**What it does.** For a two-group comparison with bounds, finds the **first
+step at which the two intervals (evolution or bootstrap) overlap**, i.e. after how many
+steps the previous state no longer changes the forecast significantly.
+
+**Arguments**
+
+| Argument | Default | Meaning |
+|---|---|---|
+| `x` | — | an `msm2pred` with exactly two groups and interval bounds |
+
+**Value.** A list with:
+
+| Element | Content |
+|---|---|
+| `n` | first overlapping step (`NA` if the intervals never overlap) |
+| `s` | the corresponding time, `n + 1` |
+| `separated_steps` | number of leading steps with separated intervals (the whole horizon if they never overlap) |
+| `overlap` | logical vector, one value per step |
+| `separation` | numeric vector, one value per step: $\max(L_1, L_2) - \min(U_1, U_2)$, positive when separated |
+| `groups` | the two previous states compared |
+
+**How it works.** For each step, two intervals $[L_1, U_1]$ and $[L_2, U_2]$
+are separated exactly when $\max(L_1, L_2) > \min(U_1, U_2)$. The first step
+where this fails is the first overlap.
+
+**Why it is done this way.** Non-overlap of the two intervals is the
+criterion of the methods paper. In DIVINE, the evolution
+intervals first overlap at step 5 for SP → NIMV and at step 7 for SP → IMV,
+the "fifth day" and "between the sixth and seventh day" of the paper.
+
+**Errors and warnings.** Error if `x` has no bounds, or does not have exactly
+two groups.
+
+**Example**
+
+```{r overlap}
+overlap_step(cmp)
+overlap_step(compare2(bt, h = c("NSP", "SP"), j = "SP", l = "NIMV"))$n   # with bootstrap intervals
+```
+
+## `print.msm2pred()`, `summary.msm2pred()` and `plot.msm2pred()`
+
+**Definition**
+
+```r
+## S3 method for class 'msm2pred'
+print(x, ...)
+## S3 method for class 'msm2pred'
+summary(object, ...)
+## S3 method for class 'msm2pred'
+plot(x, type = NULL, col = NULL, lty = 1, lwd = 2, alpha = 0.2, add = FALSE,
+     legend = TRUE, dualaxis = TRUE, mark.overlap = TRUE, ylim = NULL,
+     main = NULL, xlab = "", ylab = "probability", ...)
+```
+
+**What they do.**
+
+* `print()`: a header (estimator, target, current state, groups) and the full
+  table. Returns `x` invisibly.
+* `summary()`: states the estimator and interval level and, for two groups
+  with bounds, the first overlap in words. Returns invisibly the
+  `overlap_step()` list (or `object` when no overlap analysis applies).
+* `plot()`: draws the curves, and shaded evolution intervals when available.
+  Returns `x` invisibly.
+
+**Arguments of `plot()`**
+
+| Argument | Default | Meaning |
+|---|---|---|
+| `type` | `NULL` | `"interval"` (shaded bands) or `"curve"` (lines); default `"interval"` if bounds exist |
+| `col` | `NULL` | colours, one per group in the order of `h` (default red, blue, dark green, purple, orange); the paper uses blue for NSP and red for SP |
+| `lty`, `lwd` | `1`, `2` | line type and width |
+| `alpha` | `0.2` | transparency of the bands |
+| `add` | `FALSE` | overlay on the current plot |
+| `legend` | `TRUE` | draw a legend (top right) |
+| `dualaxis` | `TRUE` | show both the step $n$ and the time $s = n + 1$ |
+| `mark.overlap` | `TRUE` | for two groups with bands, a dotted line at the first overlap |
+| `ylim`, `main`, `xlab`, `ylab` | — | usual graphical parameters |
+| `...` | — | passed to the initial `plot()` |
+
+A warning is issued if `type = "interval"` is requested without bounds (lines
+are drawn instead).
+
+**Example**
+
+```{r plot}
+summary(cmp)
+plot(cmp, type = "interval", dualaxis = FALSE, xlab = "steps (n)")
+```
+
+# Object classes
+
+| Class | Created by | Main components | Methods |
+|---|---|---|---|
+| `msm2prep` | `msprep2()` | `panel`, `states`, `absorbing`, `trans`, `transitions`, `subjects`, `issues`, `settings` | `print`, `summary` (and `prep2()` accepts it) |
+| `msm2data` | `prep2()` | `N`, `Y`, `triples`, `states`, `absorbing`, `n`, `ntriples`, `time.range` | `print`, `summary` |
+| `P2est` | `P2est()` | `estimate`, `P`, `P.lower`, `P.upper`, `P.se`, settings | `print` |
+| `P2boot` | `P2boot()` | a `P2est` plus `boot`, `B` | `print` (and every `P2est` use) |
+| `msm2pred` | `compare2()` | data frame `h, n, estimate[, lower, upper]`; attributes `j`, `l`, `bounds`, `bands`, `estimator`, `conf.level` | `print`, `summary`, `plot` |
+
+# Internal helpers
+
+These functions are not exported (access them with `mstate2:::`), but they
+implement the core computations and are documented here for completeness.
+
+| Helper | Definition | What it does |
+|---|---|---|
+| `.surv_states(expr, data, env)`, `.surv_in_states(time, event)` | the list of states of wide data | checks the list (named, one `NULL` initial state, `Surv()` elsewhere) and evaluates each `Surv(time, status)` on the columns of `data` with the checks of `survival::Surv()` |
+| `.allowed_matrix(trans, states)` | text or matrix | logical matrix of allowed transitions from `"A -> B -> C"` text or a `transMat()` matrix |
+| `.from_wide()`, `.from_sojourn()`, `.from_msdata()` | data | read each kind of data into one record per subject and state entered, with its time unit, and the end of follow-up of each subject |
+| `.build_panel(ev, subj, absorbing)` | records, subjects | stops at the absorbing state, resolves several states in one unit, expands each state over its units and logs every record dropped or changed |
+| `sojourn_to_panel()` | sojourn data | the original conversion of the DIVINE sojourn times, kept to check that `msprep2()` gives the same panel |
+| `.pair_matrix(P, M)` | tensor, number of states | builds the $M^2 \times M^2$ pair-transition matrix $Q$ with $Q_{(a,b),(b,c)} = P_{abc}$; pair $(a, b)$ has index $(a-1)M + b$ |
+| `.propagate(Q, hi, ji, nsteps, M)` | $Q$, start indices | starts from the pair $(h, j)$, multiplies by $Q$ `nsteps` times and returns the `nsteps × M` matrix of marginal state distributions |
+| `.ck_distribution(P, h, j, nsteps, states)` | tensor, start states | resolves `h`, `j`, builds $Q$ and propagates; shared by `ckequations()` and `compare2()` |
+| `.resolve(s, states)` | labels or indices | converts state labels to positions (indices are returned as integers; unknown labels and indices outside the state space as `NA`) |
+| `.check_conf_level(conf.level)` | a number | errors unless `conf.level` is a single number strictly between 0 and 1 |
+| `.id_counts(object)` | `msm2data` | per-subject counts of every observed triple ($n \times K$ matrix, from `count(id, h, j, l)`) and their $(h, j)$ groups, for the bootstrap |
+| `.tensor_from_counts()` | replicate totals | second-order tensor of a bootstrap replicate |
+| `.boot_curves()`, `.boot_bands()` | replicate tensors | $n$-step curve of every replicate, and its percentile bands |
+| `` `%||%`(a, b) `` | two values | returns `b` when `a` is `NULL`, otherwise `a` |
+
+```{r internals}
+Q <- mstate2:::.pair_matrix(fit$P, 7)
+dim(Q)
+round(mstate2:::.propagate(Q, hi = 1, ji = 2, nsteps = 3, M = 7), 3)   # from (NSP, SP)
+```
+
+# References
+
+Anderson, T. W. and Goodman, L. A. (1957). Statistical inference about Markov
+chains. *The Annals of Mathematical Statistics*, 28(1), 89–110.
+
+Benson, A. R., Gleich, D. F. and Lim, L.-H. (2017). The spacey random walk: a
+stochastic process for higher-order data. *SIAM Review*, 59(2), 321–345.
+
+Besalú, M. and Gómez Melis, G. (2024). Second order Markov multistate models.
+*SORT*, 48(2), 209–234.
+
+Brown, L. D., Cai, T. T. and DasGupta, A. (2001). Interval estimation for a
+binomial proportion. *Statistical Science*, 16(2), 101–133.
+
+Davison, A. C. and Hinkley, D. V. (1997). *Bootstrap Methods and their
+Application*. Cambridge University Press.
+
+Efron, B. and Tibshirani, R. J. (1993). *An Introduction to the Bootstrap*.
+Chapman and Hall.
+
+Field, C. A. and Welsh, A. H. (2007). Bootstrapping clustered data. *Journal
+of the Royal Statistical Society: Series B*, 69(3), 369–390.
+
+Najera-Zuloaga, J., Besalú, M. and Gómez Melis, G. (2025). Second-order Markov
+multistate models: nonparametric estimation and inference. Manuscript
+submitted for publication.

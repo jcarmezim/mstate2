@@ -1,0 +1,137 @@
+---
+output:
+  github_document:
+    pandoc_args: ["--wrap=preserve"]
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file. -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.path = "man/figures/README-",
+                      fig.width = 7, fig.height = 4, dpi = 110, out.width = "75%")
+## The DIVINE data are not distributed with mstate2. To re-render this file,
+## point MSTATE2_DIVINE_DATA at a local copy of MSM_Data.RData.
+divine_path <- Sys.getenv("MSTATE2_DIVINE_DATA", "MSM_Data.RData")
+knitr::opts_chunk$set(eval = file.exists(divine_path))
+options(digits = 4)
+```
+
+# mstate2 <img src="man/figures/logo.png" align="right" width="200"/>
+
+[![R-CMD-check](https://github.com/jcarmezim/mstate2/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/jcarmezim/mstate2/actions/workflows/R-CMD-check.yaml)
+[![Codecov test
+coverage](https://codecov.io/gh/jcarmezim/mstate2/graph/badge.svg?token=ptcXJwFrji)](https://codecov.io/gh/jcarmezim/mstate2)
+
+**mstate2** implements **second-order Markov multistate models** in R.
+
+The package implements the methods of Najera-Zuloaga, Besalú and Gómez
+Melis (2025): nonparametric estimation of the second-order transition
+probabilities, multi-step prediction with the extended
+Chapman–Kolmogorov relation and evolution intervals, and the comparison
+of trajectories according to the state at the previous time.
+
+## Installation
+
+mstate2 is not yet on CRAN. Install the development version from GitHub:
+
+```r
+# install.packages("remotes")
+remotes::install_github("jcarmezim/mstate2", build_vignettes = TRUE)
+```
+
+## Example: the DIVINE cohort
+
+The example uses the DIVINE cohort of 2076 patients hospitalised with
+COVID-19 (the real-data illustration of the methods paper). The data are
+not distributed with mstate2; download `MSM_Data.RData` from the [DIVINE
+repository](https://github.com/bruigtp/DIVINE/tree/main/msm_data). Each
+row is a patient with the days spent in each state and how follow-up
+ended.
+
+```{r load-shown, eval = FALSE}
+library(mstate2)
+load("MSM_Data.RData")     # data frame MSM
+```
+
+```{r load-run, include = FALSE}
+library(mstate2)
+load(divine_path)
+```
+
+**1. From sojourn times to a daily panel, and the second-order counts.**
+
+```{r prep}
+x <- msprep2(MSM,
+             durations = c(NSP = "t.nosp", SP = "t.sp", NIMV = "t.nimv", IMV = "t.mv", Recov = "t.recov"),
+             outcome   = c(Disch = "disch.s", Death = "death.s"),
+             states    = c("NSP", "SP", "Recov", "NIMV", "IMV", "Disch", "Death"))
+d <- prep2(x)
+d
+```
+
+**2. Estimation.** The probability of moving from severe pneumonia (SP) to non-invasive (NIMV) or invasive (IMV) ventilation depends strongly on the state at the previous time:
+
+```{r estimate}
+fit <- P2est(d)
+fit$estimate |>
+  dplyr::filter(j == "SP" & l %in% c("NIMV", "IMV")) |>
+  dplyr::select("h", "j", "l", "p", "lower", "upper")
+```
+
+**3. For how long does the previous time matter?** `compare2()` predicts the probability of being in NIMV $n$ days later, for patients in SP whose state at the previous time was NSP or SP, with the evolution intervals of the paper. The intervals first overlap on day 5 (dotted line): the state at the previous time matters for the first 4 days.
+
+```{r compare}
+cmp <- compare2(fit, h = c("NSP", "SP"), j = "SP", l = "NIMV")
+summary(cmp)
+plot(cmp, dualaxis = FALSE, xlab = "days ahead (n)")
+```
+
+## Main functions
+
+| Task | Functions |
+|---|---|
+| Prepare the data | `msprep2()`, `rnd()`, `prep2()` |
+| Estimate | `P2est()` (RPE, with Wald or logit intervals) |
+| Predict | `ckequations()` (extended Chapman-Kolmogorov, with evolution intervals) |
+| Does the previous time matter, and for how long? | `compare2()`, `overlap_step()`, with `summary()` and `plot()` |
+
+## Documentation
+
+- `vignette("mstate2")`: a complete guided analysis, function by
+  function.
+- `vignette("reference")`: the full reference (signature, arguments,
+  value, algorithm and error conditions of every function).
+- The package website: <https://jcarmezim.github.io/mstate2/>.
+
+## Methods
+
+The estimators, their variances and the extended Chapman-Kolmogorov
+relation are described in:
+
+- Najera-Zuloaga J, Besalú M, Gómez Melis G (2025). *Second-Order Markov
+  Multistate Models: Nonparametric Estimation and Inference*. Manuscript
+  submitted for publication.
+- Besalú M, Gómez Melis G (2024). Second order Markov multistate models.
+  *SORT*, 48(2), 209–234.
+
+## Citation
+
+```{r citation, eval = TRUE, comment = ""}
+citation("mstate2")
+```
+
+## Authors
+
+- Josu Najera-Zuloaga
+- João Carmezim (maintainer)
+- Mireia Besalú
+- Cristian Tebé
+- Guadalupe Gómez Melis
+
+## Getting help
+
+Please report bugs, with a minimal reproducible example, on [GitHub Issues](https://github.com/jcarmezim/mstate2/issues).
+
+## License
+
+GPL (>= 3)
