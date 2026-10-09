@@ -9,6 +9,7 @@ prep2(
   id = "id",
   time = "time",
   state = "state",
+  covariates = NULL,
   states = NULL,
   absorbing = NULL,
   drop.na = FALSE,
@@ -20,6 +21,8 @@ prep2(
 
 \item{id, time, state}{Column names for subject id, discrete time, and state.}
 
+\item{covariates}{Optional names of baseline (time-fixed) covariate columns to carry into \code{triples}, for \code{\link{P2reg}}. For an \code{"msm2prep"} object the default is its covariates (the columns of its panel other than \code{id}, \code{time} and \code{state}). A covariate that varies within a subject gives a warning and is carried row by row. The names \code{id, time, state, h, j, l, s, d} are reserved.}
+
 \item{states}{Optional state space / ordering. Defaults to sorted observed states.}
 
 \item{absorbing}{Optional absorbing states; inferred if NULL.}
@@ -29,7 +32,7 @@ prep2(
 \item{check.consecutive}{If TRUE (default), warn when any subject's times are not consecutive integers.}
 }
 \value{
-An object of class "msm2data": a list with the tibbles \code{N} (the counts \eqn{\tilde N_{hj\ell}(s)}, columns \code{h, j, l, s, N}), \code{Y} (the at-risk counts \eqn{\tilde Y_{hj}(s-1)}, columns \code{h, j, s, Y}) and \code{triples} (one row per subject per observed triple, columns \code{id, h, j, l, s}; used by \code{\link{P2boot}} to resample subjects), where \code{h, j, l} are factors with levels \code{states}; and \code{states}, \code{absorbing}, \code{n} (subjects), \code{ntriples} and \code{time.range}.
+An object of class "msm2data": a list with the tibbles \code{N} (the counts \eqn{\tilde N_{hj\ell}(s)}, columns \code{h, j, l, s, N}), \code{Y} (the at-risk counts \eqn{\tilde Y_{hj}(s-1)}, columns \code{h, j, s, Y}), \code{triples} (one row per subject per observed triple, columns \code{id, h, j, l, s, d} and the \code{covariates}; used by \code{\link{P2boot}} to resample subjects and by \code{\link{P2reg}}) and \code{pairs} (every observed one-step move, including each subject's first move, columns \code{from, to, N}; used by \code{\link{as_tmat}}), where \code{h, j, l} are factors with levels \code{states}; and \code{states}, \code{absorbing}, \code{covariates}, \code{n} (subjects), \code{ntriples} and \code{time.range}. In \code{triples}, \code{s} is the time of the destination state and \code{d} the number of consecutive time units already spent in the current state \code{j} up to \eqn{s-1} (counted from the start of follow-up), the time scale of a semi-Markov baseline in \code{\link{P2reg}}.
 }
 \description{
 \code{prep2} takes discrete-time panel data (one row per subject-time with the occupied state) and constructs the second-order counting processes needed to estimate 1-step second-order homogeneous transition probabilities \eqn{P_{hj\ell} = P(X_s = \ell \mid X_{s-1} = j, X_{s-2} = h)}.

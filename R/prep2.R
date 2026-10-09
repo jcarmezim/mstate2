@@ -16,11 +16,12 @@
 #'
 #' @param data A data frame in long/panel format (one row per subject and time point), e.g. the panel of \code{\link{msprep2}} or the output of \code{\link{simulate2}}, or an \code{"msm2prep"} object from \code{\link{msprep2}} (its panel is used, with its states and absorbing states unless \code{states} or \code{absorbing} are given).
 #' @param id,time,state Column names for subject id, discrete time, and state.
+#' @param covariates Optional names of baseline (time-fixed) covariate columns to carry into \code{triples}, for \code{\link{P2reg}}. For an \code{"msm2prep"} object the default is its covariates (the columns of its panel other than \code{id}, \code{time} and \code{state}). A covariate that varies within a subject gives a warning and is carried row by row. The names \code{id, time, state, h, j, l, s, d} are reserved.
 #' @param states Optional state space / ordering. Defaults to sorted observed states.
 #' @param absorbing Optional absorbing states; inferred if NULL.
 #' @param drop.na If TRUE, drop rows with NA in id/time/state (with a warning) instead of erroring. Default FALSE.
 #' @param check.consecutive If TRUE (default), warn when any subject's times are not consecutive integers.
-#' @return An object of class "msm2data": a list with the tibbles \code{N} (the counts \eqn{\tilde N_{hj\ell}(s)}, columns \code{h, j, l, s, N}), \code{Y} (the at-risk counts \eqn{\tilde Y_{hj}(s-1)}, columns \code{h, j, s, Y}) and \code{triples} (one row per subject per observed triple, columns \code{id, h, j, l, s}; used by \code{\link{P2boot}} to resample subjects), where \code{h, j, l} are factors with levels \code{states}; and \code{states}, \code{absorbing}, \code{n} (subjects), \code{ntriples} and \code{time.range}.
+#' @return An object of class "msm2data": a list with the tibbles \code{N} (the counts \eqn{\tilde N_{hj\ell}(s)}, columns \code{h, j, l, s, N}), \code{Y} (the at-risk counts \eqn{\tilde Y_{hj}(s-1)}, columns \code{h, j, s, Y}), \code{triples} (one row per subject per observed triple, columns \code{id, h, j, l, s, d} and the \code{covariates}; used by \code{\link{P2boot}} to resample subjects and by \code{\link{P2reg}}) and \code{pairs} (every observed one-step move, including each subject's first move, columns \code{from, to, N}; used by \code{\link{as_tmat}}), where \code{h, j, l} are factors with levels \code{states}; and \code{states}, \code{absorbing}, \code{covariates}, \code{n} (subjects), \code{ntriples} and \code{time.range}. In \code{triples}, \code{s} is the time of the destination state and \code{d} the number of consecutive time units already spent in the current state \code{j} up to \eqn{s-1} (counted from the start of follow-up), the time scale of a semi-Markov baseline in \code{\link{P2reg}}.
 #' @section Why these counts:
 #' The likelihood of a second-order Markov chain depends on the data only through the transition counts \eqn{\tilde N_{hj\ell}} and the at-risk counts \eqn{\tilde Y_{hj}} (Anderson and Goodman, 1957), so they are computed once and every other function reuses them.
 #' @references
@@ -46,12 +47,13 @@
 #' d <- prep2(panel, id = "id", time = "time", state = "state")
 #' d
 #' @export
-prep2 <- function(data, id = "id", time = "time", state = "state", states = NULL, absorbing = NULL, drop.na = FALSE, check.consecutive = TRUE) {
+prep2 <- function(data, id = "id", time = "time", state = "state", covariates = NULL, states = NULL, absorbing = NULL, drop.na = FALSE, check.consecutive = TRUE) {
 
-  # Data prepared by msprep2(): use its panel, and its state space and absorbing states unless given.
+  # Data prepared by msprep2(): use its panel, its covariates, and its state space and absorbing states unless given.
   if (inherits(data, "msm2prep")) {
     if (is.null(states)) states <- data$states
     if (is.null(absorbing)) absorbing <- data$absorbing
+    if (is.null(covariates)) covariates <- setdiff(names(data$panel), c("id", "time", "state"))
     data <- data$panel
   }
 
@@ -60,14 +62,18 @@ prep2 <- function(data, id = "id", time = "time", state = "state", states = NULL
   stopifnot(is.data.frame(data))
 
   cols <- c(id = id, time = time, state = state)
-  missing_cols <- cols[!cols %in% names(data)]
+  missing_cols <- setdiff(c(cols, covariates), names(data))
   if (length(missing_cols))
     stop("Column(s) not found in `data`: ",
          paste(missing_cols, collapse = ", "), call. = FALSE)
-  
+  # The covariates are carried into the triples next to these columns, so they cannot share their names.
+  reserved <- intersect(covariates, c("id", "time", "state", "h", "j", "l", "s", "d"))
+  if (length(reserved))
+    stop("Covariate name(s) reserved by prep2(): ", paste(reserved, collapse = ", "), "; rename them.", call. = FALSE)
+
   panel <- data |>
     tibble::as_tibble() |>
-    dplyr::select(dplyr::all_of(cols))
+    dplyr::select(dplyr::all_of(cols), dplyr::all_of(covariates))
 
   # Missing values. A row with a missing id, time or state cannot be placed in the panel, so it is an error unless drop.na = TRUE, in which case those rows are dropped with a warning.
 
@@ -102,12 +108,25 @@ prep2 <- function(data, id = "id", time = "time", state = "state", states = NULL
                       sum(!gaps$ok)), call. = FALSE)
   }
 
+  # Time already spent in the current state (semi-Markov duration): number the rows within each run of consecutive equal states (1, 2, 3, ...); for the row of time s, the position of the previous row in its run is the number of time units spent in j up to s - 1. A subject whose follow-up starts in j is counted from that first observation.
+  panel <- panel |>
+    dplyr::mutate(.run = cumsum(state != dplyr::lag(state, default = dplyr::first(state))), .by = "id") |>
+    dplyr::mutate(.pos = dplyr::row_number(), .by = c("id", ".run")) |>
+    dplyr::mutate(d = dplyr::lag(.pos), .by = "id") |>
+    dplyr::select(-".run", -".pos")
+
+  # Every observed one-step move (X_{s-1}, X_s), including each subject's first move, which has no previous state and never appears in a triple: the first-order transition structure of the data, used by as_tmat().
+  pairs <- panel |>
+    dplyr::mutate(from = dplyr::lag(state), .by = "id") |>
+    dplyr::filter(!is.na(from)) |>
+    dplyr::count(from, to = state, name = "N")
+
   # Second-order triples. For every observation X_s = l of a subject, the states two rows and one row earlier are h = X_{s-2} and j = X_{s-1}. The first two observations of each subject have no such history (lag() gives NA) and are dropped.
   trip <- panel |>
     dplyr::mutate(h = dplyr::lag(state, 2L),
                   j = dplyr::lag(state, 1L), .by = "id") |>
     dplyr::filter(!is.na(h), !is.na(j)) |>
-    dplyr::select("id", "h", "j", l = "state", s = "time")
+    dplyr::select("id", "h", "j", l = "state", s = "time", "d", dplyr::all_of(covariates))
 
   if (nrow(trip) == 0L)
     stop("No second-order triples found: each subject needs >= 3 observations.",
@@ -131,10 +150,21 @@ prep2 <- function(data, id = "id", time = "time", state = "state", states = NULL
     absorbing <- setdiff(occupied, as.character(moved))
   }
 
+  # Baseline covariates are documented as time-fixed: warn if one varies within a subject (usually the wrong column), rather than silently taking one value.
+  if (length(covariates)) {
+    varying <- panel |>
+      dplyr::summarise(dplyr::across(dplyr::all_of(covariates), \(v) dplyr::n_distinct(v, na.rm = TRUE) > 1L), .by = "id") |>
+      dplyr::summarise(dplyr::across(dplyr::all_of(covariates), any)) |>
+      unlist()
+    if (any(varying))
+      warning("Covariate(s) not constant within subject, carried row by row: ",
+              paste(covariates[varying], collapse = ", "), call. = FALSE)
+  }
+
   # Return the counts together with the information later functions need.
   structure(
-    list(N = N, Y = Y, triples = trip,
-         states = states, absorbing = as.character(absorbing),
+    list(N = N, Y = Y, triples = trip, pairs = pairs,
+         states = states, absorbing = as.character(absorbing), covariates = covariates,
          n = n, ntriples = nrow(trip), time.range = range(panel$time)),
     class = "msm2data"
   )
@@ -150,6 +180,7 @@ print.msm2data <- function(x, ...) {
   cat(sprintf("  states (%d)      : %s\n", length(x$states), paste(x$states, collapse = ", ")))
   cat(sprintf("  absorbing       : %s\n",if (length(x$absorbing)) paste(x$absorbing, collapse = ", ") else "none"))
   cat(sprintf("  distinct (h,j)  : %d\n", nrow(dplyr::distinct(x$Y, h, j))))
+  cat(sprintf("  covariates      : %s\n", if (length(x$covariates)) paste(x$covariates, collapse = ", ") else "none"))
   invisible(x)
 }
 

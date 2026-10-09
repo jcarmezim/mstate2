@@ -33,5 +33,6 @@ utils::globalVariables(c(
   "from", "to", "issue", "exit", "first", "last", "initial", "origin", "t0",
   "t_max", ".col", ".scol", ".ord", ".t", "tval", "step", "end_step",
   ".first", ".k", ".n", "prev", "kept_state", ".abs", ".next", ".len", ".i",
-  "total", "Tstart", "Tstop", "status", ".seen", "end", ".nxt", ".has"
+  "total", "Tstart", "Tstop", "status", ".seen", "end", ".nxt", ".has",
+  ".run", ".pos", "d"
 ))
