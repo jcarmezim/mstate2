@@ -16,7 +16,7 @@
 ## Citation
 
 Source:
-[`inst/CITATION`](https://github.com/jcarmezim/mstate2/blob/master/inst/CITATION)
+[`inst/CITATION`](https://github.com/jcarmezim/mstate2/blob/main/inst/CITATION)
 
 Najera-Zuloaga J, Besalú M, Gómez Melis G (2025). "Second-Order Markov
 Multistate Models: Nonparametric Estimation and Inference." Manuscript
